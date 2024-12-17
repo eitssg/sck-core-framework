@@ -1,5 +1,7 @@
 from .log_interface import (
     getLogger,
+    setLevel,
+    getLevel,
     setup,
     get_identity,
     set_identity,
@@ -69,6 +71,8 @@ __all__ = [
     "L_SCOPE",
     "DEFAULT_DATE_FORMAT",
     "getLogger",
+    "setLevel",
+    "getLevel",
     "setup",
     "format_datetime",
     "get_identity",

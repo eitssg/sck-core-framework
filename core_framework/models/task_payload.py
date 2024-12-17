@@ -24,7 +24,7 @@ class TaskPayload(BaseModel):
     TaskPayload == Lambda Fuction *event* object for core lambda
 
     Attributes:
-        Task (str): The task to perform.  See the ACT\_ constants in constants.py
+        Task (str): The task to perform.  See the ACT\\_ constants in constants.py
         Force (bool): Force the task to be performed regardless of the state of the deployment
         DryRun (bool): Perform a dry run of the task.  Don't actually do anything.
         Identity (str): The identity of the user performing the task.  Derrived from DeploymentDetails

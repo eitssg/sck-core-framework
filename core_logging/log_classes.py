@@ -2,6 +2,7 @@
 This module is the Core-Automation logging module.  It provides a custom logger that can log messages as
 JSON objects, status messages, and trace messages.
 """
+
 from typing import Any
 
 import datetime
@@ -29,41 +30,42 @@ logging.addLevelName(TRACE, "TRACE")
 
 # Attributes of the log message when the output is set to JSON
 LOG_DETAILS: str = "Details"
-""" - \\"Details\\" """
+""" \\- "Details" """
 LOG_STATUS: str = "Status"
-""" - \\"Status\\" """
+""" \\- "Status" """
 LOG_MESSAGE: str = "Message"
-""" - \\"Message\\" """
+""" \\- "Message" """
 LOG_REASON: str = "Reason"
-""" - \\"Reason\\" """
+""" \\- "Reason" """
 LOG_RESOURCE: str = "Resource"
-""" - \\"Resource\\" """
+""" \\- "Resource" """
 LOG_TIMESTAMP: str = "Timestamp"
-""" - \\"Timestamp\\" """
+""" \\- "Timestamp" """
 LOG_TYPE: str = "Type"
-""" - \\"Type\\" """
+""" \\- "Type" """
 LOG_SCOPE: str = "Scope"
-""" - \\"Scope\\" """
+""" \\- "Scope" """
 
 # Attributes for the extra: Mapping[str, object] parameter when calling the log methods
 L_STATUS_LABEL: str = "status_label"
-""" - \\"status_label\\" """
+""" \\- "status_label" """
 L_STATUS: str = "status"
-""" - \\"status\\" """
+""" \\- "status" """
 L_REASON: str = "reason"
-""" - \\"reason\\" """
+""" \\- "reason" """
 L_MESSAGE: str = "message"
-""" - \\"message\\" """
+""" \\- "message" """
 L_DETAILS: str = "details"
-""" - \\"details\\" """
+""" \\- "details" """
 L_TYPE: str = "type"
-""" - \\"type\\" """
+""" \\- "type" """
 L_SCOPE: str = "scope"
-""" - \\"scope\\" """
+""" \\- "scope" """
 L_IDENTITY: str = "identity"
-""" - \\"identity\\" """
+""" \\- "identity" """
 L_PRN: str = "prn"
-""" - \\"prn\\" """
+""" \\- "prn" """
+
 
 def format_datetime(t: datetime.datetime, date_format: str | None = None) -> str:
     return t.strftime(date_format or DEFAULT_DATE_FORMAT)
@@ -283,6 +285,7 @@ class CoreLogger(logging.Logger):
     See CoreLoggerHandler for more information.
 
     """
+
     def __init__(self, name: str, level: int = NOTSET):
         """
         Initialize the logger with the specified name and level.  Also tells the logging framework to use the CoreLoggerHandler class for all handlers.

@@ -42,7 +42,7 @@ def getLevelName(level: int) -> str:
 
 def getLevel(level: str) -> int:
     """
-    Return the logging level for the specified level name.
+    Return the logging level for the root logger.
 
     Args:
         level (str): The name of the logging level
@@ -50,7 +50,17 @@ def getLevel(level: str) -> int:
     Returns:
         int: The logging level integer value
     """
-    return logging._nameToLevel.get(level, default_level)
+    return logging.root.getEffectiveLevel()
+
+
+def setLevel(level: int):
+    """
+    Set the logging level for the logger.
+
+    Args:
+        level (int): The logging level integer value
+    """
+    logging.root.setLevel(level)
 
 
 def setup(identity: str):
@@ -113,6 +123,9 @@ def getLogger(name: str | None) -> CoreLogger:
         logger = logging.getLogger()  # type: ignore
     else:
         logger = logging.getLogger(name)  # type: ignore
+
+    lvl = logger.root.getEffectiveLevel()
+    logger.setLevel(lvl)
 
     return logger
 

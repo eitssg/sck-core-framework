@@ -56,6 +56,8 @@ def test_warning(capsys, mock_format_time):
 
 def test_trace(capsys, mock_format_time):
 
+    log.setLevel(log.TRACE)
+
     mock_format_time.return_value = "2021-07-01 12:00:00"
 
     log.trace("This a trace message")

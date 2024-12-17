@@ -53,11 +53,17 @@ class Action(BaseModel):
         Scope (str): The scope of the action. This is used to group actions together.
 
     """
+
     model_config = ConfigDict(populate_by_name=True)
 
-    Label: str = Field(..., description="The label of the action.  A unique identifier for the action")
+    Label: str = Field(
+        ..., description="The label of the action.  A unique identifier for the action"
+    )
 
-    Type: str = Field(..., description="The action type.  This is the name of the action in core_execute.actionlib")
+    Type: str = Field(
+        ...,
+        description="The action type.  This is the name of the action in core_execute.actionlib",
+    )
 
     DependsOn: list[str] = Field(
         [],

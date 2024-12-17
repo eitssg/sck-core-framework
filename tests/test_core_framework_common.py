@@ -1,7 +1,12 @@
 import io
 import os
 
-from core_framework.models import TaskPayload, DeploymentDetails, PackageDetails, DeploySpec
+from core_framework.models import (
+    TaskPayload,
+    DeploymentDetails,
+    PackageDetails,
+    DeploySpec,
+)
 
 import pytest
 from unittest.mock import patch

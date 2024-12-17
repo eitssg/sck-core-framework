@@ -1,4 +1,5 @@
 """ This module contains the PackageDetails class used to track where pacakge.zip is located on S3 for a deployment """
+
 import os
 
 from pydantic import BaseModel, Field, model_validator, ConfigDict
