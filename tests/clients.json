@@ -1,0 +1,48 @@
+{
+    "Items": [
+        {
+            "ui_bucket": {
+                "S": "eits-simple-cloud-kit-ui"
+            },
+            "organization_id": {
+                "S": "o-t73gu32ai5"
+            },
+            "organization_account": {
+                "S": "154798051514"
+            },
+            "audit_account": {
+                "S": "154798051514"
+            },
+            "master_region": {
+                "S": "ap-southeast-1"
+            },
+            "docs_bucket": {
+                "S": "core-automation-docs"
+            },
+            "client_region": {
+                "S": "ap-southeast-1"
+            },
+            "automation_bucket": {
+                "S": "eits-core-automation-ap-southeast-1"
+            },
+            "bucket_region": {
+                "S": "ap-southeast-1"
+            },
+            "automation_account": {
+                "S": "154798051514"
+            },
+            "client": {
+                "S": "eits"
+            },
+            "security_account": {
+                "S": "154798051514"
+            },
+            "scope_prefix": {
+                "S": ""
+            }
+        }
+    ],
+    "Count": 1,
+    "ScannedCount": 1,
+    "ConsumedCapacity": null
+}

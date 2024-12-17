@@ -1,0 +1,148 @@
+{
+    "Items": [
+        {
+            "TagFacts": {
+                "M": {
+                    "DataCenter": {
+                        "S": "AWS"
+                    },
+                    "Client": {
+                        "S": "eits"
+                    },
+                    "CostCenter": {
+                        "S": "ABC1234"
+                    },
+                    "Portfolio": {
+                        "S": "simple-cloud-kit"
+                    }
+                }
+            },
+            "AccountFacts": {
+                "M": {
+                    "Kms": {
+                        "M": {
+                            "AwsAccountId": {
+                                "S": "154798051514"
+                            },
+                            "KmsKeyArn": {
+                                "S": "arn:aws:kms:ap-southeast-1:154798051514:key/abcd1234-5678-90ab-cdef-EXAMPLEKeyID"
+                            },
+                            "KmsKey": {
+                                "S": "abcd1234-5678-90ab-cdef-EXAMPLEKeyID"
+                            }
+                        }
+                    },
+                    "ResourceNamespace": {
+                        "S": "core-network-prod"
+                    },
+                    "VpcAliases": {
+                        "M": {
+                            "main": {
+                                "S": "BillingVpc"
+                            }
+                        }
+                    },
+                    "SubnetAliases": {
+                        "M": {
+                            "public": {
+                                "S": "subnet1"
+                            },
+                            "workload": {
+                                "S": "subnet2"
+                            },
+                            "private": {
+                                "S": "subnet3"
+                            }
+                        }
+                    },
+                    "AwsAccountId": {
+                        "S": "154798051514"
+                    },
+                    "Client": {
+                        "S": "eits"
+                    },
+                    "Tags": {
+                        "M": {
+                            "AppGroup": {
+                                "S": "SharesServies"
+                            }
+                        }
+                    },
+                    "AccountName": {
+                        "S": "eits-billing"
+                    }
+                }
+            },
+            "zone": {
+                "S": "simple-cloud-kit-prod"
+            },
+            "RegionFacts": {
+                "M": {
+                    "sin": {
+                        "M": {
+                            "ImageAliases": {
+                                "M": {
+                                    "amazon-linux-2": {
+                                        "S": "ami-0e2e44c03b85f58b3"
+                                    },
+                                    "latest": {
+                                        "S": "ami-0e2e44c03b85f58b3"
+                                    }
+                                }
+                            },
+                            "SecurityAliases": {
+                                "M": {
+                                    "intranet": {
+                                        "M": {
+                                            "Value": {
+                                                "S": "10.0.0.0/24"
+                                            },
+                                            "Type": {
+                                                "S": "cidr"
+                                            },
+                                            "Description": {
+                                                "S": "Internal Network / VPC"
+                                            }
+                                        }
+                                    },
+                                    "public-internet": {
+                                        "M": {
+                                            "Value": {
+                                                "S": "0.0.0.0/0"
+                                            },
+                                            "Type": {
+                                                "S": "cidr"
+                                            },
+                                            "Description": {
+                                                "S": "Internet"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "AwsRegion": {
+                                "S": "ap-southeast-1"
+                            },
+                            "SecurityGroupAliases": {
+                                "M": {}
+                            },
+                            "Tags": {
+                                "M": {
+                                    "Country": {
+                                        "S": "Singapore"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "client-portfolio": {
+                "S": "eits:simple-cloud-kit"
+            }
+        }
+    ],
+    "Count": 1,
+    "ScannedCount": 1,
+    "ConsumedCapacity": null
+}

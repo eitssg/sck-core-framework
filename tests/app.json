@@ -1,0 +1,35 @@
+{
+    "Items": [
+        {
+            "ImageAliases": {
+                "M": {
+                    "amazon-linux-2:latest": {
+                        "S": "ami-0e2e44c03b85f58b3"
+                    }
+                }
+            },
+            "Repository": {
+                "S": "https://github.com/jbarwick/simple-cloud-kit.git"
+            },
+            "Region": {
+                "S": "sin"
+            },
+            "client-portfolio": {
+                "S": "eits:simple-cloud-kit"
+            },
+            "Tags": {
+                "M": {
+                    "Usage": {
+                        "S": "API"
+                    }
+                }
+            },
+            "app-regex": {
+                "S": "^api:[^:]+:[^:]+$"
+            }
+        }
+    ],
+    "Count": 1,
+    "ScannedCount": 1,
+    "ConsumedCapacity": null
+}

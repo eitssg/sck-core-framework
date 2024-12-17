@@ -1,0 +1,74 @@
+{
+    "Items": [
+        {
+            "portfolio": {
+                "S": "simple-cloud-kit"
+            },
+            "client": {
+                "S": "eits"
+            },
+            "contacts": {
+                "L": [
+                    {
+                        "L": [
+                            {
+                                "S": "jbarwick@me.com"
+                            },
+                            {
+                                "S": "James Barwick"
+                            },
+                            {
+                                "BOOL": true
+                            }
+                        ]
+                    }
+                ]
+            },
+            "capex-code": {
+                "S": "ABC1234"
+            },
+            "opex-code": {
+                "S": "XYZ123"
+            },
+            "owner": {
+                "S": "James Barwick <jbarwick@me.com>"
+            },
+            "jira-code": {
+                "S": "SCK"
+            },
+            "approvers": {
+                "L": [
+                    {
+                        "L": [
+                            {
+                                "S": "jbarwick@me.com"
+                            },
+                            {
+                                "S": "primary"
+                            },
+                            {
+                                "BOOL": true
+                            }
+                        ]
+                    },
+                    {
+                        "L": [
+                            {
+                                "S": "vbarwick@me.com"
+                            },
+                            {
+                                "S": "secondary"
+                            },
+                            {
+                                "BOOL": false
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "Count": 1,
+    "ScannedCount": 1,
+    "ConsumedCapacity": null
+}
