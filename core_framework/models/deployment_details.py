@@ -1,3 +1,5 @@
+""" module contains the DeploymentDetails class which provides a model for how deployment details are to be provided to the core-execute library. """
+
 from typing import Self
 import os
 
@@ -15,6 +17,25 @@ from core_framework.constants import (
 
 
 class DeploymentDetails(BaseModel):
+    """
+    DeploymentDetails is the class that identifies the Client, Portfolio, App, Branch, Build, Component, Environment, DataCenter, Scope, Tags, and StackFile for a deployment.
+
+    Attributes:
+
+        Client (str): The name of the client or customer (installation or AWS Organizatoion)
+        Portfolio (str): Portfolio name is the BizApp name
+        App (str): The name of the part of the BizApp.  The deployment unit.
+        Branch (str): The name of the branch of the deployment unit being deployed
+        BranchShortName (str): The short name of the branch of the deployment unit being deployed.
+        Build (str): The build number, version number.  Or repo tag.  May even have the repository commit ID in the name.  (Ex. 0.0.6-pre.204+f9908cc6)
+        Component (str): The item deployed (EC2, Volumne, ResourceGrooup, etc).  These are parts of the deploment unit.
+        Environment (str): Related to the Zone.  Examples are Prod, Dev, Non-Prod, UAT, PEN, PERF, PT, etc
+        DataCenter (str): This is the physical location.  This is almost identical to an AWS region.  Examples are us-east-1, us-west-2, etc
+        Scope (str): The deployment scope from the values: portfolio, app, branch, build.  It does not include the component or environment. It's primarily used to determine the location in S3 folder hierarchy to store packages, artefacts, and files for the deployment.
+        Tags (dict[str, str]): Tags are key value pairs that can be applied to resources.  These values can come from the FACTS database from Apps or Zone defaults.  Your deployment may specify additional tags.
+        StackFile (str): The name of the CloudFormation stack file that was used in the deployment.
+
+    """
 
     def __init__(self, **data):
         """
@@ -36,48 +57,69 @@ class DeploymentDetails(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    Client: str | None = None
-    """ Client is the name of the client or customer (installation or AWS Organizatoion) """
+    Client: str | None = Field(
+        None,
+        description="Client is the name of the client or customer (installation or AWS Organizatoion)",
+    )
 
     Portfolio: str = Field(description="Portfolio name is the BizApp name")
 
-    App: str | None = None
-    """ App is the name of the part of the BizApp.  The deployment unit."""
+    App: str | None = Field(
+        None,
+        description="App is the name of the part of the BizApp.  The deployment unit.",
+    )
 
-    Branch: str | None = None
-    """ Branch is the name of the branch of the deployment unit being deployed """
+    Branch: str | None = Field(
+        None,
+        description="Branch is the name of the branch of the deployment unit being deployed",
+    )
 
-    BranchShortName: str | None = None
-    """ BranchShortName is the short name of the branch of the deployment unit being deployed.
-        Done because of special characters that cannot be used as AWS resource names """
+    BranchShortName: str | None = Field(
+        None,
+        description="BranchShortName is the short name of the branch of the deployment unit being deployed.  "
+        "Done because of special characters that cannot be used as AWS resource names",
+    )
 
-    Build: str | None = None
-    """ Build is the build number, version number.  Or
-        repo tag.  May even have the repository commit ID in the name.  (Ex. 0.0.6-pre.204+f9908cc6)"""
+    Build: str | None = Field(
+        None,
+        description="Build is the build number, version number.  Or repo tag.  May even have the repository "
+        "commit ID in the name.  (Ex. 0.0.6-pre.204+f9908cc6)",
+    )
 
-    Component: str | None = None
-    """ Component is the item deployed
-        (EC2, Volumne, ResourceGrooup, etc).  These are parts of the deploment unit."""
+    Component: str | None = Field(
+        None,
+        description="Component is the item deployed (EC2, Volumne, ResourceGrooup, etc).  "
+        "These are parts of the deploment unit.",
+    )
 
-    Environment: str | None = None
-    """ Envronment. Related to the Zone.  Examples are Prod, Dev, Non-Prod, UAT, PEN, PERF, PT, etc """
+    Environment: str | None = Field(
+        None,
+        description="Environment is related to the Zone.  Examples are Prod, Dev, Non-Prod, UAT, PEN, PERF, PT, etc",
+    )
 
-    DataCenter: str | None = None
-    """ DataCenter.  This is the physical location.
-        This is almost identical to an AWS region.  Examples are us-east-1, us-west-2, etc
-        This may also be the location of your on-premises data center."""
+    DataCenter: str | None = Field(
+        None,
+        description="DataCenter is the physical location.  This is almost identical to an AWS region, but different.  "
+        "Examples are us-east-1, us-west-2, etc",
+    )
 
-    Scope: str | None = None
-    """ Scope is the deployment scope from the values: portfolio, app, branch, build.
-        It does not include the component or environment. It's primarily used to determine the location
-        in S3 folder hierarchy to store packages, artefacts, and files for the deployment."""
+    Scope: str | None = Field(
+        None,
+        description="Scope is the deployment scope from the values: portfolio, app, branch, build.  It does not "
+        "include the component or environment. It's primarily used to determine the location in S3 folder hierarchy "
+        "to store packages, artefacts, and files for the deployment.",
+    )
 
-    Tags: dict[str, str] | None = None
-    """ Tags are key value pairs that can be applied to resources.  These values can come from
-        the FACTS database from Apps or Zone defaults.  Your deployment may specify additional tags. """
+    Tags: dict[str, str] | None = Field(
+        None,
+        description="Tags are key value pairs that can be applied to resources.  These values can come from the "
+        "FACTS database from Apps or Zone defaults.  Your deployment may specify additional tags.",
+    )
 
-    StackFile: str | None = None
-    """ StackFile is the name of the CloudFormation stack file that was used in the deployment. """
+    StackFile: str | None = Field(
+        None,
+        description="StackFile is the name of the CloudFormation stack file that was used in the deployment.",
+    )
 
     def get_portfolio_prn(self) -> str:
         return f"prn:{self.Portfolio}".lower()

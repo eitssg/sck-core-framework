@@ -1,3 +1,7 @@
+"""
+This module contains the Jinja2Renderer class which is used to render Jinja2 CloudFormation templates within the Core Automation context.
+"""
+
 from typing import Any
 from collections.abc import Mapping
 
@@ -14,8 +18,6 @@ import logging
 
 class Jinja2Renderer:
     """
-    Deprecated class.
-
     This renderer class is used to read/write files from the filesystem.  We want to change the compiler
     so that it can be run in lambda.
 
@@ -23,6 +25,7 @@ class Jinja2Renderer:
 
     .. deprecated: 1.0
         Use core compiler renderer class instead
+
     """
 
     env: jinja2.Environment
@@ -36,7 +39,6 @@ class Jinja2Renderer:
         template_path: str | None = None,
         dictionary: Mapping[str, str] | None = None,
     ):
-
         loader: jinja2.BaseLoader
         if template_path is not None:
             self.template_path = template_path

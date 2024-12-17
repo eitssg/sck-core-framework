@@ -1,3 +1,5 @@
+""" Defines the class ActionDetails that provide information about where Action files are stored in S3 (or local filesystem). """
+
 from typing import Any
 import tempfile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -10,12 +12,24 @@ from .deployment_details import DeploymentDetails as DeploymentDetailsClass
 class ActionDetails(BaseModel):
     """
     ActionDetails: The details of the action location in S3.  Typically the "artefacts" folder
+
+    Attributes:
+        BucketName (str): The name of the S3 bucket where the action file is stored
+        BucketRegion (str): The region of the S3 bucket where the action file is stored
+        Key (str): The key prefix where the ation file is stored in s3.  Usually in the artefacts folder
+        VersionId (str): The version of the action file
+        ContentType (str): The content type of the action file such as 'application/json' or 'application/x-yaml'
+
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    BucketName: str
-    BucketRegion: str
+    BucketName: str = Field(
+        ..., description="The name of the S3 bucket where the action file is stored"
+    )
+    BucketRegion: str = Field(
+        ..., description="The region of the S3 bucket where the action file is stored"
+    )
     Key: str = Field(
         "artefacts",
         description="The key prefix where the ation file is stored in s3.  Usually in the artefacts folder",
@@ -23,7 +37,7 @@ class ActionDetails(BaseModel):
     VersionId: str | None = Field(None, description="The version of the action file")
     ContentType: str | None = Field(
         None,
-        description="The content type of the action file such as 'application/json' or 'text/plain' or 'application/x-yaml'",
+        description="The content type of the action file such as 'application/json' or 'application/x-yaml'",
     )
 
     @model_validator(mode="before")

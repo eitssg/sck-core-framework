@@ -1,3 +1,9 @@
+"""
+Module containing the yamlmerge function Constructure to enhancel YAML file processing.
+
+Not only monkeypatch, but also !Include processing constructors to combine YAML files.
+"""
+
 import warnings
 from typing import Any
 

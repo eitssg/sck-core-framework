@@ -1,11 +1,14 @@
-from threading import local
+""" This module provides the log helper functions for the core_logging library. Such as log.debug, log.error, log.warning, log.warn, log.fatal, log.critical, log.info, log.trace, log.message, etc.
+"""
 
-import logging
+from threading import local
 import os
 
-from .log_formatter import CoreLogger, TRACE, L_IDENTITY, DEFAULT_DATE_FORMAT, INFO
+import logging
 
-default_level = logging._nameToLevel.get(os.getenv("LOG_LEVEL", "INFO"), INFO)
+from .log_classes import CoreLogger, L_IDENTITY, DEFAULT_DATE_FORMAT, INFO, L_PRN
+
+default_level: int = logging._nameToLevel.get(os.getenv("LOG_LEVEL", "INFO"), INFO)
 
 # Override the default logger class to use our custom logger class.
 logging.root = CoreLogger(logging.WARNING)  # type: ignore
@@ -95,27 +98,43 @@ def reset_identity():
     _thread_local.identity = _thread_local.default_identity
 
 
-def getLogger(name: str) -> CoreLogger:
+def getLogger(name: str | None) -> CoreLogger:
     """
     Return a logging object with the specified name.
 
     Args:
-        name (str): The name/identity of the logger
+        name (str | None): The name/identity of the logger
 
     Returns:
         CoreLogger: The logger object
     """
-    logger: CoreLogger = logging.getLogger(name)  # type: ignore
-    logger.setLevel(logging._nameToLevel.get(os.getenv("LOG_LEVEL", "TRACE"), TRACE))
+    logger: CoreLogger
+    if name is None:
+        logger = logging.getLogger()  # type: ignore
+    else:
+        logger = logging.getLogger(name)  # type: ignore
+
     return logger
 
 
-def get_logger_identity(kwargs):
+def get_logger_identity(kwargs: dict) -> str | None:
+    """
+    Attempts to retrieve the identity from the kwargs parameter.  If it's not found, it will return the default identity.
 
-    identity = kwargs.pop(
-        L_IDENTITY,
-        kwargs.get("prn", _thread_local.identity or _thread_local.default_identity),
-    )
+    The kwargs is NOT expended.  No \\*\\* on the kwargs  We are mutating kwargs and popping off the Identity.
+
+    We may change this behaviour in the future.
+
+    Looking for "identity" or "prn" in kwargs. ("prn" is not popped off)
+
+    Args:
+        kwargs (dict): A dictionary of name/value pairs that should have the identity in it.
+
+    Returns:
+        str | None: The identity if found, else None
+    """
+    default_identity = _thread_local.identity or _thread_local.default_identity
+    identity = kwargs.pop(L_IDENTITY, kwargs.get(L_PRN, default_identity))
     return identity
 
 

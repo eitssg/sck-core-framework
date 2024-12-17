@@ -1,8 +1,31 @@
 """
 This library is a few functions that manipulate CloudFormation template files.
+
+YAML Tags added and understood by the patch are:
+
+        !And
+        !Base64
+        !Cidr
+        !Equals
+        !FindInMap
+        !GetAtt
+        !GetAZs
+        !If
+        !ImportValue
+        !Include
+        !Join
+        !Not
+        !Or
+        !Ref
+        !Select
+        !Split
+        !Sub
+
 """
 
 from typing import Mapping, Union, Any
+
+# currently we are doing this with PyYAML not Ruamel
 import yaml
 
 from yaml.constructor import SafeConstructor
@@ -19,9 +42,12 @@ def construct_aws_fn(
     """
     Convert AWS tags (eg. !Ref, !GetAtt) to a map (eg. {Ref: <x>}, {Fn::GetAtt: <x>})
 
-    :param loader:
-    :param node:
-    :return:
+    Args:
+        loader (SafeConstructor): The loader object
+        node (Union[ScalarNode, MappingNode, SequenceNode]): The node to convert
+
+    Returns:
+        dict | None: The converted node
     """
     function_name = node.tag.lstrip("!")
 
@@ -44,6 +70,8 @@ def process_yaml_include(
     loader: SafeConstructor, node: Union[ScalarNode, MappingNode, SequenceNode]
 ):
     """
+    Process YAML !Include attribute
+
     Args:
         loader (SafeConstructor): _description_
         node (Union[ScalarNode, MappingNode, SequenceNode]): _description_
@@ -57,10 +85,14 @@ def construct_mapping(
     """
     Create a mapping object from a YAML file.  This is a convenience function for constructing a mapping object
 
-    :param loader:
-    :param node:
-    :param deep:
-    :return:
+    Args:
+        loader (SafeConstructor): The loader object
+        node (MappingNode): The node to convert
+        deep (bool): _description_
+
+    Returns:
+        Mapping: The constructed mapping object
+
     """
 
     # Allow YAML merge operator (<<)
@@ -89,9 +121,14 @@ class MappingConstructorError(yaml.constructor.ConstructorError):
 def represent_ordereddict(dumper: BaseRepresenter, data: OrderedDict) -> MappingNode:
     """
     Create a YAML representation of an OrderedDict
-    :param dumper:
-    :param data:
-    :return:
+
+    Args:
+        dumper (BaseRepresenter): The dumper object
+        data (OrderedDict): The data to represent
+
+    Returns:
+        MappingNode: The constructed mapping node
+
     """
     value = [
         (dumper.represent_data(item_key), dumper.represent_data(item_value))
@@ -103,9 +140,14 @@ def represent_ordereddict(dumper: BaseRepresenter, data: OrderedDict) -> Mapping
 def represent_string(dumper: BaseRepresenter, data: Any) -> ScalarNode:
     """
     Make string representations of numbers
-    :param dumper:
-    :param data:
-    :return:
+
+    Args:
+        dumper (BaseRepresenter): The dumper object
+        data (Any): The data to represent
+
+    Returns:
+        ScalarNode: The constructed scalar node
+
     """
     return dumper.represent_scalar(
         "tag:yaml.org,2002:str", data, style="'" if data.isnumeric() else None
@@ -114,9 +156,8 @@ def represent_string(dumper: BaseRepresenter, data: Any) -> ScalarNode:
 
 def patch_the_monkeys():
     """
-    Why we monkeypatch?  I don't know.  Seems like a waste of space.
+    Add the Cloudformation tags to the YAML parser so we can parse them!
 
-    :return:
     """
     custom_tags = [
         "!Base64",

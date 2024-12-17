@@ -1,21 +1,45 @@
+""" Magic module for emulating the boto3 S3 client and Buckets so we can elect to store files locally instead of in S3 """
+
 import os
-import io
 import shutil
 
 
 class MagicBucket:
+    """
+    Provides a Magic Bucket with the S3 Bucket API for downloading fileobj and getting a MagicObject that behaves like an S3 Object.
+    """
 
-    bucket_name = None
-    bucket_region = None
+    def __init__(self, bucket_name: str, bucket_region: str):
+        """
+        Initialize a MagicBucket object.
 
-    def __init__(self, bucket_name, bucket_region):
+        Args:
+            bucket_name (_type_): _description_
+            bucket_region (_type_): _description_
+        """
         self.bucket_name = bucket_name
         self.bucket_region = bucket_region
 
-    def Object(self, key):
+    def Object(self, key: str):
+        """
+        Emulate the S3 Object() API method to return a MagicObject instead of an S3 Object
+
+        Args:
+            key (str): The key of the object
+
+        Returns:
+            MagicObject: A MagicObject that behaves like an S3 Object
+        """
         return MagicObject(self.bucket_name, self.bucket_region, key)
 
     def download_fileobj(self, **kwargs):
+        """
+        Emulate the S3 download_fileobj() API method to download a fileobj from the local filesystem.
+
+        Args:
+            Key (str): The key of the object
+            Fileobj (file): The file object to write the data to
+        """
         key = kwargs.get("Key")
         fileobj = kwargs.get("Fileobj")
         # extra_args = kwargs.get("ExtraArgs")
@@ -27,19 +51,35 @@ class MagicBucket:
 
 
 class MagicObject:
-    bucket_name = None
-    bucket_region = None
-    key = None
-    version_id = None
+    """
+    MagicObject class to emulate an S3 Object.  Currently only emulates the "copy_from" method.
 
-    def __init__(self, bucket_name, bucket_region, key):
+    """
+
+    def __init__(self, bucket_name: str, bucket_region: str, key: str):
+        """
+        Initialize a MagicObject object.
+
+        Args:
+            bucket_name (str): The name of the bucket
+            bucket_region (str): The region of the bucket
+            key (str): The key of the object
+
+        """
         self.bucket_name = bucket_name
         self.bucket_region = bucket_region
         self.key = key
         self.version_id = None
 
     def copy_from(self, **kwargs) -> dict:
+        """Copies the artefact on the local filessystem instead of S3
 
+        Args:
+            CopySource (dict): The source object to copy from
+            Bucket (str): The source bucket name
+            Key (str): The source key
+
+        """
         source = kwargs.get("CopySource", None)
         source_bucket = source.get("Bucket", None)
         source_key = source.get("Key", None)
@@ -77,12 +117,39 @@ class MagicObject:
 
 
 class MagicS3Client:
+    """
+    MagicS3Client class to emulate an S3 client.  Currently only emulates the "download_fileobj" and "put_object" methods.
+
+    """
 
     def __init__(self, **kwargs):
+        """
+        Initialze a MagicS3Client object
+
+        Args:
+            bucket_name (str): The name of the bucket
+            region (str): The region of the bucket
+
+        """
         self.bucket_name = kwargs.get("bucket_name")
         self.region = kwargs.get("region")
 
     def download_fileobj(self, **kwargs) -> dict:
+        """
+        Emulate the S3 download_fileobj() API method to download a fileobj from the local filesystem.
+
+        Args:
+            Bucket (str): The name of the bucket
+            Key (str): The key of the object
+            Fileobj (file): The file object to write the data to
+            ExtraArgs (dict): Extra arguments to pass to the download
+
+        Raises:
+            ValueError: If missing the Key or Fileobj buffer
+
+        Returns:
+            dict: A dictionary emulating what S3 would return for a download_fileobj() call
+        """
         self.bucket = kwargs.get("Bucket")
         Key = kwargs.get("Key")
         Fileobj = kwargs.get("Fileobj")
@@ -116,6 +183,19 @@ class MagicS3Client:
         return rv
 
     def put_object(self, **kwargs) -> dict:
+        """
+        Emulate the S3 put_object() API method to store a file on the local filesystem.
+
+        Args:
+            Bucket (str): The name of the bucket
+            Key (str): The key of the object
+            Body (str): The body of the object
+            ContentType (str): The content type of the object
+            ServerSideEncryption (str): The server side encryption type
+
+        Returns:
+            dict: A dictionary that would emulate what S3 would return for a put_object() call
+        """
 
         self.bucket = kwargs.get("Bucket")
         Key = kwargs.get("Key")

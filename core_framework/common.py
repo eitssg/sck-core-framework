@@ -1,3 +1,9 @@
+""" The common module provides a suite of function that are used throughout the Core Automation framework.
+
+These functions assist wtih generating and using model instances as well as environment variables and
+other very commont tasks.
+
+"""
 import warnings
 from typing import Any
 import json

@@ -1,3 +1,7 @@
+"""
+This module is the Core-Automation logging module.  It provides a custom logger that can log messages as
+JSON objects, status messages, and trace messages.
+"""
 from typing import Any
 
 import datetime
@@ -25,24 +29,41 @@ logging.addLevelName(TRACE, "TRACE")
 
 # Attributes of the log message when the output is set to JSON
 LOG_DETAILS: str = "Details"
+""" - \\"Details\\" """
 LOG_STATUS: str = "Status"
+""" - \\"Status\\" """
 LOG_MESSAGE: str = "Message"
+""" - \\"Message\\" """
 LOG_REASON: str = "Reason"
+""" - \\"Reason\\" """
 LOG_RESOURCE: str = "Resource"
+""" - \\"Resource\\" """
 LOG_TIMESTAMP: str = "Timestamp"
+""" - \\"Timestamp\\" """
 LOG_TYPE: str = "Type"
+""" - \\"Type\\" """
 LOG_SCOPE: str = "Scope"
+""" - \\"Scope\\" """
 
 # Attributes for the extra: Mapping[str, object] parameter when calling the log methods
 L_STATUS_LABEL: str = "status_label"
+""" - \\"status_label\\" """
 L_STATUS: str = "status"
+""" - \\"status\\" """
 L_REASON: str = "reason"
+""" - \\"reason\\" """
 L_MESSAGE: str = "message"
+""" - \\"message\\" """
 L_DETAILS: str = "details"
+""" - \\"details\\" """
 L_TYPE: str = "type"
+""" - \\"type\\" """
 L_SCOPE: str = "scope"
+""" - \\"scope\\" """
 L_IDENTITY: str = "identity"
-
+""" - \\"identity\\" """
+L_PRN: str = "prn"
+""" - \\"prn\\" """
 
 def format_datetime(t: datetime.datetime, date_format: str | None = None) -> str:
     return t.strftime(date_format or DEFAULT_DATE_FORMAT)
@@ -146,11 +167,12 @@ class CoreLogJsonFormatter(CoreLogFormatter):
 
 class CoreLoggerHandler(logging.Handler):
     """
-    This is the core logging handler that does special things with messages and arguments.  It's designed to be used with the CoreLogger class.
+    This is the core logging handler that does special things with messages and arguments.
 
     There are two types of formatters used by this handler.  The CoreLogJsonFormatter and the CoreLogTextFormatter.
 
-    Which formatter is used is determined by the LOG_AS_JSON environment variable.  If it's set to 'true' (case insensitive), then the CoreLogJsonFormatter is used.
+    Which formatter is used is determined by the LOG_AS_JSON environment variable.  If it's set to 'true' (case insensitive),
+    then the CoreLogJsonFormatter is used.
 
     """
 
@@ -243,6 +265,23 @@ class CoreLogger(logging.Logger):
     CoreLogger is a special logger that is designed to work with the standard python logger but provides some additional features.
 
     Feetures include the ability to log messages as JSON objects, the ability to log status messages, and the ability to log trace messages.
+
+    The primary feature of this logger is that it overrides all logging methods (log.debug, log.info, log.error, etc) and accepts a \\*\\*kwargs
+    argument that will be used to determne the identity of the logger.
+
+    The flow looks like:
+
+    log.info("This is a message", identity="my-identity")
+
+        1.  identity = kwargs.get("identity", None)
+        2.  logger = logging.getLogger(idendity)
+        3.  logger.info("This is a message", \\*\\*kwargs)
+
+    Pretty simple. The magic is in the handler and is set in the contructor of this class. If you want more handlers, you will
+    need to add them after you instantiate the logger with getLogger()
+
+    See CoreLoggerHandler for more information.
+
     """
     def __init__(self, name: str, level: int = NOTSET):
         """
@@ -272,7 +311,7 @@ class CoreLogger(logging.Logger):
     ) -> None:
         """
         This is a duplicate of logging.Logger._log() but the signature differs with the default by removing fixed parameters
-        and replacing them with \*\*kwargs so we can convert both the message and the kwargs to extra data allowing the caller
+        and replacing them with \\*\\*kwargs so we can convert both the message and the kwargs to extra data allowing the caller
         to submit arbitrary meta-data in the call to the logger.
 
         Args:

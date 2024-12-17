@@ -1,3 +1,5 @@
+""" This module provides the TaskPaylaod class that is used throughout Core-Automation to identify the operating Task to perform. """
+
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -13,31 +15,58 @@ from .state_details import StateDetails as StateDetailsClass
 
 
 class TaskPayload(BaseModel):
+    """
+    The TaskPayload is the primary artefact that is passed between the various components of Core Automation. You may
+    consider this the "Top Level" object that contains all of the information needed to perform a task.  This object
+    contains all of the information necessary to perform perations on the cloud and is the artefact that is passed
+    to all core "Lambda Functions" in the event method (except DB and API).
+
+    TaskPayload == Lambda Fuction *event* object for core lambda
+
+    Attributes:
+        Task (str): The task to perform.  See the ACT\_ constants in constants.py
+        Force (bool): Force the task to be performed regardless of the state of the deployment
+        DryRun (bool): Perform a dry run of the task.  Don't actually do anything.
+        Identity (str): The identity of the user performing the task.  Derrived from DeploymentDetails
+        DeploymentDetails (DeploymentDetails): The deployment details such as Portfolio, App, Branch, Build
+        Package (PackageDetails): The package details.  Usually stored in packages/\\*\\*/package.zip
+        Actions (ActionDetails | None): The actions to perform.  Usually stored in artefacts/\\*\\*/{task}.actions
+        State (StateDetails | None): The state of the task.  Usually stored in artefacts/\\*\\*/{task}.state
+        Type (str): The type of the task.  Either "deployspec" or "pipeline" (automatically generated)
+
+    """
+
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     Task: str | None = Field(
         None, description="The task to perform.  See the ACT_ constants in constants.py"
     )
-    Force: bool = False
-    """ Force the task to be performed regardless of the state of the deployment """
-
-    DryRun: bool = False
-    """Perform a dry run of the task.  Don't actually do anything."""
-
-    Identity: str | None = None
-    """The identity of the user performing the task.  Derrived from DeploymentDetails"""
-
+    Force: bool = Field(
+        False,
+        description=" Force the task to be performed regardless of the state of the deployment",
+    )
+    DryRun: bool = Field(
+        False, description="Perform a dry run of the task.  Don't actually do anything."
+    )
+    Identity: str | None = Field(
+        None,
+        description="The identity of the user performing the task.  Derrived from DeploymentDetails",
+    )
     DeploymentDetails: DeploymentDetailsClass = Field(
-        description="The deployment details such as Portfolio, App, Branch, Build"
+        ..., description="The deployment details such as Portfolio, App, Branch, Build"
     )
     Package: PackageDetailsClass = Field(
-        description="The package details.  Usually stored in packages/**/package.zip"
+        ...,
+        description="The package details.  Usually stored in packages/**/package.zip",
     )
-    Actions: ActionDetailsClass | None = None
-    """ The actions to perform.  Usually stored in artefacts/**/{task}.actions """
-
-    State: StateDetailsClass | None = None
-    """ The state of the task.  Usually stored in artefacts/**/{task}.state """
+    Actions: ActionDetailsClass | None = Field(
+        None,
+        description="The actions to perform.  Usually stored in artefacts/**/{task}.actions",
+    )
+    State: StateDetailsClass | None = Field(
+        None,
+        description="The state of the task.  Usually stored in artefacts/**/{task}.state",
+    )
 
     @property
     def Type(self) -> str:

@@ -16,8 +16,9 @@ from .log_interface import (
     info,
     getLevelName,
 )
-from .log_formatter import (
+from .log_classes import (
     CoreLogger,
+    CoreLoggerHandler,
     MSG,
     STATUS,
     TRACE,
@@ -41,6 +42,7 @@ from logging import NOTSET, INFO, WARNING, ERROR, CRITICAL, DEBUG
 
 __all__ = [
     "CoreLogger",
+    "CoreLoggerHandler",
     "MSG",
     "STATUS",
     "TRACE",

@@ -1,3 +1,4 @@
+""" This module contains the PackageDetails class used to track where pacakge.zip is located on S3 for a deployment """
 import os
 
 from pydantic import BaseModel, Field, model_validator, ConfigDict
@@ -19,34 +20,61 @@ from core_framework.constants import (
 
 
 class PackageDetails(BaseModel):
+    """
+    PackageDetails is a model that contains all of the information needed to locate and process a package.  A package is
+    the artefact called "pacakge.zip" that is uploaded and contains all of the templates and resources necessary to
+    perform a deployment.
+
+    Typcially pacakges are in the packages folder s3://<bucket>/packages/\\*\\*.
+
+    Attributes:
+        BucketRegion (str): The region of the bucket woere packages are stored.
+        BucketName (str): The name of the bucket where packages are stored.
+        Key (str): Key where the package is stored. Usually stored in packages/\\*\\*.
+        Mode (str): The mode of the package.  Either "local" or "service".  defaults to "service"
+        AppPath (str): The path to the application.  Used for local mode only.  Defaults to the current directory.
+        CompileMode (str): The compile mode of the package.  Either "full" or "incremental".  Defaults to "full"
+        DeploySpec (DeploySpecClass): DeploySpec is optional because it's added later by the lambda handlers
+        TempDir (str): The temporary directory to use for processing the package.  Defaults to the system temp directory.
+        VersionId (str): The version id of the package file (on S3).
+
+    """
+
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    BucketRegion: str | None = None
-    """ The region of the bucket woere packages are stored. """
-
-    BucketName: str | None = None
-    """ The name of the bucket where packages are stored. """
-
-    Key: str | None = None
-    """ Key where the package is stored. Usually stored in packages/** """
-
-    Mode: str = V_SERVICE
-    """ The mode of the package.  Either "local" or "service".  defaults to "service"' """
-
-    AppPath: str = V_EMPTY
-    """ The path to the application.  Used for local mode only.  Defaults to the current directory. """
-
-    CompileMode: str = V_FULL
-    """ The compile mode of the package.  Either "full" or "incremental".  Defaults to "full" """
-
-    DeploySpec: DeploySpecClass | None = None
-    """ DeploySpec is optional because it's added later by the lambda handlers """
-
-    TempDir: str | None = None
-    """ The temporary directory to use for processing the package.  Defaults to the system temp directory. """
-
-    VersionId: str | None = None
-    """ The version id of the package file (on S3). """
+    BucketRegion: str | None = Field(
+        None, description="The region of the bucket woere packages are stored."
+    )
+    BucketName: str | None = Field(
+        None, description="The name of the bucket where packages are stored."
+    )
+    Key: str | None = Field(
+        None,
+        description="Key where the package is stored. Usually stored in packages/**",
+    )
+    Mode: str = Field(
+        V_SERVICE,
+        description="The mode of the package.  Either 'local' or 'service'.  defaults to 'service'",
+    )
+    AppPath: str = Field(
+        V_EMPTY,
+        description="The path to the application.  Used for local mode only.  Defaults to the current directory.",
+    )
+    CompileMode: str = Field(
+        V_FULL,
+        description="The compile mode of the package.  Either 'full' or 'incremental'.  Defaults to 'full'",
+    )
+    DeploySpec: DeploySpecClass | None = Field(
+        None,
+        description="DeploySpec is optional because it's added later by the lambda handlers",
+    )
+    TempDir: str | None = Field(
+        None,
+        description="The temporary directory to use for processing the package.  Defaults to the system temp directory.",
+    )
+    VersionId: str | None = Field(
+        None, description="The version id of the package file (on S3)."
+    )
 
     @model_validator(mode="before")
     def validate_packages_before(cls, values: dict) -> dict:

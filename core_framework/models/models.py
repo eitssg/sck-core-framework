@@ -1,3 +1,5 @@
+""" Module to define some common helper functions that assis in the generation of the model class instances. """
+
 import os
 
 from ..constants import (
@@ -20,7 +22,7 @@ from .task_payload import TaskPayload
 def get_artefact_key(
     deployment_details: DeploymentDetails,
     name: str | None = None,
-    scope: str | None = None,
+    scope: str = SCOPE_BUILD,
 ) -> str:
     """
     Helper function to get the artefacts key in the core automation s3 bucket for the deployment details.

@@ -1,3 +1,11 @@
+"""
+This module provides a list of constants that are used throughout the Core-Automation framework.
+
+The constants prevent mistyping and provide a single source of truth for the values used in the framework.
+
+This includes values for the Task Payload, Task Results, Task Result, and other objects used in the framework.
+
+"""
 # Good to go
 HTTP_OK = 200
 """ \\- "200 OK" """
@@ -437,6 +445,8 @@ ENV_ARTEFACT_BUCKET_REGION = "ARTEFACT_BUCKET_REGION"
 """ \\- "ARTEFACT_BUCKET_REGION" """
 ENV_ARTEFACT_BUCKET_NAME = "ARTEFACT_BUCKET_NAME"
 """ \\- "ARTEFACT_BUCKET_NAME" """
+ENV_LOG_AS_JSON = "LOG_AS_JSON"
+""" \\- "LOG_AS_JSON" """
 
 # Jina2 Context Fitler Constants
 CTX_TAGS = "tags"

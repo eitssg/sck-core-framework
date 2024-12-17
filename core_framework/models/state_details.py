@@ -1,3 +1,5 @@
+""" This module contains the StateDetails class which provides information about the current state of the deployment."""
+
 from typing import Any
 import tempfile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -9,13 +11,26 @@ from .deployment_details import DeploymentDetails as DeploymentDetailsClass
 
 class StateDetails(BaseModel):
     """
-    ActionDetails: The details of the action location in S3.  Typically the "artefacts" folder
+    ActionDetails: The details of the action location in S3.  Typically the "artefacts" folder in a {task}.state file.
+
+    The file is stored in S3 in the artefacts folder: **s3://client-bucket/artefacts/portfolio/app/branch/build/{task}.state**
+
+    Attributes:
+        BucketName (str): The name of the S3 bucket where the state file is stored.
+        BucketRegion (str): The region of the S3 bucket where the state file is stored.
+        Key (str): The key prefix where the state file is stored in s3.  Usually in the artefacts folder.
+        VersionId (str | None): The version of the state file.
+        ContentType (str | None): The content type of the state file. Usually 'application/json' or 'application/x-yaml
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    BucketName: str
-    BucketRegion: str
+    BucketName: str = Field(
+        ..., description="The name of the S3 bucket where the state file is stored."
+    )
+    BucketRegion: str = Field(
+        ..., description="The region of the S3 bucket where the state file is stored."
+    )
     Key: str = Field(
         "artefacts",
         description="The key prefix where the ation file is stored in s3.  Usually in the artefacts folder",

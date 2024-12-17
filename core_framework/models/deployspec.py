@@ -1,8 +1,29 @@
+""" This module contains the DeploySpec class which provides a model for how CloudFormation templates are to be deployed by core-automation. """
 from typing import Self
 from pydantic import BaseModel, Field, model_validator, field_validator, ConfigDict
 
 
 class ParamsSpec(BaseModel):
+    """
+    Parameters for the DeploySpec.  This inclukdes tempalte locations and CloudFormation parameters.
+
+    User deployments are a little special.  They can only be done in one zone at a time.  For security reasons.
+    Therefore, the username, account and region are the only fields allowed for user add/delete actions.
+
+
+    Attributes:
+        template (str): The URL of the CloudFormation template to use for the action.  Some actions don't require a template
+        stack_name (str): The name of the stack or action reference. You will see this in the CloudFormation console
+        parameters (dict): The parameters to pass to the CloudFormation stack
+        accounts (list[str]): The account to prform the action on.  Multiple accounts can be specified at one time
+        regions (list[str]): The region to use for the action in the account.  Multiple regions can be specified at one time
+        stack_policy (str | dict): The policy statments that can be used within the Action for its own purpose
+        user_name (str): The user name to perform the action on.  Ussers are special deployspecs in that they are not CloudFormation stacks
+        account (str): The account to use for the user action.  This is used for user_name updates
+        region (str): The region to use for the user action in the account.  This is used for user_name updates
+
+    """
+
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     template: str | None = Field(
@@ -116,6 +137,21 @@ class ParamsSpec(BaseModel):
 
 
 class ActionSpec(BaseModel):
+    """
+    Defines the ActionSpec that will be used to generate the final Actions to perform for this deployment.
+
+    The "action to perform" is described in the "action" attribute and will ultimately generate an :class:`Action` object.
+
+    Attributes:
+        label (str): The label of the action.  A unique identifier for the action spec
+        type (str): The action type.  This is the name of the action spec (e.g. create_user, create_stack, etc.)
+        action (str): The action to perform as defined by the execute.actionlib module
+        scope (str): The scope of the action (optional). Examples: portfolio, app, branch, or build.
+        params (ParamsSpec): The parameters for the action.  This is a dictionary of parameters that the action requires
+        depends_on (list[str]): A list of labels of actions that this action depends on.  Scoped to the single deployspec.yaml
+
+    """
+
     label: str = Field(
         description="The label of the action.  A unique identifier for the action spec",
     )

@@ -1,3 +1,4 @@
+""" Utilities to validate or generate PRN Identifiers"""
 from typing import Any
 
 import re
@@ -93,31 +94,87 @@ def extract_prn(obj: Any) -> str:
 
 
 def extract_portfolio(obj: Any) -> str | None:
+    """
+    Extract the portfolio from the provided Object which can be a string or dictionary
+
+    Args:
+        obj (Any): The Identity or PRN information
+
+    Returns:
+        str | None: The portfolio name or None if not found
+    """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[1] if len(prn_sections) > 1 else None
 
 
 def extract_app(obj: Any) -> str | None:
+    """
+    Extract the app from the provided Object which can be a string or dictionary
+
+    Args:
+        obj (Any): The Identity or PRN information
+
+    Returns:
+        str | None: The app name or None if not found
+    """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[2] if len(prn_sections) > 2 else None
 
 
 def extract_branch(obj: Any) -> str | None:
+    """
+    Extract the branch from the provided Object which can be a string or dictionary
+
+    Args:
+        obj (Any): The Identity or PRN information
+
+    Returns:
+        str | None: The branch name or None if not found
+    """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[3] if len(prn_sections) > 3 else None
 
 
 def extract_build(obj: Any) -> str | None:
+    """
+    Extract the build from the provided Object which can be a string or dictionary
+
+    Args:
+        obj (Any): The Identity or PRN information
+
+    Returns:
+        str | None: The build name or None if not found
+    """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[4] if len(prn_sections) > 4 else None
 
 
 def extract_component(obj: Any) -> str | None:
+    """
+    Extract the component from the provided Object which can be a string or dictionary
+
+    Args:
+        obj (Any): The Identity or PRN information
+
+    Returns:
+        str | None: The component name or None if not found
+    """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[5] if len(prn_sections) > 5 else None
 
 
 def extract_portfolio_prn(obj: Any) -> str:
+    """
+    Uses a regular expression to extract the portfolio prn from the provided object
+    after calling the extract_prn function to get the prn value.
+
+    Args:
+        obj (Any): The PRN information
+
+    Returns:
+        str: The portfolio prn in the formatn "prn:portfolio" or ""
+    """
+
     matches = re.match(PORTFOLIO_PRN_REGEX, extract_prn(obj))
     if matches is None:
         return V_EMPTY
@@ -126,6 +183,16 @@ def extract_portfolio_prn(obj: Any) -> str:
 
 
 def extract_app_prn(obj: Any) -> str:
+    """
+    Uses a regular expression to extract the app prn from the provided object
+    after calling the extract_prn function to get the prn value.
+
+    Args:
+        obj (Any): The PRN information
+
+    Returns:
+        str: The app prn in the formatn "prn:portfolio:app" or ""
+    """
     matches = re.match(APP_PRN_REGEX, extract_prn(obj))
     if matches is None:
         return V_EMPTY
@@ -134,6 +201,16 @@ def extract_app_prn(obj: Any) -> str:
 
 
 def extract_branch_prn(obj: Any) -> str:
+    """
+    Uses a regular expression to extract the branch prn from the provided object
+    after calling the extract_prn function to get the prn value.
+
+    Args:
+        obj (Any): The PRN information
+
+    Returns:
+        str: The branch prn in the formatn "prn:portfolio:app:branch" or ""
+    """
     matches = re.match(BRANCH_PRN_REGEX, extract_prn(obj))
     if matches is None:
         return V_EMPTY
@@ -142,6 +219,16 @@ def extract_branch_prn(obj: Any) -> str:
 
 
 def extract_build_prn(obj: Any) -> str:
+    """
+    Uses a regular expression to extract the build prn from the provided object
+    after calling the extract_prn function to get the prn value.
+
+    Args:
+        obj (Any): The PRN information
+
+    Returns:
+        str: The build prn in the formatn "prn:portfolio:app:branch:build" or ""
+    """
     matches = re.match(BUILD_PRN_REGEX, extract_prn(obj))
     if matches is None:
         return V_EMPTY
@@ -149,7 +236,17 @@ def extract_build_prn(obj: Any) -> str:
     return build_prn
 
 
-def extract_component_prn(obj: Any):
+def extract_component_prn(obj: Any) -> str:
+    """
+    Uses a regular expression to extract the component prn from the provided object
+    after calling the extract_prn function to get the prn value.
+
+    Args:
+        obj (Any): The PRN information
+
+    Returns:
+        str: The component prn in the formatn "prn:portfolio:app:branch:build:component" or ""
+    """
     matches = re.match(COMPONENT_PRN_REGEX, extract_prn(obj))
     if matches is None:
         return V_EMPTY
@@ -158,6 +255,26 @@ def extract_component_prn(obj: Any):
 
 
 def generate_prn(item_type: str, request: dict) -> str | None:
+    """
+    Generate a prn from the item_type which is "portfolio", "app", "branch", "build", or "component"
+    and the request informatin such as:
+
+    ```json
+        {
+            "portfolio_prn": "prn:portfolio",
+            "app_prn": "prn:portfolio:app",
+            "branch_prn": "prn:portfolio:app:branch",
+            "build_prn": "prn:portfolip:app:branch:build",
+            "component_prn": "prn:portfolio:app:branch:build:component",
+        }
+
+    Args:
+        item_type (str): The type of item: "portfolio", "app", "branch", "build", or "component"
+        request (dict): The input dictionary
+
+    Returns:
+        str | None: _description_
+    """
     if item_type == SCOPE_PORTFOLIO:
         return generate_portfolio_prn(request)
     elif item_type == SCOPE_APP:
@@ -260,24 +377,78 @@ def generate_component_prn(request: dict) -> str:
 
 
 def validate_item_prn(prn: str) -> bool:
+    """
+    Uses the regular express PRN_REGEX to determine if the PRN is valid.
+
+    Args:
+        prn (str): A Pipeline Reference Number
+
+    Returns:
+        bool: Ture if the PRN is valid
+    """
     return re.fullmatch(PRN_REGEX, prn) is not None
 
 
 def validate_portfolio_prn(prn: str) -> bool:
+    """
+    Uses the regular express PORTFOLIO_PRN_REGEX to determine if the PRN is valid
+
+    Args:
+        prn (str): A Pipeline Reference Number
+
+    Returns:
+        bool: True if the PRN is valid
+    """
     return re.fullmatch(PORTFOLIO_PRN_REGEX, prn) is not None
 
 
 def validate_app_prn(prn: str) -> bool:
+    """
+    Uses the regular express APP_PRN_REGEX to determine if the PRN is valid
+
+    Args:
+        prn (str): A Pipeline Reference Number
+
+    Returns:
+        bool: True if the PRN is valid
+    """
     return re.fullmatch(APP_PRN_REGEX, prn) is not None
 
 
 def validate_branch_prn(prn: str) -> bool:
+    """
+    Uses the regular express BRANCH_PRN_REGEX to determine if the PRN is valid
+
+    Args:
+        prn (str): A Pipeline Reference Number
+
+    Returns:
+        bool: True if the PRN is valid
+    """
     return re.fullmatch(BRANCH_PRN_REGEX, prn) is not None
 
 
 def validate_build_prn(prn: str) -> bool:
+    """
+    Uses the regular express BUILD_PRN_REGEX to determine if the PRN is valid
+
+    Args:
+        prn (str): A Pipeline Reference Number
+
+    Returns:
+        bool: True if the PRN is valid
+    """
     return re.fullmatch(BUILD_PRN_REGEX, prn) is not None
 
 
 def validate_component_prn(prn: str) -> bool:
+    """
+    Uses the regular express COMPONENT_PRN_REGEX to determine if the PRN is valid
+
+    Args:
+        prn (str): A Pipeline Reference Number
+
+    Returns:
+        bool: True if the PRN is valid
+    """
     return re.fullmatch(COMPONENT_PRN_REGEX, prn) is not None
