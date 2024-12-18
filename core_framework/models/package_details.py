@@ -26,7 +26,7 @@ class PackageDetails(BaseModel):
     the artefact called "pacakge.zip" that is uploaded and contains all of the templates and resources necessary to
     perform a deployment.
 
-    Typcially pacakges are in the packages folder s3://<bucket>/packages/\\*\\*.
+    Typcially pacakges are in the packages folder **s3://<bucket>/packages/\\*\\***.
 
     Attributes:
         BucketRegion (str): The region of the bucket woere packages are stored.

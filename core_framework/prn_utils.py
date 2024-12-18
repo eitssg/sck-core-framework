@@ -255,58 +255,86 @@ def extract_component_prn(obj: Any) -> str:
     return component_prn
 
 
-def generate_prn(item_type: str, request: dict) -> str | None:
+def generate_prn(scope: str, request: dict) -> str | None:
     """
     Generate a prn from the item_type which is "portfolio", "app", "branch", "build", or "component"
     and the request informatin such as:
 
-    ```json
-        {
-            "portfolio_prn": "prn:portfolio",
-            "app_prn": "prn:portfolio:app",
-            "branch_prn": "prn:portfolio:app:branch",
-            "build_prn": "prn:portfolip:app:branch:build",
-            "component_prn": "prn:portfolio:app:branch:build:component",
-        }
+    request should contain PRN's at the top level including one or more of the following:
+
+    .. code-block:: json
+
+            {
+                "prn": "prn:portfolio:app:branch:build",
+                "portfolio_prn": "prn:portfolio",
+                "app_prn": "prn:portfolio:app",
+                "branch_prn": "prn:portfolio:app:branch",
+                "build_prn": "prn:portfolip:app:branch:build",
+                "component_prn": "prn:portfolio:app:branch:build:component",
+            }
+
+    The primary attribute in requests object is "prn" and if not present, the other keys
+    will be insspected based on the scope.
 
     Args:
-        item_type (str): The type of item: "portfolio", "app", "branch", "build", or "component"
+        scope (str): The type/scope of item: "portfolio", "app", "branch", "build", or "component"
         request (dict): The input dictionary
 
     Returns:
-        str | None: _description_
+        str | None: The generated PRN or None if the item_type is invalid or the prn cannot be determined.
     """
-    if item_type == SCOPE_PORTFOLIO:
+    if scope == SCOPE_PORTFOLIO:
         return generate_portfolio_prn(request)
-    elif item_type == SCOPE_APP:
+    elif scope == SCOPE_APP:
         return generate_app_prn(request)
-    elif item_type == SCOPE_BRANCH:
+    elif scope == SCOPE_BRANCH:
         return generate_branch_prn(request)
-    elif item_type == SCOPE_BUILD:
+    elif scope == SCOPE_BUILD:
         return generate_build_prn(request)
-    elif item_type == SCOPE_COMPONENT:
+    elif scope == SCOPE_COMPONENT:
         return generate_component_prn(request)
     else:
         return None
 
 
-def validate_prn(item_type: str, prn: Any) -> bool:
-    if item_type == SCOPE_PORTFOLIO:
+def validate_prn(scope: str, prn: Any) -> bool:
+    """
+    Validate the PRN based on the scope of the item.  The scopes are "portfolio", "app", "branch", "build", or "component"
+
+    Args:
+        scope (str): The type/scope of item: "portfolio", "app", "branch", "build", or "component"
+        prn (Any): The Pipeline Reference Number (PRN) to validate.
+
+    Returns:
+        bool: True if the PRN is valid for the scope.
+
+    """
+
+    if scope == SCOPE_PORTFOLIO:
         return validate_portfolio_prn(prn)
-    elif item_type == SCOPE_APP:
+    elif scope == SCOPE_APP:
         return validate_app_prn(prn)
-    elif item_type == SCOPE_BRANCH:
+    elif scope == SCOPE_BRANCH:
         return validate_branch_prn(prn)
-    elif item_type == SCOPE_BUILD:
+    elif scope == SCOPE_BUILD:
         return validate_build_prn(prn)
-    elif item_type == SCOPE_COMPONENT:
+    elif scope == SCOPE_COMPONENT:
         return validate_component_prn(prn)
     else:
         return False
 
 
-def validate_item_type(item_type: str) -> bool:
-    return item_type in [
+def validate_item_type(scope: str) -> bool:
+    """
+    Validate the scope to ensure it is one of the valid values: "portfolio", "app", "branch", "build", or "component"
+
+    Args:
+        scope (str): A string to inspect
+
+    Returns:
+        bool: True if the scope is one of the valid values
+    """
+    return scope in [
         SCOPE_PORTFOLIO,
         SCOPE_APP,
         SCOPE_BRANCH,
@@ -316,21 +344,51 @@ def validate_item_type(item_type: str) -> bool:
 
 
 def generate_portfolio_prn(request: dict) -> str:
+    """
+    Inspects the rqeust dictionary and looks for a prn that can be considered a "portfolio" prn.
+
+    It will inspect "prn" first, and if that is not a portfolio prn, it will generate a portfolio
+    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+
+    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
+    of the request object. "prn:<name>"
+
+    Args:
+        request (dict): The object containing PRN's
+
+    Returns:
+        str: The extracted or generated portfolio prn
+    """
     if PRN in request and validate_portfolio_prn(request[PRN]):
         return request[PRN]
     elif ARG_PORTFOLIO_PRN in request:
-        return extract_portfolio_prn(request[ARG_PORTFOLIO_PRN])
+        return extract_portfolio_prn(request.get(ARG_PORTFOLIO_PRN))
     elif ARG_APP_PRN in request:
-        return extract_portfolio_prn(request[ARG_APP_PRN])
+        return extract_portfolio_prn(request.get(ARG_APP_PRN))
     elif ARG_BRANCH_PRN in request:
-        return extract_portfolio_prn(request[ARG_BRANCH_PRN])
+        return extract_portfolio_prn(request.get(ARG_BRANCH_PRN))
     elif ARG_BUILD_PRN in request:
-        return extract_portfolio_prn(request[ARG_BUILD_PRN])
+        return extract_portfolio_prn(request.get(ARG_BUILD_PRN))
     else:
-        return "{}:{}".format(PRN, request[ARG_NAME])
+        return "{}:{}".format(PRN, request.get(ARG_NAME))
 
 
 def generate_app_prn(request: dict) -> str:
+    """
+    Inspects the rqeust dictionary and looks for a prn that can be considered a "app" prn.
+
+    It will inspect "prn" first, and if that is not a app prn, it will generate a app
+    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+
+    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
+    of the request object. "prn:portfolio:<name>"
+
+    Args:
+        request (dict): The object containing PRN's
+
+    Returns:
+        str: The extracted or generated app prn
+    """
     if PRN in request and validate_app_prn(request[PRN]):
         return request[PRN]
     elif ARG_APP_PRN in request:
@@ -344,10 +402,35 @@ def generate_app_prn(request: dict) -> str:
 
 
 def branch_short_name(name: str) -> str:
+    """
+    Geneerate a short name for a branch based on the name attribute.  The name will be lower case
+    and should contain only letters, numbers, and hyphens.  The name will be truncated to 20 characters.
+
+    Args:
+        name (str): The name to shorten.  Usually the name of the branch
+
+    Returns:
+        str: The shortened name.
+    """
     return re.sub(r"[^a-z0-9\\-]", "-", name.lower())[0:20].rstrip("-")
 
 
 def generate_branch_prn(request: dict) -> str:
+    """
+    Inspects the rqeust dictionary and looks for a prn that can be considered a "branch" prn.
+
+    It will inspect "prn" first, and if that is not a branch prn, it will generate a branch
+    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+
+    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
+    of the request object. "prn:portfolio:app:<name>"
+
+    Args:
+        request (dict): The object containing PRN's
+
+    Returns:
+        str: The extracted or generated branch prn
+    """
     if PRN in request and validate_branch_prn(request[PRN]):
         return request[PRN]
     elif ARG_BRANCH_PRN in request:
@@ -360,6 +443,21 @@ def generate_branch_prn(request: dict) -> str:
 
 
 def generate_build_prn(request: dict) -> str:
+    """
+    Inspects the rqeust dictionary and looks for a prn that can be considered a "build" prn.
+
+    It will inspect "prn" first, and if that is not a build prn, it will generate a build
+    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+
+    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
+    of the request object. "prn:portfolio:app:branch:<name>"
+
+    Args:
+        request (dict): The object containing PRN's
+
+    Returns:
+        str: The extracted or generated build prn
+    """
     if PRN in request and validate_build_prn(request[PRN]):
         return request[PRN]
     elif ARG_BUILD_PRN in request:
@@ -369,6 +467,21 @@ def generate_build_prn(request: dict) -> str:
 
 
 def generate_component_prn(request: dict) -> str:
+    """
+    Inspects the rqeust dictionary and looks for a prn that can be considered a "componnent" prn.
+
+    It will inspect "prn" first, and if that is not a component prn, it will generate a component
+    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+
+    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
+    of the request object. "prn:portfolio:app:branch:build:<name>"
+
+    Args:
+        request (dict): The object containing PRN's
+
+    Returns:
+        str: The extracted or generated component prn
+    """
     if PRN in request and validate_component_prn(request[PRN]):
         return request[PRN]
     elif ARG_COMPONENT_PRN in request:

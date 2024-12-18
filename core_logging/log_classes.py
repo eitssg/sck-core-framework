@@ -1,11 +1,11 @@
 """
-This module is the Core-Automation logging module.  It provides a custom logger that can log messages as
+This module is the Core-Automation logging module providing a custom logger that can log messages as
 JSON objects, status messages, and trace messages.
 """
 
 from typing import Any
 
-import datetime
+from datetime import datetime
 import io
 import json
 import logging
@@ -17,6 +17,7 @@ from logging import NOTSET, FATAL, WARN, CRITICAL, DEBUG, INFO, WARNING, ERROR
 
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+# Custom log levels not supported by the logging module
 MSG = 70
 STATUS = 60
 TRACE = 5
@@ -67,25 +68,65 @@ L_PRN: str = "prn"
 """ \\- "prn" """
 
 
-def format_datetime(t: datetime.datetime, date_format: str | None = None) -> str:
-    return t.strftime(date_format or DEFAULT_DATE_FORMAT)
-
-
 class CoreLogFormatter(logging.Formatter):
+    """Base Class for the CoreLogJsonFormatter and CoreLogTextFormatter classes."""
 
     def __init__(self, fmt: str, datefmt: str):
+        """
+        Initialize the formatter with the specified format and date format.
+
+        Args:
+            fmt (str): Message Format
+            datefmt (str): Datetime Format
+        """
         super().__init__(fmt, datefmt)
+
+    def format_datetime(self, t: datetime, date_format: str | None = None) -> str:
+        """
+        Formates a datetime object to a string using the specified format.  If no format is specified, the default format is used.
+
+        The default format is "%Y-%m-%d %H:%M:%S" if date_format is None.
+
+        Args:
+            t (datetime): The datetime object to format.
+            date_format (str | None, optional): The date format to use. Defaults to None.
+
+        Returns:
+            str: The formatted date string.
+        """
+        return t.strftime(date_format or DEFAULT_DATE_FORMAT)
 
     def formatTime(
         self, record: logging.LogRecord, date_format: str | None = None
     ) -> str:  # NOSONAR: python:S100
-        t = datetime.datetime.fromtimestamp(record.created)
-        return format_datetime(t, date_format or self.datefmt)
+        """
+        Exracts the "created" field from the logging.LogRecord object and converts it to a datetime object.
+        to be used as the timestamp of the log message.
+
+        If date_format is not specified, the default format is used.
+
+        Args:
+            record (logging.LogRecord): The log record object.
+            date_format (str | None, optional): The format to use for the datetime. Defaults to None.
+
+        Returns:
+            str: The formatted datatime string.
+        """
+        t = datetime.fromtimestamp(record.created)
+        return self.format_datetime(t, date_format or self.datefmt)
 
 
 class CoreLogTextFormatter(CoreLogFormatter):
+    """Text Formatter for the CoreLogger class that outputs a log message as standard text."""
 
     def __init__(self, fmt: str, datefmt: str):
+        """
+        Initializes the formatter with the specified format and date format.
+
+        Args:
+            fmt (str): message format
+            datefmt (str): datetime format
+        """
         super().__init__(fmt, datefmt)
         self.yaml = yaml.YAML(typ="safe")
         self.yaml.default_flow_style = False
@@ -98,7 +139,16 @@ class CoreLogTextFormatter(CoreLogFormatter):
         return dumper.represent_dict(items)
 
     def format(self, record: logging.LogRecord) -> str:
+        """
+        Formats the record object into a string.  record.details will be translated to YAML
+        format and the generated string will be appended to the end of the.
 
+        Args:
+            record (logging.LogRecord): The logger record object
+
+        Returns:
+            str: A string to output to the log.
+        """
         if hasattr(record, L_SCOPE):
             scope = getattr(record, L_SCOPE)
             if scope:
@@ -121,7 +171,35 @@ class CoreLogTextFormatter(CoreLogFormatter):
         return indented_yaml
 
     def details(self, record: logging.LogRecord, content: str) -> str:
+        """
+        Returns a reformatted string based o the content of the log message.
 
+        First, content may be a string with multiple lines.  Each line is formatted and printed to the console.
+        such that the message:
+
+        .. code-block:: shell
+
+            this is a test
+            of a message
+            with multiple
+            lines
+
+        Will be output to the log as:
+
+        .. code-block:: shell
+
+            2024-01-01 12:00:00 [root] [INFO] this is a test
+            2024-01-01 12:00:00 [root] [INFO] of a message
+            2024-01-01 12:00:00 [root] [INFO] with multiple
+            2024-01-01 12:00:00 [root] [INFO] lines
+
+        Args:
+            record (logging.LogRecord): The logging log recrd object.
+            content (str): The text to reformat.
+
+        Returns:
+            str: a string of formatted output lines.
+        """
         lines = content.split("\n")
 
         # Remove empty lines from the end of the stream
@@ -136,25 +214,57 @@ class CoreLogTextFormatter(CoreLogFormatter):
 
 
 class CoreLogJsonFormatter(CoreLogFormatter):
+    """JSON Formatter for the CoreLogger class that outputs a log message as a JSON object."""
 
     def __init__(self, text_format: str, datefmt: str):
+        """
+        Initializes the formatter with the specified format and date format.
+
+        Args:
+            text_format (str): Message format
+            datefmt (str): datetime format
+        """
         super().__init__(text_format, datefmt)
 
     @staticmethod
     def set_element(
         data: dict, record: logging.LogRecord, key: str, element: str | None = None
     ):
-        if not element:
-            element = key
-        if hasattr(record, element):
-            value = getattr(record, element)
-            if value is not None:
-                data[key] = value
+        if element:
+            value = getattr(record, element, None)
+        if value is None:
+            value = getattr(record, key, None)
+        if value is not None:
+            data[key] = value
 
     def format(self, record: logging.LogRecord) -> str:
-        dtm = format_datetime(
-            datetime.datetime.fromtimestamp(record.created), self.datefmt
-        )
+        """
+        Formats the record object into a JSON string to be output to the log.
+
+        The JSON object will contain the following fields:
+
+        .. code-block:: json
+
+            {
+                "Timestamp": "2024-01-01 12:00:00",
+                "Type": "INFO",
+                "Status": "COMPILE_COMPLETE",
+                "Reason": "Compile Complete",
+                "Message": "This is a test message",
+                "Details": {
+                    "prn": "prn:core:automation:master:1.0.0",
+                },
+                "Scope": "build",
+                "Resource": "my-resource-component in the prn"
+            }
+
+        The Details field can be any arbitrary dictionary that is passed in the log message.
+
+        Args:
+            record (logging.LogRecord): The log record object.
+
+        """
+        dtm = self.format_datetime(datetime.fromtimestamp(record.created), self.datefmt)
         data: dict = OrderedDict([(LOG_TIMESTAMP, dtm)])
         self.set_element(data, record, LOG_TYPE, "levelname")
         self.set_element(data, record, LOG_STATUS)
@@ -181,6 +291,20 @@ class CoreLoggerHandler(logging.Handler):
     formatter: CoreLogFormatter
 
     def __init__(self, name: str, **kwargs):
+        """
+        Initialize a new instance of the CoreLoggerHandler class.
+
+        You can pass level in kwargs as the following is executed:
+
+        .. code-block:: python
+
+            level = kwargs.get("level", NOTSET)
+
+        Args:
+            name (str): The name of the handler.
+            **kwargs: Additional keyword arguments to pass to the handler.
+        """
+
         super().__init__(level=kwargs.get("level", NOTSET))
 
         self.name = name
@@ -197,6 +321,14 @@ class CoreLoggerHandler(logging.Handler):
             self.formatter = CoreLogTextFormatter(msg_fmt, date_fmt)
 
     def emit(self, record) -> None:
+        """
+        Emit the log message to the console.  This is the method that is called by the logging framework to output the log message.
+
+        This is almost identicl to the standard emit() however there is some special handling for STATUS messages.
+
+        Args:
+            record (dict): The log record object.
+        """
         try:
             # If for some reason record.args is not a tuple, make it one.  This happens if the original
             # tuple had only one element that is also a list (or dictionary)
@@ -226,8 +358,18 @@ class CoreLoggerHandler(logging.Handler):
             print(f"Error writing to log file: {str(e)}")
 
     @staticmethod
-    def replace_holders(message: str, args: tuple) -> tuple:
+    def replace_holders(message: str, args: tuple[Any]) -> tuple[str, tuple]:
+        """
+        Replace the %s place holders in the message with the values in the args tuple.  If there are more values in the args tuple
+        than there are %s place holders in the message, then the remaining values are returned in a list.
 
+        Args:
+            message (str): The message to replace the place holders in.
+            args (tuple): The values to replace the place holders with.
+
+        Returns:
+            tuple: A tuple of the message and a list of unused values.
+        """
         if message and args and len(args) > 0:
             unused_values = []
             for value in args:
@@ -247,9 +389,11 @@ class CoreLoggerHandler(logging.Handler):
     def add_details(record: logging.LogRecord, data: dict) -> None:
         """
         Add the "Details" property to the fields.  This is called by the emit() method.
-        :param data:
-        :param record:
-        :return:
+
+        Args:
+            record (logging.LogRecord): The log record object.
+            data (dict): The dictionary of data to add to the record object.
+
         """
         if hasattr(record, L_DETAILS):
             details = getattr(record, L_DETAILS)
@@ -303,7 +447,7 @@ class CoreLogger(logging.Logger):
         Special function to set the level of the logger and all of the handlers.
 
         Args:
-            level (_type_): _description_
+            level (int): The loglevel to set
         """
         super().setLevel(level)
         for handler in self.handlers:
@@ -317,11 +461,20 @@ class CoreLogger(logging.Logger):
         and replacing them with \\*\\*kwargs so we can convert both the message and the kwargs to extra data allowing the caller
         to submit arbitrary meta-data in the call to the logger.
 
+        The message can have replacement strings %s symbol in the string and pass (args) tuples to replace the %s symbols.
+
+            Examples:
+
+            .. code-block:: python
+
+                log.debug("This is a %s message", "test")
+                log.debug("This is a %s message", "test", details={"key": "value"}, identity="my-identity")
+
         Args:
-            level (_type_): _description_
-            message (_type_): _description_
-            args (_type_): _description_
-            **kwargs: _description_
+            level (int): The loglevel
+            message (str): The message to log.
+            args (tuple): A list of replacement values for the message.
+            **kwargs: Elements to add to the log.record as exta data.
 
         """
         exc_info = kwargs.pop("exec_info", None)
@@ -348,6 +501,14 @@ class CoreLogger(logging.Logger):
         super()._log(level, message, args, exc_info, extra, stack_info, stacklevel)
 
     def msg(self, message: Any, *args: Any, **kwargs: Any) -> None:
+        """
+        Outputs a simple message to the log in the 'MSG' level.
+
+        Args:
+            message (Any): The message to output.
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
+        """
         self.core_log(MSG, message, args, **kwargs)
 
     def status(self, code: str | int, reason: str, *args: Any, **kwargs: Any) -> None:
@@ -367,6 +528,14 @@ class CoreLogger(logging.Logger):
             self.core_log(STATUS, None, args, **kwargs)
 
     def trace(self, message, *args, **kwargs) -> None:
+        """
+        Log a message with severity 'TRACE'.
+
+        Args:
+            message (str): The message to output
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
+        """
         if self.isEnabledFor(TRACE):
             self.core_log(TRACE, message, args, **kwargs)
 
@@ -378,6 +547,11 @@ class CoreLogger(logging.Logger):
         a true value, e.g.
 
         logger.debug("Houston, we have a %s", "thorny problem", exc_info=True)
+
+        Args:
+            message (str): The message to output
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
         """
         if self.isEnabledFor(DEBUG):
             self.core_log(DEBUG, msg, args, **kwargs)
@@ -390,6 +564,11 @@ class CoreLogger(logging.Logger):
         a true value, e.g.
 
         logger.info("Houston, we have a %s", "notable problem", exc_info=True)
+
+        Args:
+            message (str): The message to output
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
         """
         if self.isEnabledFor(INFO):
             self.core_log(INFO, msg, args, **kwargs)
@@ -402,6 +581,11 @@ class CoreLogger(logging.Logger):
         a true value, e.g.
 
         logger.warning("Houston, we have a %s", "bit of a problem", exc_info=True)
+
+        Args:
+            message (str): The message to output
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
         """
         if self.isEnabledFor(WARNING):
             self.core_log(WARNING, msg, args, **kwargs)
@@ -414,6 +598,11 @@ class CoreLogger(logging.Logger):
         a true value, e.g.
 
         logger.error("Houston, we have a %s", "major problem", exc_info=True)
+
+        Args:
+            message (str): The message to output
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
         """
         if self.isEnabledFor(ERROR):
             self.core_log(ERROR, msg, args, **kwargs)
@@ -426,6 +615,11 @@ class CoreLogger(logging.Logger):
         a true value, e.g.
 
         logger.critical("Houston, we have a %s", "major disaster", exc_info=True)
+
+        Args:
+            message (str): The message to output
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
         """
         if self.isEnabledFor(CRITICAL):
             self.core_log(CRITICAL, msg, args, **kwargs)
@@ -438,6 +632,11 @@ class CoreLogger(logging.Logger):
         a true value, e.g.
 
         logger.log(level, "We have a %s", "mysterious problem", exc_info=True)
+
+        Args:
+            message (str): The message to output
+            *args: Additional arguments to replace in the message.
+            **kwargs: Additional keyword arguments to pass to the logger.
         """
         if not isinstance(level, int):
             raise TypeError("level must be an integer")

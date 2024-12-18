@@ -1,3 +1,5 @@
+""" AWS Helper functions that provide Automation Role switching for all deployment functions and Lambda's """
+
 from typing import Any
 
 import os
@@ -34,10 +36,33 @@ def transform_stack_parameter_dict(keyvalues: dict[str, str]) -> dict[str, str]:
 
 
 def transform_stack_parameter_hash(keyvalues: dict[str, str]) -> list[dict[str, str]]:
+    """
+    Translate a basic dictionary into CloudFormation stack paramters object
+
+    Input:  { "Name": "My Name" }
+
+    Output: [{"ParameterKey": "Name", "ParameterValue: "My Name"}]
+
+    Args:
+        keyvalues (dict[str, str]): Simple Key/Value Pairs
+
+    Returns:
+        list[dict[str, str]]: List of Parameters to be passed to Cloudformation stack actions.
+
+    """
     return __transform_keyvalues_to_array(keyvalues, "ParameterKey", "ParameterValue")
 
 
 def transform_tag_hash(keyvalues: dict[str, str]) -> list[dict[str, str]]:
+    """
+    Tranlate a basic dictionary into a list of Tags values that can be applied
+    to CloudFormation Resources:
+
+    Input:  { "Name": "My Name" }
+
+    Output:
+
+    """
     return __transform_keyvalues_to_array(keyvalues, "Key", "Value")
 
 

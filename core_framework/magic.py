@@ -7,6 +7,8 @@ import shutil
 class MagicBucket:
     """
     Provides a Magic Bucket with the S3 Bucket API for downloading fileobj and getting a MagicObject that behaves like an S3 Object.
+
+    The purpose is to read objects from the local filesystem instead of S3 using s3 api.
     """
 
     def __init__(self, bucket_name: str, bucket_region: str):
@@ -53,6 +55,8 @@ class MagicBucket:
 class MagicObject:
     """
     MagicObject class to emulate an S3 Object.  Currently only emulates the "copy_from" method.
+
+    The purpose is to copy objects from the local filesystem instead of S3 using s3 api.
 
     """
 
@@ -120,6 +124,7 @@ class MagicS3Client:
     """
     MagicS3Client class to emulate an S3 client.  Currently only emulates the "download_fileobj" and "put_object" methods.
 
+    The purpose is to read and write objects to the local filesystem instead of S3 using s3 api.
     """
 
     def __init__(self, **kwargs):

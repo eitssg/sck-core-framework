@@ -1,41 +1,39 @@
 """
-Let's begin to put common status strings in this file rather than "constants"
-Attempting to orginize these into Build Status and create more
-consistency across the codebase
+This module provides the BuildStatus class which is used to track the status of a build.
 """
 
 RELEASE_IN_PROGRESS = "RELEASE_IN_PROGRESS"
-""" \\* RELASE_IN_PROGRESS """
+""" \\-RELASE_IN_PROGRESS """
 RELEASE_COMPLETE = "RELEASE_COMPLETE"
-""" \\* RELEASE_COMPLETE """
+""" \\-RELEASE_COMPLETE """
 RELEASE_FAILED = "RELEASE_FAILED"
-""" \\* RELEASE_FAILED """
+""" \\-RELEASE_FAILED """
 RELEASE_REQUESTED = "RELEASE_REQUESTED"
-""" \\* RELEASE_REQUESTED """
+""" \\-RELEASE_REQUESTED """
 TEARDOWN_COMPLETE = "TEARDOWN_COMPLETE"
-""" \\* TEARDOWN_COMPLETE """
+""" \\-TEARDOWN_COMPLETE """
 TEARDOWN_FAILED = "TEARDOWN_FAILED"
-""" \\* TEARDOWN_FAILED """
+""" \\-TEARDOWN_FAILED """
 TEARDOWN_IN_PROGRESS = "TEARDOWN_IN_PROGRESS"
-""" \\* TEARDOWN_IN_PROGRESS """
+""" \\-TEARDOWN_IN_PROGRESS """
 TEARDOWN_REQUESTED = "TEARDOWN_REQUESTED"
-""" \\* TEARDOWN_REQUESTED """
+""" \\-TEARDOWN_REQUESTED """
 COMPILE_COMPLETE = "COMPILE_COMPLETE"
-""" \\* COMPILE_COMPLETE """
+""" \\-COMPILE_COMPLETE """
 COMPILE_FAILED = "COMPILE_FAILED"
-""" \\* COMPILE_FAILED """
+""" \\-COMPILE_FAILED """
 COMPILE_IN_PROGRESS = "COMPILE_IN_PROGRESS"
-""" \\* COMPILE_IN_PROGRESS """
+""" \\-COMPILE_IN_PROGRESS """
 DEPLOY_COMPLETE = "DEPLOY_COMPLETE"
-""" \\* DEPLOY_COMPLETE """
+""" \\-DEPLOY_COMPLETE """
 DEPLOY_FAILED = "DEPLOY_FAILED"
-""" \\* DEPLOY_FAILED """
+""" \\-DEPLOY_FAILED """
 DEPLOY_IN_PROGRESS = "DEPLOY_IN_PROGRESS"
-""" \\* DEPLOY_IN_PROGRESS """
+""" \\-DEPLOY_IN_PROGRESS """
 DEPLOY_REQUESTED = "DEPLOY_REQUESTED"
-""" \\* DEPLOY_REQUESTED """
+""" \\-DEPLOY_REQUESTED """
 INIT = "INIT"
-""" \\* INIT """
+""" \\-INIT """
 
 
 STATUS_LIST = [
@@ -63,24 +61,7 @@ class BuildStatus(object):
     Provides a class to manage the status of a build.
 
     Attributes:
-        value (str): The status of the build.  This is a string that is one of the following:
-
-            * INIT
-            * DEPLOY_REQUESTED
-            * DEPLOY_IN_PROGRESS
-            * DEPLOY_COMPLETE
-            * DEPLOY_FAILED
-            * COMPILE_IN_PROGRESS
-            * COMPILE_COMPLETE
-            * COMPILE_FAILED
-            * RELEASE_REQUESTED
-            * RELEASE_IN_PROGRESS
-            * RELEASE_COMPLETE
-            * RELEASE_FAILED
-            * TEARDOWN_REQUESTED
-            * TEARDOWN_IN_PROGRESS
-            * TEARDOWN_COMPLETE
-            * TEARDOWN_FAILED
+        value (str): The status of the build.  This is a string that is one of valid status values.
 
             The status is used to track the current state of the build process and
             ensure that each step is completed successfully before moving on to the
