@@ -146,11 +146,24 @@ def test_package_details_model(runtime_arguments):
 
 def test_deploy_spec_model(deployspec_sample):
 
+    action1 = deployspec_sample[0]
+
+    action_spec = ActionSpec(**action1)
+
+    assert action_spec is not None
+
+    assert action_spec.label == 'test1-create-user'
+    assert action_spec.action == 'AWS::CreateUser'
+
     deploy_spec = DeploySpec(actions=deployspec_sample)
 
     assert deploy_spec is not None
 
-    # TODO: Add more tests for the DeploySpec model
+    assert isinstance(deploy_spec.action_specs, list)
+
+    assert len(deploy_spec.action_specs) == 6
+
+    assert deploy_spec.action_specs[5].label == 'test1-delete-change-set'
 
 
 def test_action_spec_model(deployspec_sample):

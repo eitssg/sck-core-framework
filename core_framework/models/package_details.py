@@ -2,7 +2,7 @@
 
 import os
 
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
 import tempfile
 
@@ -45,11 +45,11 @@ class PackageDetails(BaseModel):
 
     BucketRegion: str = Field(
         description="The region of the bucket woere packages are stored.",
-        default=util.get_bucket_region(),
+        default="us-east-1",
     )
     BucketName: str = Field(
         description="The name of the bucket where packages are stored.",
-        default=util.get_bucket_name(),
+        default="core-automation-master",
     )
 
     Key: str | None = Field(

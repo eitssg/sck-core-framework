@@ -28,49 +28,49 @@ class ActionSpecParams(BaseModel):
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     template: str | None = Field(
-        None,
         alias="template",
         description="The URL of the CloudFormation template to use for the action.  Some actions don't require a template",
+        default=None,
     )
     stack_name: str | None = Field(
-        None,
         alias="stack_name",
         description="The name of the stack or action reference. You will see this in the CloudFormation console",
+        default=None,
     )
     parameters: dict | None = Field(
-        None,
         alias="parameters",
         description="The parameters to pass to the CloudFormation stack",
+        default=None,
     )
     accounts: list[str] | None = Field(
-        None,
         alias="accounts",
         description="The account to prform the action on.  Multiple accounts can be specified at one time",
+        default=None,
     )
     regions: list[str] | None = Field(
-        None,
         alias="regions",
         description="The region to use for the action in the account.  Multiple regions can be specified at one time",
+        default=None,
     )
     stack_policy: str | dict | None = Field(
-        None,
         alias="stack_policy",
         description="The policy statments that can be used within the Action for its own purpose",
+        default=None,
     )
     user_name: str | None = Field(
-        None,
         alias="user_name",
         description="The user name to perform the action on.  Ussers are special deployspecs in that they are not CloudFormation stacks",
+        default=None,
     )
     account: str | None = Field(
-        None,
         alias="account",
         description="The account to use for the user action.  This is used for user_name updates",
+        default=None,
     )
     region: str | None = Field(
-        None,
         alias="region",
         description="The region to use for the user action in the account.  This is used for user_name updates",
+        default=None,
     )
 
     @field_validator("accounts", mode="before")
@@ -159,19 +159,20 @@ class ActionSpec(BaseModel):
     type: str = Field(
         description="The action type.  This is the name of the action spec (e.g. create_user, create_stack, etc.)",
     )
-    action: str = Field(
+    action: str | None = Field(
         description="The action to perform as defined by the execute.actionlib module",
+        default=None,
     )
     scope: str | None = Field(
-        None,
         description="The scope of the action (optional). Examples: portfolio, app, branch, or build.",
+        default=None,
     )
     params: ActionSpecParams = Field(
         description="The parameters for the action.  This is a dictionary of parameters that the action requires",
     )
     depends_on: list[str] | None = Field(
-        None,
         description="A list of labels of actions that this action depends on.  Scoped to the single deployspec.yaml",
+        default=None,
     )
 
     @field_validator("depends_on", mode="before")

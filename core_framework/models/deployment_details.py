@@ -63,7 +63,7 @@ class DeploymentDetails(BaseModel):
 
     Client: str = Field(
         description="Client is the name of the client or customer (installation or AWS Organizatoion)",
-        default=util.get_client() or "unknown",
+        default="unknown",
     )
 
     Portfolio: str = Field(description="Portfolio name is the BizApp name")
