@@ -4,7 +4,7 @@ from typing import Self
 from pydantic import BaseModel, Field, model_validator, field_validator, ConfigDict
 
 
-class ParamsSpec(BaseModel):
+class ActionSpecParams(BaseModel):
     """
     Parameters for the DeploySpec.  This inclukdes tempalte locations and CloudFormation parameters.
 
@@ -159,15 +159,14 @@ class ActionSpec(BaseModel):
     type: str = Field(
         description="The action type.  This is the name of the action spec (e.g. create_user, create_stack, etc.)",
     )
-    action: str | None = Field(
-        None,
+    action: str = Field(
         description="The action to perform as defined by the execute.actionlib module",
     )
     scope: str | None = Field(
         None,
         description="The scope of the action (optional). Examples: portfolio, app, branch, or build.",
     )
-    params: ParamsSpec = Field(
+    params: ActionSpecParams = Field(
         description="The parameters for the action.  This is a dictionary of parameters that the action requires",
     )
     depends_on: list[str] | None = Field(

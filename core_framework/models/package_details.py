@@ -43,51 +43,41 @@ class PackageDetails(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    BucketRegion: str | None = Field(
-        None, description="The region of the bucket woere packages are stored."
+    BucketRegion: str = Field(
+        description="The region of the bucket woere packages are stored.",
+        default=util.get_bucket_region(),
     )
-    BucketName: str | None = Field(
-        None, description="The name of the bucket where packages are stored."
+    BucketName: str = Field(
+        description="The name of the bucket where packages are stored.",
+        default=util.get_bucket_name(),
     )
+
     Key: str | None = Field(
         None,
         description="Key where the package is stored. Usually stored in packages/**",
     )
+
     Mode: str = Field(
-        V_SERVICE,
         description="The mode of the package.  Either 'local' or 'service'.  defaults to 'service'",
+        default=V_SERVICE,
     )
     AppPath: str = Field(
-        V_EMPTY,
         description="The path to the application.  Used for local mode only.  Defaults to the current directory.",
+        default=V_EMPTY,
     )
     CompileMode: str = Field(
-        V_FULL,
         description="The compile mode of the package.  Either 'full' or 'incremental'.  Defaults to 'full'",
+        default=V_FULL,
     )
     DeploySpec: DeploySpecClass | None = Field(
-        None,
         description="DeploySpec is optional because it's added later by the lambda handlers",
+        default=None,
     )
-    TempDir: str | None = Field(
-        None,
+    TempDir: str = Field(
         description="The temporary directory to use for processing the package.  Defaults to the system temp directory.",
+        default=tempfile.gettempdir(),
     )
-    VersionId: str | None = Field(
-        None, description="The version id of the package file (on S3)."
-    )
-
-    @model_validator(mode="before")
-    def validate_packages_before(cls, values: dict) -> dict:
-        if not values.get("BucketRegion"):
-            values["BucketRegion"] = util.get_bucket_region()
-        if not values.get("BucketName"):
-            values["BucketName"] = util.get_bucket_name(util.get_client())
-        if not values.get("TempDir"):
-            values["TempDir"] = cls.get_tempdir()
-        if not values.get("Mode"):
-            values["Mode"] = V_LOCAL if util.is_local_mode() else V_SERVICE
-        return values
+    VersionId: str | None = Field(description="The version id of the package file (on S3).", default=None)
 
     @classmethod
     def get_tempdir(cls) -> str:

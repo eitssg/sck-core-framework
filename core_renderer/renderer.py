@@ -102,7 +102,7 @@ class Jinja2Renderer:
 
             # Load and render the files
             log.debug(
-                f"Rendering file '{renderer_path}' with short_path '{short_path}'"
+                "Rendering file '{}' with short_path '{}'", renderer_path, short_path
             )
 
             rendered_template = self.render_file(renderer_path, context)
