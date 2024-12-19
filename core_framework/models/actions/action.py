@@ -70,8 +70,8 @@ class Action(BaseModel):
         description="A list of labels of actions that this action depends on",
     )
 
-    Params: ActionParams | None = Field(
-        None,
+    Params: ActionParams = Field(
+        ...,
         description="The parameters for the action.  See :class:`ActionParams` for more information on the parameters for the action",
     )
 

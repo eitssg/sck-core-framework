@@ -78,33 +78,35 @@ class ActionParams(BaseModel):
         description="The account to use for the action.  You MUST specify the account",
     )
     StackName: str | None = Field(
-        None,
         description="The name of the stack or action reference.  Not every action deploys "
         "a CloudFromation stack, so this is optional",
+        default=None,
     )
     Region: str | None = Field(
-        None,
         description="The region to use for the action in the account.  Some actions are global and don't have regins.",
+        default=None,
     )
 
     TemplateUrl: str | None = Field(
-        None,
         description="The URL of the CloudFormation template to use for the action.  Some actions don't require a template",
+        default=None,
     )
     StackParameters: dict | None = Field(
-        None,
         description="The parameters to pass to the CloudFormation stack.  Remember, you can use Jinja. "
         "See the state documentation for variables reference.",
+        default=None,
     )
     Tags: dict | None = Field(
-        None,
         description="The tags to apply to the CloudFormation stack Resources and to the stack itself",
+        default=None,
     )
     StackPolicy: dict | None = Field(
-        None,
         description="The policy statments that can be used within the Action for its own purpose",
+        default=None,
     )
-    UserName: str | None = Field(None, description="The user name to create/delete")
+    UserName: str | None = Field(
+        description="The user name to create/delete", default=None
+    )
 
     @model_serializer
     def ser_model(self) -> OrderedDict:

@@ -74,14 +74,14 @@ def test_info(capsys, mock_format_time):
     mock_format_time.return_value = "2021-07-01 12:00:00"
 
     log.info(
-        "Status: %s complete (%s running, %s runnable, %s pending, %s completed, %s incomplete)",
+        "Status: {} complete ({} running, {} runnable, {} pending, {} completed, {} incomplete)",
         "10%",
         5,
         10,
         3,
         2,
         1,
-        {"RunningActions": ["boo1"], "RunnableActions": ["boo2"]},
+        details={"RunningActions": ["boo1"], "RunnableActions": ["boo2"]},
     )
 
     captured = capsys.readouterr()
@@ -99,9 +99,9 @@ def test_status_with_format(capsys, mock_format_time):
 
     log.status(
         "RELEASE_IN_PROGRESS",
-        "Build release %s",
+        "Build release {}",
         "started",
-        {"item": 3, "blanked": True},
+        details={"item": 3, "blanked": True},
     )
 
     captured = capsys.readouterr()
@@ -131,12 +131,41 @@ def test_debug(capsys, mock_format_time):
     status = "COMPLETED"
     message = "the message is completed"
 
-    log.debug("(API) Setting status of %s '%s' to %s (%s)", scope, prn, status, message)
+    log.debug("(API) Setting status of {} '{}' to {} ({})", scope, prn, status, message)
 
     captured = capsys.readouterr()
     assert (
         captured.out
         == "2021-07-01 12:00:00 [prn:core:network:master:1] [DEBUG] (API) Setting status of build 'myprn' to COMPLETED (the message is completed)\n"
+    )
+
+
+def test_level_change(capsys, mock_format_time):
+
+    mock_format_time.return_value = "2021-07-01 12:00:00"
+
+    log.setup("my_test")
+
+    log.setLevel("INFO")
+
+    log.info("This is my test log message", details={"key": "value"})
+    captured = capsys.readouterr()
+    assert (
+        captured.out
+        == "2021-07-01 12:00:00 [my_test] [INFO] This is my test log message\n    key: value\n"
+    )
+
+    log.debug("This should be skipped")
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
+    log.setLevel("DEBUG")
+
+    log.debug("The second round of log messages", details={"key": "value"})
+    captured = capsys.readouterr()
+    assert (
+        captured.out
+        == "2021-07-01 12:00:00 [my_test] [DEBUG] The second round of log messages\n    key: value\n"
     )
 
 

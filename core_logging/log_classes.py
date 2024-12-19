@@ -370,20 +370,17 @@ class CoreLoggerHandler(logging.Handler):
         Returns:
             tuple: A tuple of the message and a list of unused values.
         """
-        if message and args and len(args) > 0:
-            unused_values = []
-            for value in args:
-                if "%s" in message:
-                    message = (
-                        message.replace("%s", str(value), 1)
-                        if value
-                        else message.replace("%s", "", 1)
-                    )
-                else:
-                    unused_values.append(value)
-        else:
-            unused_values = list(args)
-        return message, tuple(unused_values)
+
+        # Count the number of "{}" strings in the message
+        count = message.count("{}")
+        # If there are more "{}" strings than there are values in the args tuple, then we need to add empty strings to args
+        if count > len(args):
+            args = args + tuple([""] * (count - len(args)))
+        # Replace the "{}" strings with the values in the args tuple
+        message = message.format(*args)
+        # Return the message and any unused values in the args tuple
+        unused_values = args[count:]
+        return message, unused_values
 
     @staticmethod
     def add_details(record: logging.LogRecord, data: dict) -> None:
@@ -439,8 +436,6 @@ class CoreLogger(logging.Logger):
             level (_type_, optional): _description_. Defaults to NOTSET.
         """
         super().__init__(name, level=level)
-        self.propagate = False
-        self.handlers = [CoreLoggerHandler(name, level=level)]
 
     def setLevel(self, level: int | str) -> None:
         """
@@ -467,8 +462,8 @@ class CoreLogger(logging.Logger):
 
             .. code-block:: python
 
-                log.debug("This is a %s message", "test")
-                log.debug("This is a %s message", "test", details={"key": "value"}, identity="my-identity")
+                log.debug("This is a {} message", "test")
+                log.debug("This is a {} message", "test", details={"key": "value"}, identity="my-identity")
 
         Args:
             level (int): The loglevel

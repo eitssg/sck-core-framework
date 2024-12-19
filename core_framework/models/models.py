@@ -22,7 +22,7 @@ from .task_payload import TaskPayload
 def get_artefact_key(
     deployment_details: DeploymentDetails,
     name: str | None = None,
-    scope: str = SCOPE_BUILD,
+    scope: str | None = None,
 ) -> str:
     """
     Helper function to get the artefacts key in the core automation s3 bucket for the deployment details.
@@ -41,13 +41,13 @@ def get_artefact_key(
     Return:
         str: The path to the artefacts in the core automation s3 bucket
     """
-    return get_artefacts_path(deployment_details, name, scope, True)
+    return get_artefacts_path(deployment_details, name, scope or SCOPE_BUILD, True)
 
 
 def get_artefacts_path(
     deployment_details: DeploymentDetails,
     name: str | None = None,
-    scope: str = SCOPE_BUILD,
+    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -64,7 +64,7 @@ def get_artefacts_path(
     Return:
         str | None: The path to the artefacts in the core automation s3 bucket
     """
-    return get_object_key(deployment_details, OBJ_ARTEFACTS, name, scope, s3)
+    return get_object_key(deployment_details, OBJ_ARTEFACTS, name, scope or SCOPE_BUILD, s3)
 
 
 def get_packages_path(
@@ -117,7 +117,7 @@ def get_object_key(
     deployment_details: DeploymentDetails,
     object_type: str,
     name: str | None = None,
-    deployment_scope: str | None = None,
+    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -147,18 +147,18 @@ def get_object_key(
     build = build.lower() if build else V_EMPTY
 
     # Get the deployment scope if not overriden in parameters
-    if not deployment_scope:
-        deployment_scope = deployment_details.Scope
+    if not scope:
+        scope = deployment_details.Scope
 
     separator = "/" if s3 else os.path.sep
 
-    if deployment_scope == SCOPE_PORTFOLIO and portfolio:
+    if scope == SCOPE_PORTFOLIO and portfolio:
         key = separator.join([object_type, portfolio])
-    elif deployment_scope == SCOPE_APP and portfolio and app:
+    elif scope == SCOPE_APP and portfolio and app:
         key = separator.join([object_type, portfolio, app])
-    elif deployment_scope == SCOPE_BRANCH and portfolio and app and branch:
+    elif scope == SCOPE_BRANCH and portfolio and app and branch:
         key = separator.join([object_type, portfolio, app, branch])
-    elif deployment_scope == SCOPE_BUILD and portfolio and app and branch and build:
+    elif scope == SCOPE_BUILD and portfolio and app and branch and build:
         key = separator.join([object_type, portfolio, app, branch, build])
     else:
         key = object_type

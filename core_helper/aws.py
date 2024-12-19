@@ -120,7 +120,7 @@ def login_to_aws(auth: dict[str, str], role: str) -> dict[str, str] | None:
         )
 
     except ClientError as e:
-        log.error("Failed to get identity", e)
+        log.error("Failed to get identity: {}", e)
         return None
 
     return result["Credentials"]
@@ -182,7 +182,7 @@ def assume_role(role: str | None = None) -> dict[str, str] | None:
 
         try:
             # Assume / re-assume the role to get new credentials
-            log.debug("Assuming IAM Role (role: {})".format(role))
+            log.debug("Assuming IAM Role (role: {})", role)
 
             client = session.client(
                 "sts",
@@ -197,7 +197,7 @@ def assume_role(role: str | None = None) -> dict[str, str] | None:
             __credentials[role] = sts_response["Credentials"]
 
         except ClientError as e:
-            log.error(f"Failed to assume role {role}: {e}")
+            log.error("Failed to assume role {}: {}", role, e)
             __credentials[role] = get_session_credentials()
 
     return __credentials[role]
@@ -217,7 +217,7 @@ def get_identity() -> dict[str, str] | None:
             "Arn": response["Arn"],
         }
     except ClientError as e:
-        log.error("Failed to get identity", str(e))
+        log.error("Failed to get identity: {}", e)
         return None
 
 
@@ -354,7 +354,9 @@ def invoke_lambda(
     region = arn.split(":")[3]
     client = lambda_client(region, role)
 
-    log.trace("Invoking Lambda", {"FunctionName": arn, "Payload": request_payload})
+    log.trace(
+        "Invoking Lambda", details={"FunctionName": arn, "Payload": request_payload}
+    )
 
     try:
 
@@ -362,7 +364,9 @@ def invoke_lambda(
         response = client.invoke(FunctionName=arn, Payload=request)
 
     except Exception as e:
-        log.warn("Failed to invoke FunctionName={}, e={}".format(arn, e))
+
+        log.warn("Failed to invoke FunctionName={}, e={}", arn, e)
+
         return {
             TR_STATUS: "error",
             TR_RESPONSE: "Failed to invoke Lambda - {}".format(e),
@@ -376,32 +380,36 @@ def invoke_lambda(
 
     response_payload = util.from_json(decoded_data) if decoded_data else None
 
-    function_error = (
-        response.get("FunctionError", None) if "FunctionError" in response else None
-    )
+    function_error: str | None = response.get("FunctionError", None)
 
     # Build the detaisl for the log message
-    details = {"StatusCode": status_code, "Payload": response_payload}
-    if function_error:
+    details: dict[str, Any] = {"StatusCode": status_code, "Payload": response_payload}
+
+    if function_error is not None:
         details["FunctionError"] = function_error
+
     # Log the details
-    log.trace("Lambda invoked response: ", details)
+    log.trace("Lambda invoked response: ", details=details)
 
     if status_code < 200 or status_code >= 300:
-        log.error("Lambda invocation failed (status code {})".format(status_code))
+        log.error("Lambda invocation failed (status code {})", status_code)
         status = "error"
+
     elif function_error is not None:
         log.error(
-            "The invoked Lambda encountered an error ({})".format(function_error),
-            response_payload,
+            "The invoked Lambda encountered an error ({})",
+            function_error,
+            details=response_payload,
         )
         status = "error"
+
     else:
         status = "ok"
 
     log.debug(
-        f"Invoked Lambda: status ({status})",
-        {"FunctionName": arn, "Payload": response_payload},
+        "Invoked Lambda: status ({})",
+        status,
+        details={"FunctionName": arn, "Payload": response_payload},
     )
 
     return {TR_STATUS: status, TR_RESPONSE: response_payload}
@@ -595,5 +603,5 @@ def revoke_assume_role_permission(user_name: str, role_name: str, account_id: st
             RoleName=role_name, PolicyDocument=util.to_json(trust_policy)
         )
     except Exception as e:
-        log.error(f"Error updating trust policy for role {role_name}: {e}")
+        log.error("Error updating trust policy for role {}: {}", role_name, e)
         return False
