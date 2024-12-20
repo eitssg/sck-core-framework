@@ -20,13 +20,6 @@ from core_framework.constants import (
     SCOPE_PORTFOLIO,
 )
 
-from core_framework.models import (
-    TaskPayload,
-    DeploymentDetails,
-    PackageDetails,
-    DeploySpec,
-)
-
 
 @pytest.fixture
 def mock_stdout():
@@ -222,7 +215,7 @@ def test_get_artefacts_path():
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
         automation_type="deployspec",
     )
@@ -292,7 +285,7 @@ def test_get_packages_path():
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
         automation_type="deployspec",
     )
@@ -350,7 +343,7 @@ def test_get_files_path():
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
         automation_type="deployspec",
     )
@@ -407,7 +400,7 @@ def test_get_artefact_key():
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
     )
 
@@ -471,7 +464,7 @@ def test_generate_deployment_details_from_stack():
         "branch": "main_branch",
         "build": "build-123",
         "environment": "dev",
-        "datacenter": "sin",
+        "data_center": "sin",
         "component": "example_component",
         "automation_type": "deployspec",
         "stacks": [

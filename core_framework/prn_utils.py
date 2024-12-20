@@ -86,7 +86,7 @@ def extract_prn(obj: Any) -> str:
         str: the prn value
     """
     if isinstance(obj, dict):
-        prn = obj[PRN]
+        prn = obj.get(PRN, "")
     elif isinstance(obj, str):
         return obj
     elif hasattr(obj, PRN):

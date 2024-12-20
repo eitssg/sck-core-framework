@@ -1,5 +1,5 @@
 """
-This module contains the Action class which provides a model for how Tasks or Actions are to
+This module contains the AcActionDefinitiontion class which provides a model for how Tasks or Actions are to
 be provided to the core-execute library.
 """
 
@@ -38,9 +38,9 @@ SCOPE = "Scope"
 """
 
 
-class Action(BaseModel):
+class ActionDefinition(BaseModel):
     """
-    The Action class defines an "action" or "task" that Core Automation will perform when deploying infrastructure to your Cloud.
+    The ActionDefinition class defines an "action" or "task" that Core Automation will perform when deploying infrastructure to your Cloud.
 
     Tasks could include adding tags to resources, ajdusting DNS entries, etc.  Tasks are excuted by core-execute
     and are defined in the core-execute.actionlib library.
@@ -78,6 +78,25 @@ class Action(BaseModel):
     Scope: str = Field(
         ...,
         description="The scope of the action.  This is used to group actions together. Project/Portfolio, App, Branch, or Build",
+    )
+
+    Condition: str = Field(description="Condition clauses", default="True")
+
+    Before: list = Field(
+        description="Before is a list of actions that should be perfomred before this one",
+        default=[],
+    )
+    After: list = Field(
+        description="After is a list of actions that should be perfomred after this one",
+        default=[],
+    )
+    SaveOutputs: bool = Field(
+        description="SaveOutputs is a flag to save the outputs of the action",
+        default=False,
+    )
+    LifecycleHooks: list = Field(
+        description="Lifecycle Hooks",
+        default=[],
     )
 
     @model_serializer

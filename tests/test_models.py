@@ -4,7 +4,7 @@ import os
 import yaml
 
 from core_framework.models import (
-    Action,
+    ActionDefinition,
     TaskPayload,
     DeploymentDetails,
     DeploySpec,
@@ -33,7 +33,7 @@ def runtime_arguments():
         "mode": "local",
         "scope": "portfolio",
         "environment": "dev",
-        "datacenter": "us-east-1",
+        "data_center": "us-east-1",
         "bucket_region": "specified_region",
     }
 
@@ -65,7 +65,7 @@ def test_action_model():
         "Scope": "build",
     }
 
-    action = Action(**sample_action)
+    action = ActionDefinition(**sample_action)
 
     assert action is not None
 
@@ -152,8 +152,8 @@ def test_deploy_spec_model(deployspec_sample):
 
     assert action_spec is not None
 
-    assert action_spec.label == 'test1-create-user'
-    assert action_spec.action == 'AWS::CreateUser'
+    assert action_spec.label == "test1-create-user"
+    assert action_spec.action == "AWS::CreateUser"
 
     deploy_spec = DeploySpec(actions=deployspec_sample)
 
@@ -163,7 +163,7 @@ def test_deploy_spec_model(deployspec_sample):
 
     assert len(deploy_spec.action_specs) == 6
 
-    assert deploy_spec.action_specs[5].label == 'test1-delete-change-set'
+    assert deploy_spec.action_specs[5].label == "test1-delete-change-set"
 
 
 def test_action_spec_model(deployspec_sample):

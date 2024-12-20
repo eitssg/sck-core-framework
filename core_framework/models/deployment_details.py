@@ -17,6 +17,9 @@ from core_framework.constants import (
     ENV_APP,
     ENV_BRANCH,
     ENV_BUILD,
+    ENV_CLIENT,
+    ENV_CLIENT_NAME,
+    V_EMPTY,
 )
 
 
@@ -63,7 +66,7 @@ class DeploymentDetails(BaseModel):
 
     Client: str = Field(
         description="Client is the name of the client or customer (installation or AWS Organizatoion)",
-        default="unknown",
+        default="",
     )
 
     Portfolio: str = Field(description="Portfolio name is the BizApp name")
@@ -125,6 +128,11 @@ class DeploymentDetails(BaseModel):
         default=None,
     )
 
+    DeliveredBy: str | None = Field(
+        description="DeliveredBy is the name of the person or system that delivered the deployment.",
+        default=None,
+    )
+
     def get_portfolio_prn(self) -> str:
         return f"prn:{self.Portfolio}".lower()
 
@@ -139,6 +147,15 @@ class DeploymentDetails(BaseModel):
 
     def get_component_prn(self) -> str:
         return f"prn:{self.Portfolio}:{self.App}:{self.BranchShortName}:{self.Build}:{self.Component}".lower()
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_incoming(cls, values: dict) -> dict:
+        if "Client" not in values:
+            values["Client"] = os.getenv(
+                ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, V_EMPTY)
+            )
+        return values
 
     @model_validator(mode="after")
     def check_conditional_fields(self) -> Self:
@@ -222,10 +239,11 @@ class DeploymentDetails(BaseModel):
             Build=build,
             Component=component,
             Environment=kwargs.get("environment", None),
-            DataCenter=kwargs.get("datacenter", None),
+            DataCenter=kwargs.get("data_center", None),
             Scope=scope,
             Tags=kwargs.get("tags", None),
             StackFile=kwargs.get("stack_file", None),
+            DeliveredBy=kwargs.get("delivered_by", None),
         )
 
     # Override
@@ -233,3 +251,55 @@ class DeploymentDetails(BaseModel):
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True
         return super().model_dump(**kwargs)
+
+    def get_object_key(
+        self,
+        object_type: str,
+        name: str | None = None,
+        scope: str | None = None,
+        s3: bool = False,
+    ) -> str:
+        """
+        Get the object path from the payload's deployment details. This will use os delimiters '/' for linux or SR
+        or '\\' for Windows.  And if you need s3 keys, make sure that s3 parameter is set to True to for / delimiter.
+
+        Args:
+            deployment_details (dict): The deployment details from the task payload
+            object_type (str): The type of object to get the path for.  (files, packages, artefacts)
+            name (str, optional): The name of the object to get the path for. (default: None)
+            deployment_scope (str, optional): The scope of the object. (default: SCOPE_BUILD)
+            s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
+
+        Return:
+            str: The path to the object in the core automation s3 bucket
+        """
+        portfolio = self.Portfolio or V_EMPTY
+        portfolio = portfolio.lower()
+
+        app = self.App or V_EMPTY
+        app = app.lower()
+
+        branch = self.BranchShortName or V_EMPTY
+        branch = branch.lower()
+
+        build = self.Build or V_EMPTY
+        build = build.lower()
+
+        # Get the deployment scope if not overriden in parameters
+        if not scope:
+            scope = self.Scope
+
+        separator = "/" if s3 else os.path.sep
+
+        if scope == SCOPE_PORTFOLIO and portfolio:
+            key = separator.join([object_type, portfolio])
+        elif scope == SCOPE_APP and portfolio and app:
+            key = separator.join([object_type, portfolio, app])
+        elif scope == SCOPE_BRANCH and portfolio and app and branch:
+            key = separator.join([object_type, portfolio, app, branch])
+        elif scope == SCOPE_BUILD and portfolio and app and branch and build:
+            key = separator.join([object_type, portfolio, app, branch, build])
+        else:
+            key = object_type
+
+        return key if name is None else f"{key}{separator}{name}"
