@@ -27,7 +27,7 @@ logging.basicConfig(
     level=_log_level,
     format="%(message)s",
     datefmt=DEFAULT_DATE_FORMAT,
-    handlers=[CoreLoggerHandler('root', level=_log_level)],
+    handlers=[CoreLoggerHandler("root", level=_log_level)],
 )
 
 # Please note that Lambda has a time imit nd when it restarts, thread local variables are reset.

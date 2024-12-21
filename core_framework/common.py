@@ -42,6 +42,7 @@ from .constants import (
     ENV_MASTER_REGION,
     ENV_ENVIRONMENT,
     ENV_SCOPE,  # An environment variable holding a prefix for ALL automation objects.  Typically "" or None else your knowledge is awesome.
+    ENV_STORE_VOLUME,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
@@ -52,6 +53,9 @@ from .constants import (
     V_DEPLOYSPEC_FILE_JSON,
     V_FALSE,
     V_TRUE,
+    V_LOCAL,
+    V_SERVICE,
+    V_EMPTY,
     # Dpeloyment Scopes (NOT Automation SCOPE.  That's different!  ENV_SCOPE is a "prefix" to all automation objects)
     SCOPE_PORTFOLIO,
     SCOPE_APP,
@@ -183,7 +187,7 @@ def split_branch(
     branch: str, default_region_alias: str | None = None
 ) -> tuple[str, str | None]:
     """
-    Splits the branch into the environment and datacenter parts.  If the data center is not specified,
+    Splits the branch into the environment and data_center parts.  If the data center is not specified,
     the DEFAULT_DATA_CENTER is used.  Currently, this is the value "sin" to identify the Singapore data center.
 
     Args:
@@ -401,6 +405,44 @@ def is_local_mode() -> bool:
         bool: True of the mode is local
     """
     return os.getenv(ENV_LOCAL_MODE, V_FALSE).lower() == V_TRUE
+
+
+def get_storage_volume() -> str:
+    """
+    If you enable the envoronment variable LOCAL_MODE=true, you can specify a local storage volume for the core automation
+    objects.  This is specified in the environment variable STORE_VOLUME.  If not specified, the current working directory
+    is used.
+
+    When using docker, this is your volume mount point.
+
+        Examples.
+
+        .. code-block:: bash
+
+            export LOCAL_MODE=true
+            export STORE_VOLUME=/mnt/data/core
+
+    Then the engine will use /mnt/data/core/artefacts/**, /mnt/data/core/packages/**, /mnt/data/core/files/** as
+    the storage locations.
+
+    setting LOCAL_MODE=false will store artefacts on S3.
+
+    Returns:
+        str: Storage Volumen Path.
+    """
+    if not is_local_mode():
+        return V_EMPTY
+    return os.getenv(ENV_STORE_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
+
+
+def get_mode() -> str:
+    """
+    Get the mode from the environment variable ENV_LOCAL_MODE.  The default value is "service".
+
+    Returns:
+        str: The mode of the deployment
+    """
+    return V_LOCAL if is_local_mode() else V_SERVICE
 
 
 def get_client() -> str | None:
@@ -660,7 +702,7 @@ def get_environment() -> str:
     return os.getenv(ENV_ENVIRONMENT, "prod")
 
 
-def to_json(data: dict | str) -> str:
+def to_json(data: dict | str | None) -> str:
     """
     The Json serializer for the data object.  This will serialize datetime objects and other objects that are not
     serializable by the default json serializer.
@@ -671,6 +713,8 @@ def to_json(data: dict | str) -> str:
     Returns:
         str: JSON string
     """
+    if data is None:
+        return V_EMPTY
     return json.dumps(data, default=custom_serializer)
 
 

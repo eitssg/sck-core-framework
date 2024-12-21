@@ -1,8 +1,9 @@
 """ This module contains the PackageDetails class used to track where pacakge.zip is located on S3 for a deployment """
+from typing import Any
 
 import os
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 import tempfile
 
@@ -45,25 +46,15 @@ class PackageDetails(BaseModel):
 
     BucketRegion: str = Field(
         description="The region of the bucket woere packages are stored.",
-        default="us-east-1",
+        default=V_EMPTY,
     )
     BucketName: str = Field(
         description="The name of the bucket where packages are stored.",
-        default="core-automation-master",
-    )
-
-    Key: str | None = Field(
-        None,
-        description="Key where the package is stored. Usually stored in packages/**",
-    )
-
-    Mode: str = Field(
-        description="The mode of the package.  Either 'local' or 'service'.  defaults to 'service'",
-        default=V_SERVICE,
-    )
-    AppPath: str = Field(
-        description="The path to the application.  Used for local mode only.  Defaults to the current directory.",
         default=V_EMPTY,
+    )
+    Key: str | None = Field(
+        description="Key where the package is stored. Usually stored in packages/**",
+        default=None,
     )
     CompileMode: str = Field(
         description="The compile mode of the package.  Either 'full' or 'incremental'.  Defaults to 'full'",
@@ -75,9 +66,45 @@ class PackageDetails(BaseModel):
     )
     TempDir: str = Field(
         description="The temporary directory to use for processing the package.  Defaults to the system temp directory.",
-        default=tempfile.gettempdir(),
+        default=V_EMPTY,
     )
-    VersionId: str | None = Field(description="The version id of the package file (on S3).", default=None)
+    VersionId: str | None = Field(
+        description="The version id of the package file (on S3).", default=None
+    )
+
+    @property
+    def Mode(self) -> str:
+        """ The mode of the application.  Either local or service """
+        return V_LOCAL if util.is_local_mode() else V_SERVICE
+
+    @property
+    def AppPath(self) -> str:
+        """ The storage volume for the application. Used for local mode only else Blank  Defaults to the current directory. """
+        return util.get_storage_volume()
+
+    @model_validator(mode="before")
+    def validate_artefacts_before(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            client = values.get("Client", util.get_client())
+            if not values.get("BucketName"):
+                values["BucketName"] = util.get_bucket_name(client)
+            if not values.get("BucketRegion"):
+                values["BucketRegion"] = util.get_bucket_region()
+        return values
+
+    @model_validator(mode="after")
+    def validate(self):
+        if not self.Mode:
+            self.Mode = V_LOCAL if util.is_local_mode() else V_SERVICE
+        if not self.TempDir:
+            self.TempDir = self.get_tempdir()
+        if self.Mode == V_LOCAL and not self.AppPath:
+            self.AppPath = os.path.join(os.getcwd(), V_LOCAL)
+
+        return self
+
+    def set_key(self, dd: DeploymentDetailsClass, filename: str):
+        self.Key = dd.get_object_key(OBJ_PACKAGES, filename, s3=self.Mode != V_LOCAL)
 
     @classmethod
     def get_tempdir(cls) -> str:
@@ -86,17 +113,13 @@ class PackageDetails(BaseModel):
     @staticmethod
     def from_arguments(**kwargs):
 
-        mode = kwargs.get("mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
-
         key = kwargs.get("key", None)
         if not key:
-            dd = kwargs.get("deployment_details", None)
+            dd = kwargs.get("deployment_details", kwargs)
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = util.get_object_key(
-                    dd, OBJ_PACKAGES, None, dd.Scope, mode != V_LOCAL
-                )
+                key = dd.get_object_key(OBJ_PACKAGES, s3=not util.is_local_mode())
 
         client = kwargs.get("client", util.get_client())
         bucket_name = kwargs.get("bucket_name", util.get_bucket_name(client))
@@ -113,10 +136,8 @@ class PackageDetails(BaseModel):
             deployspec = None
 
         app_path = kwargs.get("app_path", None)
-        if not app_path:
-            app_path = (
-                os.path.join(os.getcwd(), V_LOCAL) if mode == V_LOCAL else V_EMPTY
-            )
+        if not app_path and util.is_local_mode():
+            app_path = util.get_storage_volume()
 
         compile_mode = kwargs.get("compile_mode", V_FULL)
 
@@ -126,7 +147,6 @@ class PackageDetails(BaseModel):
             BucketName=bucket_name,
             BucketRegion=bucket_region,
             Key=key,
-            Mode=mode,
             AppPath=app_path,
             CompileMode=compile_mode,
             TempDir=temp_dir,

@@ -249,6 +249,8 @@ TAG_JIRA_CODE = "JiraCode"
 """ \\- "JiraCode" """
 TAG_OWNER = "Owner"
 """ \\- "Owner" """
+TAG_CONTACTS = "Contacts"
+""" \\- "Contacts" """
 
 # Package Object
 PKG_BUCKET_REGION = "BucketRegion"
@@ -448,6 +450,8 @@ ENV_ARTEFACT_BUCKET_NAME = "ARTEFACT_BUCKET_NAME"
 """ \\- "ARTEFACT_BUCKET_NAME" """
 ENV_LOG_AS_JSON = "LOG_AS_JSON"
 """ \\- "LOG_AS_JSON" """
+ENV_STORE_VOLUME = "STORE_VOLUME"
+""" \\- "STORE_VOLUME" """
 
 # Jina2 Context Fitler Constants
 CTX_TAGS = "tags"

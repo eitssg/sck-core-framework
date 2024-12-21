@@ -1,11 +1,11 @@
-""" Defines the class ActionDetails that provide information about where Action files are stored in S3 (or local filesystem). """
+""" Defines the class ActionDetails that provide information about where ActionDefinition files are stored in S3 (or local filesystem). """
 
 from typing import Any
 import tempfile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import core_framework as util
-from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE
+from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
 from .deployment_details import DeploymentDetails as DeploymentDetailsClass
 
 
@@ -31,14 +31,26 @@ class ActionDetails(BaseModel):
         ..., description="The region of the S3 bucket where the action file is stored"
     )
     Key: str = Field(
-        "artefacts",
         description="The key prefix where the ation file is stored in s3.  Usually in the artefacts folder",
+        default=V_EMPTY,
     )
-    VersionId: str | None = Field(None, description="The version of the action file")
+    VersionId: str | None = Field(
+        description="The version of the action file", default=None
+    )
     ContentType: str | None = Field(
-        None,
         description="The content type of the action file such as 'application/json' or 'application/x-yaml'",
+        default=None,
     )
+
+    @property
+    def Mode(self) -> str:
+        """ The mode of the application.  Either local or service """
+        return V_LOCAL if util.is_local_mode() else V_SERVICE
+
+    @property
+    def AppPath(self) -> str:
+        """ The storage volume for the application. Used for local mode only else Blank  Defaults to the current directory. """
+        return util.get_storage_volume()
 
     @model_validator(mode="before")
     def validate_artefacts_before(cls, values: Any) -> Any:
@@ -55,12 +67,15 @@ class ActionDetails(BaseModel):
         tmpdir = tempfile.mkdtemp(prefix="core-")
         return tmpdir
 
+    def set_key(self, dd: DeploymentDetailsClass, filename: str):
+        self.Key = dd.get_object_key(
+            OBJ_ARTEFACTS, filename, s3=not util.is_local_mode()
+        )
+
     @staticmethod
     def from_arguments(**kwargs):
 
         client = kwargs.get("client", util.get_client())
-
-        mode = kwargs.get("mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
 
         key = kwargs.get("key", None)
         if not key:
@@ -68,9 +83,7 @@ class ActionDetails(BaseModel):
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = util.get_object_key(
-                    dd, OBJ_ARTEFACTS, None, dd.Scope, mode != V_LOCAL
-                )
+                key = dd.get_object_key(OBJ_ARTEFACTS, s3=not util.is_local_mode())
 
         bucket_name = kwargs.get("bucket_name", util.get_artefact_bucket_name(client))
         bucket_region = kwargs.get("bucket_region", util.get_artefact_bucket_region())

@@ -20,13 +20,6 @@ from core_framework.constants import (
     SCOPE_PORTFOLIO,
 )
 
-from core_framework.models import (
-    TaskPayload,
-    DeploymentDetails,
-    PackageDetails,
-    DeploySpec,
-)
-
 
 @pytest.fixture
 def mock_stdout():
@@ -222,7 +215,7 @@ def test_get_artefacts_path():
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
         automation_type="deployspec",
     )
@@ -292,7 +285,7 @@ def test_get_packages_path():
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
         automation_type="deployspec",
     )
@@ -350,7 +343,7 @@ def test_get_files_path():
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
         automation_type="deployspec",
     )
@@ -400,20 +393,21 @@ def test_get_files_path():
 
 def test_get_artefact_key():
 
-    generate_deployment = util.generate_deployment_details(
+    deployment_details = util.generate_deployment_details(
         client="example_client",
         portfolio="example_portfolio",
         app="example_app",
         branch="main_branch",
         build="build-123",
         environment="dev",
-        datacenter="sin",
+        data_center="sin",
         component="example_component",
     )
 
     name = "artefact_name"
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_BUILD)
+    deployment_details.Scope = SCOPE_BUILD
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [
@@ -426,7 +420,8 @@ def test_get_artefact_key():
         ]
     )
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_BRANCH)
+    deployment_details.Scope = SCOPE_BRANCH
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [
@@ -438,7 +433,8 @@ def test_get_artefact_key():
         ]
     )
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_APP)
+    deployment_details.Scope = SCOPE_APP
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [
@@ -449,7 +445,8 @@ def test_get_artefact_key():
         ]
     )
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_PORTFOLIO)
+    deployment_details.Scope = SCOPE_PORTFOLIO
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [
@@ -471,7 +468,7 @@ def test_generate_deployment_details_from_stack():
         "branch": "main_branch",
         "build": "build-123",
         "environment": "dev",
-        "datacenter": "sin",
+        "data_center": "sin",
         "component": "example_component",
         "automation_type": "deployspec",
         "stacks": [

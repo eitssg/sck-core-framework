@@ -1,11 +1,12 @@
 """ This module provides the TaskPaylaod class that is used throughout Core-Automation to identify the operating Task to perform. """
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 from core_framework.constants import (
     V_DEPLOYSPEC,
     V_PIPELINE,
+    V_EMPTY,
 )
 
 from .deployment_details import DeploymentDetails as DeploymentDetailsClass
@@ -38,19 +39,20 @@ class TaskPayload(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    Task: str | None = Field(
-        None, description="The task to perform.  See the ACT_ constants in constants.py"
+    Task: str = Field(
+        ..., description="The task to perform.  See the ACT_ constants in constants.py"
     )
     Force: bool = Field(
-        False,
         description=" Force the task to be performed regardless of the state of the deployment",
+        default=False,
     )
     DryRun: bool = Field(
-        False, description="Perform a dry run of the task.  Don't actually do anything."
+        description="Perform a dry run of the task.  Don't actually do anything.",
+        default=False,
     )
-    Identity: str | None = Field(
-        None,
+    Identity: str = Field(
         description="The identity of the user performing the task.  Derrived from DeploymentDetails",
+        default=V_EMPTY,
     )
     DeploymentDetails: DeploymentDetailsClass = Field(
         ..., description="The deployment details such as Portfolio, App, Branch, Build"
@@ -60,17 +62,42 @@ class TaskPayload(BaseModel):
         description="The package details.  Usually stored in packages/**/package.zip",
     )
     Actions: ActionDetailsClass | None = Field(
-        None,
         description="The actions to perform.  Usually stored in artefacts/**/{task}.actions",
+        default=None,
     )
     State: StateDetailsClass | None = Field(
-        None,
         description="The state of the task.  Usually stored in artefacts/**/{task}.state",
+        default=None,
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_model_before(cls, values):
+        if values:
+            if not values.get("DeploymentDetails"):
+                values["DeploymentDetails"] = DeploymentDetailsClass()
+            if not values.get("Package"):
+                values["Package"] = PackageDetailsClass()
+            if not values.get("Actions"):
+                values["Actions"] = ActionDetailsClass()
+            if not values.get("State"):
+                values["State"] = StateDetailsClass()
+        return values
+
+    @model_validator(mode="after")
+    def validate_task(self):
+        if not self.Identity:
+            self.Identity = self.DeploymentDetails.get_identity()
+        if self.Package and not self.Package.Key:
+            self.Package.set_key(self.DeploymentDetails, "package.zip")
+        if self.Actions and not self.Actions.Key:
+            self.Actions.set_key(self.DeploymentDetails, self.Task + ".actions")
+        if self.State and not self.State.Key:
+            self.State.set_key(self.DeploymentDetails, self.Task + ".state")
 
     @property
     def Type(self) -> str:
-        return V_DEPLOYSPEC if self.Package.DeploySpec is not None else V_PIPELINE
+        return V_DEPLOYSPEC if self.Package and self.Package.DeploySpec else V_PIPELINE
 
     @staticmethod
     def from_arguments(**kwargs):
@@ -79,11 +106,11 @@ class TaskPayload(BaseModel):
         if not isinstance(dd, DeploymentDetailsClass):
             dd = DeploymentDetailsClass.from_arguments(**dd)
 
-            # DeplymentDetailsClass is needed for Package/Action/StateDetailsClass
+            # DeplymentDetailsClass is needed for Package/ActionDefinition/StateDetailsClass
             kwargs["deployment_details"] = dd
 
         return TaskPayload(
-            Task=kwargs.get("task"),
+            Task=kwargs.get("task", ""),
             Force=kwargs.get("force", False),
             DryRun=kwargs.get("dry_run", False),
             Identity=kwargs.get("identity", dd.get_identity()),

@@ -18,7 +18,7 @@ class ActionSpecParams(BaseModel):
         parameters (dict): The parameters to pass to the CloudFormation stack
         accounts (list[str]): The account to prform the action on.  Multiple accounts can be specified at one time
         regions (list[str]): The region to use for the action in the account.  Multiple regions can be specified at one time
-        stack_policy (str | dict): The policy statments that can be used within the Action for its own purpose
+        stack_policy (str | dict): The policy statments that can be used within the ActionDefinition for its own purpose
         user_name (str): The user name to perform the action on.  Ussers are special deployspecs in that they are not CloudFormation stacks
         account (str): The account to use for the user action.  This is used for user_name updates
         region (str): The region to use for the user action in the account.  This is used for user_name updates
@@ -54,7 +54,7 @@ class ActionSpecParams(BaseModel):
     )
     stack_policy: str | dict | None = Field(
         alias="stack_policy",
-        description="The policy statments that can be used within the Action for its own purpose",
+        description="The policy statments that can be used within the action for its own purpose",
         default=None,
     )
     user_name: str | None = Field(
@@ -141,7 +141,7 @@ class ActionSpec(BaseModel):
     """
     Defines the ActionSpec that will be used to generate the final Actions to perform for this deployment.
 
-    The "action to perform" is described in the "action" attribute and will ultimately generate an :class:`Action` object.
+    The "action to perform" is described in the "action" attribute and will ultimately generate an :class:`ActionDefinition` object.
 
     Attributes:
         label (str): The label of the action.  A unique identifier for the action spec

@@ -138,6 +138,7 @@ class MagicS3Client:
         """
         self.bucket_name = kwargs.get("bucket_name")
         self.region = kwargs.get("region")
+        self.app_path = kwargs.get("app_path", os.path.join(os.getcwd(), "local"))
 
     def download_fileobj(self, **kwargs) -> dict:
         """
@@ -164,7 +165,8 @@ class MagicS3Client:
             verion_id = None
             error = None
             if Key and Fileobj:
-                with open(Key, "rb") as file:
+                fn = os.path.join(self.app_path, Key)
+                with open(fn, "rb") as file:
                     Fileobj.write(file.read())
                 Fileobj.seek(0)
                 verion_id = "1"
@@ -201,6 +203,7 @@ class MagicS3Client:
         Returns:
             dict: A dictionary that would emulate what S3 would return for a put_object() call
         """
+        error = None
 
         self.bucket = kwargs.get("Bucket")
         Key = kwargs.get("Key")
@@ -211,11 +214,14 @@ class MagicS3Client:
         version_id = None
         if Key and Body:
             try:
-                os.makedirs(Key, exist_ok=True)
+                fn = os.path.join(self.app_path, Key)
+                # get the directory of the file fn
+                dirname = os.path.dirname(fn)
+                os.makedirs(dirname, exist_ok=True)
                 if isinstance(Body, str):
                     Body = Body.encode("utf-8")
                 if isinstance(Body, bytes):
-                    with open(Key, "wb") as file:
+                    with open(fn, "wb") as file:
                         file.write(Body)
                     version_id = "1"
             except Exception as e:

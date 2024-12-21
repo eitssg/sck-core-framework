@@ -470,6 +470,12 @@ class CoreLogger(logging.Logger):
             message (str): The message to log.
             args (tuple): A list of replacement values for the message.
             **kwargs: Elements to add to the log.record as exta data.
+                * exec_info: Exception information
+                * extra: Additional data to add to the log record.
+                * stack_info: Stack information
+                * stacklevel: Stack level
+                * details: Additional details to add to the log record output
+                * message: Explicit message overwriting the message parameter
 
         """
         exc_info = kwargs.pop("exec_info", None)
