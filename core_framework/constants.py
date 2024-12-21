@@ -249,6 +249,8 @@ TAG_JIRA_CODE = "JiraCode"
 """ \\- "JiraCode" """
 TAG_OWNER = "Owner"
 """ \\- "Owner" """
+TAG_CONTACTS = "Contacts"
+""" \\- "Contacts" """
 
 # Package Object
 PKG_BUCKET_REGION = "BucketRegion"

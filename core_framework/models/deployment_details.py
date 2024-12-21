@@ -256,7 +256,6 @@ class DeploymentDetails(BaseModel):
         self,
         object_type: str,
         name: str | None = None,
-        scope: str | None = None,
         s3: bool = False,
     ) -> str:
         """
@@ -264,10 +263,8 @@ class DeploymentDetails(BaseModel):
         or '\\' for Windows.  And if you need s3 keys, make sure that s3 parameter is set to True to for / delimiter.
 
         Args:
-            deployment_details (dict): The deployment details from the task payload
             object_type (str): The type of object to get the path for.  (files, packages, artefacts)
             name (str, optional): The name of the object to get the path for. (default: None)
-            deployment_scope (str, optional): The scope of the object. (default: SCOPE_BUILD)
             s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
 
         Return:
@@ -285,19 +282,15 @@ class DeploymentDetails(BaseModel):
         build = self.Build or V_EMPTY
         build = build.lower()
 
-        # Get the deployment scope if not overriden in parameters
-        if not scope:
-            scope = self.Scope
-
         separator = "/" if s3 else os.path.sep
 
-        if scope == SCOPE_PORTFOLIO and portfolio:
+        if self.Scope == SCOPE_PORTFOLIO and portfolio:
             key = separator.join([object_type, portfolio])
-        elif scope == SCOPE_APP and portfolio and app:
+        elif self.Scope == SCOPE_APP and portfolio and app:
             key = separator.join([object_type, portfolio, app])
-        elif scope == SCOPE_BRANCH and portfolio and app and branch:
+        elif self.Scope == SCOPE_BRANCH and portfolio and app and branch:
             key = separator.join([object_type, portfolio, app, branch])
-        elif scope == SCOPE_BUILD and portfolio and app and branch and build:
+        elif self.Scope == SCOPE_BUILD and portfolio and app and branch and build:
             key = separator.join([object_type, portfolio, app, branch, build])
         else:
             key = object_type

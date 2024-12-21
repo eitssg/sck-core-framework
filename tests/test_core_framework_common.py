@@ -393,7 +393,7 @@ def test_get_files_path():
 
 def test_get_artefact_key():
 
-    generate_deployment = util.generate_deployment_details(
+    deployment_details = util.generate_deployment_details(
         client="example_client",
         portfolio="example_portfolio",
         app="example_app",
@@ -406,7 +406,8 @@ def test_get_artefact_key():
 
     name = "artefact_name"
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_BUILD)
+    deployment_details.Scope = SCOPE_BUILD
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [
@@ -419,7 +420,8 @@ def test_get_artefact_key():
         ]
     )
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_BRANCH)
+    deployment_details.Scope = SCOPE_BRANCH
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [
@@ -431,7 +433,8 @@ def test_get_artefact_key():
         ]
     )
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_APP)
+    deployment_details.Scope = SCOPE_APP
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [
@@ -442,7 +445,8 @@ def test_get_artefact_key():
         ]
     )
 
-    key = util.get_artefact_key(generate_deployment, name, SCOPE_PORTFOLIO)
+    deployment_details.Scope = SCOPE_PORTFOLIO
+    key = util.get_artefact_key(deployment_details, name)
 
     assert key == "/".join(
         [

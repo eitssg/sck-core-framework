@@ -1,7 +1,6 @@
 """ Module to define some common helper functions that assis in the generation of the model class instances. """
 
 from ..constants import (
-    SCOPE_BUILD,
     OBJ_ARTEFACTS,
     OBJ_PACKAGES,
     OBJ_FILES,
@@ -10,13 +9,13 @@ from ..constants import (
 from .deployment_details import DeploymentDetails
 from .package_details import PackageDetails
 from .action_details import ActionDetails
+from .state_details import StateDetails
 from .task_payload import TaskPayload
 
 
 def get_artefact_key(
     deployment_details: DeploymentDetails,
     name: str | None = None,
-    scope: str | None = None,
 ) -> str:
     """
     Helper function to get the artefacts key in the core automation s3 bucket for the deployment details.
@@ -30,18 +29,16 @@ def get_artefact_key(
     Args:
         task_payload (dict): The task payload where the deployment details are stored
         name (str, optional): The name of the artefacts sub-folder, (e.g. /portfolio/app/branch/build-213/<name>)
-        scope (str, optional): The scope of the object. Override deployment details. (defaults: None)
 
     Return:
         str: The path to the artefacts in the core automation s3 bucket
     """
-    return get_artefacts_path(deployment_details, name, scope or SCOPE_BUILD, True)
+    return get_artefacts_path(deployment_details, name, True)
 
 
 def get_artefacts_path(
     deployment_details: DeploymentDetails,
     name: str | None = None,
-    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -50,23 +47,21 @@ def get_artefacts_path(
     Example: artefacts/portfolio/app/branch/build-213/<name>
 
     Args:
+        deployment_details (DeploymentDetails): The deployment details describing the deployment
         name (str, optional): The name of the artefacts folder
         s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
-        task_payload (dict): The task payload where the deployment details are stored
-        scope (str, optional): The scope of the object.  (defaults: SCOPE_BUILD)
 
     Return:
         str | None: The path to the artefacts in the core automation s3 bucket
     """
     return deployment_details.get_object_key(
-        OBJ_ARTEFACTS, name, scope or SCOPE_BUILD, s3
+        OBJ_ARTEFACTS, name, s3
     )
 
 
 def get_packages_path(
     deployment_details: DeploymentDetails,
     name: str | None = None,
-    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -75,21 +70,19 @@ def get_packages_path(
     Example: packages/portfolio/app/branch/build-213/<name>
 
     Args:
-        name (str, optional): The name of the packages folder
+        deployment_details (DeploymentDetails): The deployment details describing the deployment
+        name (str, optional): The name of the artefacts folder
         s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
-        task_payload (dict): The task payload where the deployment details are stored
-        scope (str, optional): The scope of the object.  Override deployment details (defaults: None)
 
     Return:
         str: The path to the packages in the core automation s3 bucket
     """
-    return deployment_details.get_object_key(OBJ_PACKAGES, name, scope, s3)
+    return deployment_details.get_object_key(OBJ_PACKAGES, name, s3)
 
 
 def get_files_path(
     deployment_details: DeploymentDetails,
     name: str | None = None,
-    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -98,15 +91,14 @@ def get_files_path(
     Example: files/portfolio/app/branch/build-213/<name>
 
     Args:
-        name (str, optional): The name of the files folder
+        deployment_details (DeploymentDetails): The deployment details describing the deployment
+        name (str, optional): The name of the artefacts folder
         s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
-        task_payload (dict): The task payload where the deployment details are stored
-        scope (str, optional): The scope of the object. Override deployment details. (defaults: None)
 
     Return:
         str: The path to the files in the core automation s3 bucket
     """
-    return deployment_details.get_object_key(OBJ_FILES, name, scope, s3)
+    return deployment_details.get_object_key(OBJ_FILES, name, s3)
 
 
 def generate_task_payload(**kwargs) -> TaskPayload:
@@ -210,3 +202,18 @@ def generate_action_details(deployment_details: DeploymentDetails, **kwargs):
     """
     kwargs["deployment_details"] = deployment_details
     return ActionDetails.from_arguments(**kwargs)
+
+
+def generate_state_details(deploymet_details: DeploymentDetails, **kwargs):
+    """
+    Generate the state details from the command line arguments
+
+    Args:
+        deployment_details: The deployment details object to reference
+        kwargs: The command line arguments dictionary.  User input parameters.
+
+    Returns:
+        dict: The state details object
+    """
+    kwargs["deployment_details"] = deploymet_details
+    return StateDetails.from_arguments(**kwargs)

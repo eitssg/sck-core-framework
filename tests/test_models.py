@@ -3,6 +3,8 @@ import pytest
 import os
 import yaml
 
+from core_framework.constants import ENV_LOCAL_MODE
+
 from core_framework.models import (
     ActionDefinition,
     TaskPayload,
@@ -73,6 +75,8 @@ def test_action_model():
 
 
 def test_task_payload_model(runtime_arguments):
+
+    os.environ[ENV_LOCAL_MODE] = "true"
 
     try:
         task_payload = TaskPayload.from_arguments(**runtime_arguments)
