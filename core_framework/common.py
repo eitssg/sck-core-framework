@@ -4,7 +4,7 @@ These functions assist wtih generating and using model instances as well as envi
 other very commont tasks.
 
 """
-
+import boto3
 import warnings
 from typing import Any
 import json
@@ -452,7 +452,7 @@ def get_client() -> str | None:
     Returns:
         str | None: The client name
     """
-    return os.getenv(ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, None))
+    return os.getenv(ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, os.getenv(ENV_AWS_PROFILE, "default")))
 
 
 def get_aws_profile() -> str:
@@ -464,7 +464,14 @@ def get_aws_profile() -> str:
     Returns:
         str: Value of the environment variable or client name or default
     """
-    return os.getenv(ENV_AWS_PROFILE, get_client() or "default")
+
+    profile_name = os.getenv(ENV_AWS_PROFILE, os.getenv(ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, "default")))
+
+    # Check to see if the AWS profile_name exists by checking boto3
+    if profile_name not in boto3.session.Session().available_profiles:
+        profile_name = "default"
+
+    return profile_name
 
 
 def get_client_region() -> str:
