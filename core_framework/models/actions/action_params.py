@@ -194,22 +194,81 @@ class ActionParams(BaseModel):
     )
 
     @model_serializer
-    def ser_model(self) -> OrderedDict:
+    def ser_model(self) -> OrderedDict:  # noqa: C901
         fields: list[tuple[str, Any]] = []
-        if self.Account:
+        if self.Account is not None:
             fields.append(("Account", self.Account))
-        if self.UserName:
+        if self.UserName is not None:
             fields.append(("UserName", self.UserName))
-        if self.StackName:
+        if self.StackName is not None:
             fields.append(("StackName", self.StackName))
-        if self.Region:
+        if self.Region is not None:
             fields.append(("Region", self.Region))
-        if self.TemplateUrl:
+        if self.TemplateUrl is not None:
             fields.append(("TemplateUrl", self.TemplateUrl))
-        if self.StackParameters:
+        if self.StackParameters is not None:
             fields.append(("StackParameters", OrderedDict(self.StackParameters)))
-        if self.Tags:
+        if self.Tags is not None:
             fields.append(("Tags", self.Tags))
-        if self.StackPolicy:
+        if self.StackPolicy is not None:
             fields.append(("StackPolicy", OrderedDict(self.StackPolicy)))
+        if self.TimeoutInMinutes is not None:
+            fields.append(("TimeoutInMinutes", self.TimeoutInMinutes))
+        if self.OnFailure is not None:
+            fields.append(("OnFailure", self.OnFailure))
+        if self.DestinationImageName is not None:
+            fields.append(("DestinationImageName", self.DestinationImageName))
+        if self.ImageName is not None:
+            fields.append(("ImageName", self.ImageName))
+        if self.KmsKeyArn is not None:
+            fields.append(("KmsKeyArn", self.KmsKeyArn))
+        if self.KmsKeyId is not None:
+            fields.append(("KmsKeyId", self.KmsKeyId))
+        if self.GranteePrincipals is not None:
+            fields.append(("GrantPrincipals", self.GranteePrincipals))
+        if self.Operations is not None:
+            fields.append(("Operations", self.Operations))
+        if self.IgnoreFailedGrants is not None:
+            fields.append(("IgnoreFailedGrants", self.IgnoreFailedGrants))
+        if self.Variables is not None:
+            fields.append(("Variables", self.Variables))
+        if self.DistributionId is not None:
+            fields.append(("DistributionId", self.DistributionId))
+        if self.Paths is not None:
+            fields.append(("Paths", self.Paths))
+        if self.InstanceId is not None:
+            fields.append(("InstanceId", self.InstanceId))
+        if self.RepositoryName is not None:
+            fields.append(("RepositoryName", self.RepositoryName))
+        if self.SecurityGroupId is not None:
+            fields.append(("SecurityGroupId", self.SecurityGroupId))
+        if self.SuccessStatuses is not None:
+            fields.append(("SuccessStatuses", self.SuccessStatuses))
+        if self.AccountsToShare is not None:
+            fields.append(("AccountsToShare", self.AccountsToShare))
+        if self.Siblings is not None:
+            fields.append(("Siblings", self.Siblings))
+        if self.BucketName is not None:
+            fields.append(("BucketName", self.BucketName))
+        if self.OutputName is not None:
+            fields.append(("OutputName", self.OutputName))
+        if self.Type is not None:
+            fields.append(("Type", self.Type))
+        if self.Status is not None:
+            fields.append(("Status", self.Status))
+        if self.Message is not None:
+            fields.append(("Message", self.Message))
+        if self.Identity is not None:
+            fields.append(("Identity", self.Identity))
+        if self.Namespace is not None:
+            fields.append(("Namespace", self.Namespace))
+        if self.Metrics is not None:
+            fields.append(("Metrics", self.Metrics))
+        if self.LoadBalancer is not None:
+            fields.append(("LoadBalancer", self.LoadBalancer))
+        if self.Prefix is not None:
+            fields.append(("Prefix", self.Prefix))
+        if self.ApiParams is not None:
+            fields.append(("ApiParams", self.ApiParams))
+
         return OrderedDict(fields)
