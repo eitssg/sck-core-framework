@@ -4,7 +4,7 @@ These functions assist wtih generating and using model instances as well as envi
 other very commont tasks.
 
 """
-import boto3
+
 import warnings
 from typing import Any
 import json
@@ -86,7 +86,6 @@ def generate_branch_short_name(branch: str | None) -> str | None:
         return None
 
     return re.sub(r"[^a-z0-9-]", "-", branch.lower())[0:20].rstrip("-")
-
 
 
 def custom_serializer(obj: Any) -> Any:
@@ -456,7 +455,9 @@ def get_client() -> str | None:
     Returns:
         str | None: The client name
     """
-    return os.getenv(ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, os.getenv(ENV_AWS_PROFILE, "default")))
+    return os.getenv(
+        ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, os.getenv(ENV_AWS_PROFILE, "default"))
+    )
 
 
 def get_aws_profile() -> str:
@@ -543,14 +544,14 @@ def get_invoker_lambda_region() -> str:
     return os.getenv(ENV_INVOKER_LAMBDA_REGION, get_master_region())
 
 
-def get_automation_account() -> str:
+def get_automation_account() -> str | None:
     """
     Return the AWS account number for the automation account.  This is specified in the environment variable ENV_AUTOMATION_ACCOUNT.
 
     Returns:
-        str: The AWS account number for the automation account where the core automation is installed.
+        str | None: The AWS account number for the automation account where the core automation is installed or None
     """
-    return os.getenv(ENV_AUTOMATION_ACCOUNT, "123456789012")
+    return os.getenv(ENV_AUTOMATION_ACCOUNT, None)
 
 
 def get_dynamodb_host() -> str:

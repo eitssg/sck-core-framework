@@ -1,5 +1,5 @@
 """ This module provides the TaskPaylaod class that is used throughout Core-Automation to identify the operating Task to perform. """
-
+from typing import Self
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
@@ -85,7 +85,7 @@ class TaskPayload(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def validate_task(self):
+    def validate_task(self) -> Self:
         if not self.Identity:
             self.Identity = self.DeploymentDetails.get_identity()
         if self.Package and not self.Package.Key:
@@ -94,6 +94,7 @@ class TaskPayload(BaseModel):
             self.Actions.set_key(self.DeploymentDetails, self.Task + ".actions")
         if self.State and not self.State.Key:
             self.State.set_key(self.DeploymentDetails, self.Task + ".state")
+        return self
 
     @property
     def Type(self) -> str:
