@@ -12,6 +12,8 @@ import datetime
 from decimal import Decimal
 import os
 import re
+import boto3
+from botocore.exceptions import ProfileNotFound
 
 from ruamel.yaml import YAML
 
@@ -65,7 +67,7 @@ from .constants import (
 )
 
 
-def generate_branch_short_name(branch: str | None) -> str:
+def generate_branch_short_name(branch: str | None) -> str | None:
     """
     Generates a shortened version of the branch name.
 
@@ -80,9 +82,11 @@ def generate_branch_short_name(branch: str | None) -> str:
     Returns:
         str: The shortened branch name
     """
-    return (
-        re.sub(r"[^a-z0-9-]", "-", branch.lower())[0:20].rstrip("-") if branch else ""
-    )
+    if branch is None:
+        return None
+
+    return re.sub(r"[^a-z0-9-]", "-", branch.lower())[0:20].rstrip("-")
+
 
 
 def custom_serializer(obj: Any) -> Any:
@@ -464,14 +468,15 @@ def get_aws_profile() -> str:
     Returns:
         str: Value of the environment variable or client name or default
     """
+    profile = os.getenv(ENV_AWS_PROFILE, get_client() or "default")
 
-    profile_name = os.getenv(ENV_AWS_PROFILE, os.getenv(ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, "default")))
+    try:
+        # if the profile is not in the boto3.session credentials, then return "default"
+        boto3.session.Session(profile_name=profile)
+    except ProfileNotFound:
+        return "default"
 
-    # Check to see if the AWS profile_name exists by checking boto3
-    if profile_name not in boto3.session.Session().available_profiles:
-        profile_name = "default"
-
-    return profile_name
+    return profile
 
 
 def get_client_region() -> str:

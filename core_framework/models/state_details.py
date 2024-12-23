@@ -73,14 +73,17 @@ class StateDetails(BaseModel):
     def from_arguments(**kwargs):
 
         client = kwargs.get("client", util.get_client())
-
         key = kwargs.get("key", None)
         if not key:
+            state_file = kwargs.get("state_file", None)
+            task = kwargs.get("task", None)
+            if task and state_file is None:
+                state_file = f"{task}.state"
             dd = kwargs.get("deployment_details", kwargs)
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = dd.get_object_key(OBJ_ARTEFACTS, None, s3=not util.is_local_mode())
+                key = dd.get_object_key(OBJ_ARTEFACTS, state_file, s3=not util.is_local_mode())
 
         bucket_name = kwargs.get("bucket_name", util.get_artefact_bucket_name(client))
         bucket_region = kwargs.get("bucket_region", util.get_artefact_bucket_region())

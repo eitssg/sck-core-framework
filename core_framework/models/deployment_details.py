@@ -169,7 +169,7 @@ class DeploymentDetails(BaseModel):
         if self.Branch and not self.App:
             raise ValueError("App is required when Branch is provided")
 
-        if not self.BranchShortName:
+        if self.Branch and not self.BranchShortName:
             self.BranchShortName = util.generate_branch_short_name(self.Branch)
 
         if not self.Scope:
@@ -219,9 +219,12 @@ class DeploymentDetails(BaseModel):
             portfolio = kwargs.get("portfolio", os.getenv(ENV_PORTFOLIO, None))
             app = kwargs.get("app", os.getenv(ENV_APP, None))
             branch = kwargs.get("branch", os.getenv(ENV_BRANCH, None))
-            branch_short_name = kwargs.get(
-                "branch_short_name", util.branch_short_name(branch)
-            )
+            if branch:
+                branch_short_name = kwargs.get(
+                    "branch_short_name", util.branch_short_name(branch)
+                )
+            else:
+                branch_short_name = None
             build = kwargs.get("build", os.getenv(ENV_BUILD, None))
             component = kwargs.get("component", None)
 

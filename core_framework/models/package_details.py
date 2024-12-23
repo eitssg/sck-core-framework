@@ -17,6 +17,7 @@ from core_framework.constants import (
     V_LOCAL,
     V_SERVICE,
     V_EMPTY,
+    V_PACKAGE_ZIP,
     OBJ_PACKAGES,
 )
 
@@ -114,12 +115,13 @@ class PackageDetails(BaseModel):
     def from_arguments(**kwargs):
 
         key = kwargs.get("key", None)
+        package_file = kwargs.get("package_file", V_PACKAGE_ZIP)
         if not key:
             dd = kwargs.get("deployment_details", kwargs)
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = dd.get_object_key(OBJ_PACKAGES, s3=not util.is_local_mode())
+                key = dd.get_object_key(OBJ_PACKAGES, package_file, s3=not util.is_local_mode())
 
         client = kwargs.get("client", util.get_client())
         bucket_name = kwargs.get("bucket_name", util.get_bucket_name(client))

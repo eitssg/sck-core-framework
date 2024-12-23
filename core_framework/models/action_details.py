@@ -76,14 +76,17 @@ class ActionDetails(BaseModel):
     def from_arguments(**kwargs):
 
         client = kwargs.get("client", util.get_client())
-
         key = kwargs.get("key", None)
         if not key:
+            task = kwargs.get("task", None)
+            action_file = kwargs.get("action_file", None)
+            if task and not action_file:
+                action_file = f"{task.lower()}.actions"
             dd = kwargs.get("deployment_details", kwargs)
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = dd.get_object_key(OBJ_ARTEFACTS, s3=not util.is_local_mode())
+                key = dd.get_object_key(OBJ_ARTEFACTS, action_file, s3=not util.is_local_mode())
 
         bucket_name = kwargs.get("bucket_name", util.get_artefact_bucket_name(client))
         bucket_region = kwargs.get("bucket_region", util.get_artefact_bucket_region())
