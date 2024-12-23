@@ -45,6 +45,7 @@ from .constants import (
     ENV_ENVIRONMENT,
     ENV_SCOPE,  # An environment variable holding a prefix for ALL automation objects.  Typically "" or None else your knowledge is awesome.
     ENV_STORE_VOLUME,
+    ENV_DELIVERED_BY,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
@@ -64,6 +65,7 @@ from .constants import (
     SCOPE_BRANCH,
     SCOPE_BUILD,
     SCOPE_COMPONENT,
+    CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE,
 )
 
 
@@ -397,6 +399,25 @@ def get_automation_scope() -> str | None:
     return os.getenv(ENV_SCOPE, None)
 
 
+def get_provisioning_role_arn(account: str) -> str:
+    """
+    Get the provisioning role ARN for the specified account.  This is specified in the environment variable ENV_AUTOMATION_ACCOUNT.
+    If not specified, the default value is used based on the region and account number.
+
+    Args:
+        account (str): The AWS account number
+
+    Returns:
+        str: The ARN for the provisioning
+    """
+
+    scope_prefix = get_automation_scope()
+
+    return "arn:aws:iam::{}:role/{}{}".format(
+        account, scope_prefix, CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE
+    )
+
+
 def is_local_mode() -> bool:
     """
     You may set the mode to local in the PACKAGE_DETAILS object or the ENV_LOCAL_MODE environment variable.
@@ -458,6 +479,16 @@ def get_client() -> str | None:
     return os.getenv(
         ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, os.getenv(ENV_AWS_PROFILE, "default"))
     )
+
+
+def get_delivered_by() -> str | None:
+    """
+    Get the delivered by value from the environment variable ENV_DELIVERED_BY.
+
+    Returns:
+        str | None: The delivered by value
+    """
+    return os.getenv(ENV_DELIVERED_BY, None)
 
 
 def get_aws_profile() -> str:

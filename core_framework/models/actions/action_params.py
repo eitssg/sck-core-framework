@@ -73,9 +73,9 @@ class ActionParams(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    Account: str = Field(
-        ...,
+    Account: str | None = Field(
         description="The account to use for the action.  You MUST specify the account",
+        default=None,
     )
     StackName: str | None = Field(
         description="The name of the stack or action reference.  Not every action deploys "
@@ -123,6 +123,21 @@ class ActionParams(BaseModel):
     KmsKeyArn: str | None = Field(
         description="The KMS key to use for encryption of the resources", default=None
     )
+    KmsKeyId: str | None = Field(
+        description="The KMS key ID to use for encryption of the resources",
+        default=None,
+    )
+    GranteePrincipals: list[str] | None = Field(
+        description="The principals to grant access to the KMS key", default=None
+    )
+    Operations: list[str] | None = Field(
+        description="The list of operation to be granted to the Principals for the KmsKey",
+        default=None,
+    )
+    IgnoreFailedGrants: bool | None = Field(
+        description="The flag to ignore failed grants when granting permission to Kms Keys",
+        default=None,
+    )
     Variables: dict[str, str] | None = Field(
         description="BaseAction variables, name/value pairs", default=None
     )
@@ -167,13 +182,16 @@ class ActionParams(BaseModel):
     Namespace: str | None = Field(
         description="The namespace that the action is modifying", default=None
     )
-    Metrics: dict | None = Field(
+    Metrics: list[dict] | None = Field(
         description="The metrics that are being collected in the action", default=None
     )
     LoadBalancer: str | None = Field(
         description="The load balancer ARN for the action", default=None
     )
     Prefix: str | None = Field(description="The prefix for the S3 bucket", default=None)
+    ApiParams: dict | None = Field(
+        description="The parameters for the RDS API for RDS modifications", default=None
+    )
 
     @model_serializer
     def ser_model(self) -> OrderedDict:

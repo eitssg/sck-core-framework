@@ -85,7 +85,7 @@ class TaskPayload(BaseModel):
                 values["State"] = StateDetailsClass()
             if not values.get("FlowControl"):
                 values["FlowControl"] = "execute"
-            if values.get("FlowControl") not in ["execute", "wait", "success", "failure"]
+            if values.get("FlowControl") not in ["execute", "wait", "success", "failure"]:
                 raise ValueError("FlowControl must be 'execute', 'wait', 'success', or 'failure'")
         return values
 

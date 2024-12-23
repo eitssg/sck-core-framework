@@ -175,6 +175,9 @@ class DeploymentDetails(BaseModel):
         if not self.Scope:
             self.Scope = self.get_scope()
 
+        if not self.DeliveredBy:
+            self.DeliveredBy = util.get_delivered_by()
+
         return self
 
     def get_scope(self) -> str:
