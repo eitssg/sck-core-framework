@@ -69,6 +69,7 @@ class TaskPayload(BaseModel):
         description="The state of the task.  Usually stored in artefacts/**/{task}.state",
         default=None,
     )
+    FlowControl: str = Field(description="The flow control of the task", default="execute")
 
     @model_validator(mode="before")
     @classmethod
@@ -82,6 +83,10 @@ class TaskPayload(BaseModel):
                 values["Actions"] = ActionDetailsClass()
             if not values.get("State"):
                 values["State"] = StateDetailsClass()
+            if not values.get("FlowControl"):
+                values["FlowControl"] = "execute"
+            if values.get("FlowControl") not in ["execute", "wait", "success", "failure"]
+                raise ValueError("FlowControl must be 'execute', 'wait', 'success', or 'failure'")
         return values
 
     @model_validator(mode="after")
