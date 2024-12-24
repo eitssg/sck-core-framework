@@ -1,4 +1,4 @@
-""" This module contains the PackageDetails class used to track where pacakge.zip is located on S3 for a deployment """
+"""This module contains the PackageDetails class used to track where pacakge.zip is located on S3 for a deployment"""
 from typing import Any
 
 import os
