@@ -1,6 +1,6 @@
 """ Defines the class ActionDetails that provide information about where ActionDefinition files are stored in S3 (or local filesystem). """
 
-from typing import Any
+from typing import Any, Self
 import tempfile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -24,11 +24,14 @@ class ActionDetails(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
+    Client: str = Field(description="The client to use for the action", default=V_EMPTY)
     BucketName: str = Field(
-        ..., description="The name of the S3 bucket where the action file is stored"
+        description="The name of the S3 bucket where the action file is stored",
+        default=V_EMPTY,
     )
     BucketRegion: str = Field(
-        ..., description="The region of the S3 bucket where the action file is stored"
+        description="The region of the S3 bucket where the action file is stored",
+        default=V_EMPTY,
     )
     Key: str = Field(
         description="The key prefix where the ation file is stored in s3.  Usually in the artefacts folder",
@@ -37,35 +40,41 @@ class ActionDetails(BaseModel):
     VersionId: str | None = Field(
         description="The version of the action file", default=None
     )
-    ContentType: str | None = Field(
+    ContentType: str = Field(
         description="The content type of the action file such as 'application/json' or 'application/x-yaml'",
-        default=None,
+        default="application/x-yaml",
     )
 
     @property
     def Mode(self) -> str:
-        """ The mode of the application.  Either local or service """
+        """The mode of the application.  Either local or service"""
         return V_LOCAL if util.is_local_mode() else V_SERVICE
 
     @property
     def AppPath(self) -> str:
-        """ The storage volume for the application. Used for local mode only else Blank  Defaults to the current directory. """
-        return util.get_storage_volume()
+        """The storage volume for the application. Used for local mode only else Blank  Defaults to the current directory."""
+        if util.is_local_mode():
+            return util.get_storage_volume()
+        return V_EMPTY
+
+    @property
+    def TempDir(self) -> str:
+        """The temporary directory for the application.  Defaults to a temporary directory."""
+        if util.is_local_mode():
+            return util.get_temp_dir()
+        return tempfile.gettempdir()
 
     @model_validator(mode="before")
+    @classmethod
     def validate_artefacts_before(cls, values: Any) -> Any:
         if isinstance(values, dict):
-            client = values.get("Client", util.get_client())
+            if not values.get("Client"):
+                values["Client"] = util.get_client()
             if not values.get("BucketName"):
-                values["BucketName"] = util.get_artefact_bucket_name(client)
+                values["BucketName"] = util.get_artefact_bucket_name(values["Client"])
             if not values.get("BucketRegion"):
                 values["BucketRegion"] = util.get_artefact_bucket_region()
         return values
-
-    @classmethod
-    def get_tempdir(cls) -> str:
-        tmpdir = tempfile.mkdtemp(prefix="core-")
-        return tmpdir
 
     def set_key(self, dd: DeploymentDetailsClass, filename: str):
         self.Key = dd.get_object_key(
@@ -73,9 +82,8 @@ class ActionDetails(BaseModel):
         )
 
     @staticmethod
-    def from_arguments(**kwargs):
+    def from_arguments(**kwargs) -> "ActionDetails":
 
-        client = kwargs.get("client", util.get_client())
         key = kwargs.get("key", None)
         if not key:
             task = kwargs.get("task", None)
@@ -86,18 +94,23 @@ class ActionDetails(BaseModel):
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = dd.get_object_key(OBJ_ARTEFACTS, action_file, s3=not util.is_local_mode())
+                key = dd.get_object_key(
+                    OBJ_ARTEFACTS, action_file, s3=not util.is_local_mode()
+                )
 
+        client = kwargs.get("client", util.get_client())
         bucket_name = kwargs.get("bucket_name", util.get_artefact_bucket_name(client))
         bucket_region = kwargs.get("bucket_region", util.get_artefact_bucket_region())
-
         version_id = kwargs.get("version_id", None)
+        content_type = kwargs.get("content_type", "application/x-yaml")
 
         return ActionDetails(
+            Client=client,
             BucketName=bucket_name,
             BucketRegion=bucket_region,
             Key=key,
             VersionId=version_id,
+            ContentType=content_type,
         )
 
     # Override

@@ -14,11 +14,11 @@ from core_framework.constants import (
     SCOPE_APP,
     SCOPE_PORTFOLIO,
     ENV_PORTFOLIO,
+    ENV_AWS_PROFILE,
     ENV_APP,
     ENV_BRANCH,
     ENV_BUILD,
     ENV_CLIENT,
-    ENV_CLIENT_NAME,
     V_EMPTY,
 )
 
@@ -150,11 +150,19 @@ class DeploymentDetails(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_incoming(cls, values: dict) -> dict:
-        if "Client" not in values:
-            values["Client"] = os.getenv(
-                ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, V_EMPTY)
-            )
+    def validate_incoming(cls, values):
+        if isinstance(values, dict):
+            if not values.get("Client"):
+                values["Client"] = os.getenv(
+                    ENV_CLIENT, os.getenv(ENV_AWS_PROFILE, "default")
+                )
+            branch = values.get("Branch")
+            if branch:
+                values["BranchShortName"] = util.branch_short_name(branch)
+            else:
+                values["BranchShortName"] = branch  # branch might by V_EMPTY
+            if not values.get("DeliveredBy"):
+                values["DeliveredBy"] = util.get_delivered_by()
         return values
 
     @model_validator(mode="after")
@@ -169,14 +177,8 @@ class DeploymentDetails(BaseModel):
         if self.Branch and not self.App:
             raise ValueError("App is required when Branch is provided")
 
-        if self.Branch and not self.BranchShortName:
-            self.BranchShortName = util.generate_branch_short_name(self.Branch)
-
         if not self.Scope:
             self.Scope = self.get_scope()
-
-        if not self.DeliveredBy:
-            self.DeliveredBy = util.get_delivered_by()
 
         return self
 
@@ -214,6 +216,8 @@ class DeploymentDetails(BaseModel):
     def from_arguments(**kwargs):
 
         client = kwargs.get("client", util.get_client())
+        if not client:
+            raise ValueError("Client is required")
 
         prn = kwargs.get("prn", None)
         if prn is not None:
@@ -244,9 +248,9 @@ class DeploymentDetails(BaseModel):
             BranchShortName=branch_short_name,
             Build=build,
             Component=component,
+            Scope=scope,
             Environment=kwargs.get("environment", None),
             DataCenter=kwargs.get("data_center", None),
-            Scope=scope,
             Tags=kwargs.get("tags", None),
             StackFile=kwargs.get("stack_file", None),
             DeliveredBy=kwargs.get("delivered_by", None),

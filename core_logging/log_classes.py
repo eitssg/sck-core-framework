@@ -9,13 +9,13 @@ from datetime import datetime
 import io
 import json
 import logging
-import os
 from collections import OrderedDict
 from ruamel import yaml
 
 from logging import NOTSET, FATAL, WARN, CRITICAL, DEBUG, INFO, WARNING, ERROR
 
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+DEFAULT_LOG_FORMAT = "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
 
 # Custom log levels not supported by the logging module
 MSG = 70
@@ -30,41 +30,49 @@ logging.addLevelName(STATUS, "STATUS")
 logging.addLevelName(TRACE, "TRACE")
 
 # Attributes of the log message when the output is set to JSON
-LOG_DETAILS: str = "Details"
+LOG_DETAILS = "Details"
 """ \\- "Details" """
-LOG_STATUS: str = "Status"
+LOG_STATUS = "Status"
 """ \\- "Status" """
-LOG_MESSAGE: str = "Message"
+LOG_MESSAGE = "Message"
 """ \\- "Message" """
-LOG_REASON: str = "Reason"
+LOG_REASON = "Reason"
 """ \\- "Reason" """
-LOG_RESOURCE: str = "Resource"
+LOG_RESOURCE = "Resource"
 """ \\- "Resource" """
-LOG_TIMESTAMP: str = "Timestamp"
+LOG_TIMESTAMP = "Timestamp"
 """ \\- "Timestamp" """
-LOG_TYPE: str = "Type"
+LOG_TYPE = "Type"
 """ \\- "Type" """
-LOG_SCOPE: str = "Scope"
+LOG_SCOPE = "Scope"
 """ \\- "Scope" """
 
+# environment variable to set the log output to JSON
+ENV_LOG_JSON = "LOG_AS_JSON"
+""" \\- "LOG_AS_JSON" """
+ENV_LOG_LEVEL = "LOG_LEVEL"
+""" \\- "LOG_LEVEL" """
+ENV_LOG_DIR = "LOG_DIR"
+""" \\- "LOG_DIR" """
+
 # Attributes for the extra: Mapping[str, object] parameter when calling the log methods
-L_STATUS_LABEL: str = "status_label"
+L_STATUS_LABEL = "status_label"
 """ \\- "status_label" """
-L_STATUS: str = "status"
+L_STATUS = "status"
 """ \\- "status" """
-L_REASON: str = "reason"
+L_REASON = "reason"
 """ \\- "reason" """
-L_MESSAGE: str = "message"
+L_MESSAGE = "message"
 """ \\- "message" """
-L_DETAILS: str = "details"
+L_DETAILS = "details"
 """ \\- "details" """
-L_TYPE: str = "type"
+L_TYPE = "type"
 """ \\- "type" """
-L_SCOPE: str = "scope"
+L_SCOPE = "scope"
 """ \\- "scope" """
-L_IDENTITY: str = "identity"
+L_IDENTITY = "identity"
 """ \\- "identity" """
-L_PRN: str = "prn"
+L_PRN = "prn"
 """ \\- "prn" """
 
 
@@ -119,7 +127,7 @@ class CoreLogFormatter(logging.Formatter):
 class CoreLogTextFormatter(CoreLogFormatter):
     """Text Formatter for the CoreLogger class that outputs a log message as standard text."""
 
-    def __init__(self, fmt: str, datefmt: str):
+    def __init__(self, text_format: str | None = None, datefmt: str | None = None):
         """
         Initializes the formatter with the specified format and date format.
 
@@ -127,7 +135,14 @@ class CoreLogTextFormatter(CoreLogFormatter):
             fmt (str): message format
             datefmt (str): datetime format
         """
-        super().__init__(fmt, datefmt)
+
+        if not text_format:
+            text_format = "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
+        if not datefmt:
+            datefmt = DEFAULT_DATE_FORMAT
+
+        super().__init__(text_format, datefmt)
+
         self.yaml = yaml.YAML(typ="safe")
         self.yaml.default_flow_style = False
         self.yaml.indent(mapping=3, sequence=3, offset=3)
@@ -158,7 +173,11 @@ class CoreLogTextFormatter(CoreLogFormatter):
 
         if hasattr(record, L_DETAILS):
             details = getattr(record, L_DETAILS)
-            if details and isinstance(details, dict):
+            if details and (
+                isinstance(details, dict)
+                or isinstance(details, OrderedDict)
+                or isinstance(details, list)
+            ):
                 data = data + "\n" + self._dump_ordered_yaml(details)
 
         return data
@@ -216,7 +235,7 @@ class CoreLogTextFormatter(CoreLogFormatter):
 class CoreLogJsonFormatter(CoreLogFormatter):
     """JSON Formatter for the CoreLogger class that outputs a log message as a JSON object."""
 
-    def __init__(self, text_format: str, datefmt: str):
+    def __init__(self, text_format: str | None = None, datefmt: str | None = None):
         """
         Initializes the formatter with the specified format and date format.
 
@@ -224,16 +243,29 @@ class CoreLogJsonFormatter(CoreLogFormatter):
             text_format (str): Message format
             datefmt (str): datetime format
         """
+
+        if not text_format:
+            text_format = "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
+        if not datefmt:
+            datefmt = DEFAULT_DATE_FORMAT
+
         super().__init__(text_format, datefmt)
 
     @staticmethod
     def set_element(
-        data: dict, record: logging.LogRecord, key: str, element: str | None = None
+        data: dict, record: logging.LogRecord, key: str, alternate: str | None = None
     ):
-        if element:
-            value = getattr(record, element, None)
+        value = None
+
+        # If the alternate exists, use it
+        if alternate:
+            value = getattr(record, alternate, None)
+
+        # If the alternate doesn't exist, try the key
         if value is None:
             value = getattr(record, key, None)
+
+        # If the value is not None, add it to the data dictionary
         if value is not None:
             data[key] = value
 
@@ -264,16 +296,25 @@ class CoreLogJsonFormatter(CoreLogFormatter):
             record (logging.LogRecord): The log record object.
 
         """
-        dtm = self.format_datetime(datetime.fromtimestamp(record.created), self.datefmt)
-        data: dict = OrderedDict([(LOG_TIMESTAMP, dtm)])
-        self.set_element(data, record, LOG_TYPE, "levelname")
-        self.set_element(data, record, LOG_STATUS)
-        self.set_element(data, record, LOG_REASON)
-        self.set_element(data, record, LOG_MESSAGE, "msg")
-        self.set_element(data, record, LOG_DETAILS)
-        self.set_element(data, record, LOG_SCOPE)
-        self.set_element(data, record, LOG_RESOURCE, "name")
+
+        timestamp = datetime.fromtimestamp(record.created)
+        json_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+        data: dict = OrderedDict([("@timestamp", json_timestamp)])
+
+        self.set_element(data, record, "log.logger", "name")
+        self.set_element(data, record, "log.level", "levelname")
+        self.set_element(data, record, "status", "status")
+        self.set_element(data, record, "reason", "reason")
+        self.set_element(data, record, "message", "msg")
+        self.set_element(data, record, "scope", "scope")
+        self.set_element(data, record, "file", "filename")
+        self.set_element(data, record, "line", "lineno")
+        self.set_element(data, record, "function", "funcName")
+        self.set_element(data, record, "context", "details")
+
         output = json.dumps(data, default=str)
+
         return output
 
 
@@ -308,17 +349,6 @@ class CoreLoggerHandler(logging.Handler):
         super().__init__(level=kwargs.get("level", NOTSET))
 
         self.name = name
-
-        date_fmt = kwargs.get("datefmt", DEFAULT_DATE_FORMAT)
-        msg_fmt = kwargs.get(
-            "fmt", "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
-        )
-
-        # default logging to text formatter unless LOG_AS_JSON is set to true
-        if os.environ.get("LOG_AS_JSON", "false").lower() == "true":
-            self.formatter = CoreLogJsonFormatter(msg_fmt, date_fmt)
-        else:
-            self.formatter = CoreLogTextFormatter(msg_fmt, date_fmt)
 
     def emit(self, record) -> None:
         """
@@ -425,16 +455,13 @@ class CoreLogger(logging.Logger):
 
     See CoreLoggerHandler for more information.
 
+    Parameters:
+        name (str): The name of the logger
+        level (int, optional): The log level. Defaults to NOTSET.
+
     """
 
     def __init__(self, name: str, level: int = NOTSET):
-        """
-        Initialize the logger with the specified name and level.  Also tells the logging framework to use the CoreLoggerHandler class for all handlers.
-
-        Args:
-            name (_type_): _description_
-            level (_type_, optional): _description_. Defaults to NOTSET.
-        """
         super().__init__(name, level=level)
 
     def setLevel(self, level: int | str) -> None:
@@ -458,19 +485,24 @@ class CoreLogger(logging.Logger):
 
         The message can have replacement strings %s symbol in the string and pass (args) tuples to replace the %s symbols.
 
-            Examples:
+        Examples:
 
-            .. code-block:: python
+        .. code-block:: python
 
-                log.debug("This is a {} message", "test")
-                log.debug("This is a {} message", "test", details={"key": "value"}, identity="my-identity")
+            log.debug("This is a {} message", "test")
+            log.debug("This is a {} message", "test", details={"key": "value"}, identity="my-identity")
+
+        .. warning::
+
+            The current customizations and coding increase the stack_depth of the logger.  In order to
+            get the module and line number of your log message, be aware that the default stack_depth is 4.
 
         Args:
             level (int): The loglevel
             message (str): The message to log.
             args (tuple): A list of replacement values for the message.
             **kwargs: Elements to add to the log.record as exta data.
-                * exec_info: Exception information
+                * exc_info: Exception information
                 * extra: Additional data to add to the log record.
                 * stack_info: Stack information
                 * stacklevel: Stack level
@@ -478,10 +510,10 @@ class CoreLogger(logging.Logger):
                 * message: Explicit message overwriting the message parameter
 
         """
-        exc_info = kwargs.pop("exec_info", None)
+        exc_info = kwargs.pop("exc_info", None)
         extra = kwargs.pop("extra", {})
         stack_info = kwargs.pop("stack_info", False)
-        stacklevel = kwargs.pop("stacklevel", 1)
+        stacklevel = kwargs.pop("stacklevel", 4)
 
         # If the message is a dictionary, then we need to move the message to the extra data.
         if isinstance(message, dict):
@@ -499,7 +531,7 @@ class CoreLogger(logging.Logger):
             else:
                 extra[k.lower()] = v
 
-        super()._log(level, message, args, exc_info, extra, stack_info, stacklevel)
+        self._log(level, message, args, exc_info, extra, stack_info, stacklevel)
 
     def msg(self, message: Any, *args: Any, **kwargs: Any) -> None:
         """

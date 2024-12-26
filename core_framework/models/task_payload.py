@@ -1,4 +1,5 @@
 """ This module provides the TaskPaylaod class that is used throughout Core-Automation to identify the operating Task to perform. """
+
 from typing import Self
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
@@ -13,6 +14,8 @@ from .deployment_details import DeploymentDetails as DeploymentDetailsClass
 from .package_details import PackageDetails as PackageDetailsClass
 from .action_details import ActionDetails as ActionDetailsClass
 from .state_details import StateDetails as StateDetailsClass
+
+FLOW_CONTROLS = ["execute", "wait", "success", "failure"]
 
 
 class TaskPayload(BaseModel):
@@ -39,6 +42,10 @@ class TaskPayload(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
+    Client: str = Field(
+        description="The client to perform the task for.  Usually stored in client-vars.yaml",
+        default=V_EMPTY,
+    )
     Task: str = Field(
         ..., description="The task to perform.  See the ACT_ constants in constants.py"
     )
@@ -69,28 +76,43 @@ class TaskPayload(BaseModel):
         description="The state of the task.  Usually stored in artefacts/**/{task}.state",
         default=None,
     )
-    FlowControl: str = Field(description="The flow control of the task", default="execute")
+    FlowControl: str = Field(
+        description="The flow control of the task", default="execute"
+    )
 
     @model_validator(mode="before")
     @classmethod
     def validate_model_before(cls, values):
-        if values:
+        if isinstance(values, dict):
             if not values.get("DeploymentDetails"):
-                values["DeploymentDetails"] = DeploymentDetailsClass()
+                values["DeploymentDetails"] = (
+                    DeploymentDetailsClass(Client=values["Client"])
+                    if values.get("Client")
+                    else DeploymentDetailsClass()
+                )
+            dd = values.get("DeploymentDetails")
+            client = dd.Client if isinstance(dd, DeploymentDetailsClass) else None
             if not values.get("Package"):
-                values["Package"] = PackageDetailsClass()
+                values["Package"] = PackageDetailsClass(Client=client)
             if not values.get("Actions"):
-                values["Actions"] = ActionDetailsClass()
+                values["Actions"] = ActionDetailsClass(Client=client)
             if not values.get("State"):
-                values["State"] = StateDetailsClass()
+                values["State"] = StateDetailsClass(Client=client)
             if not values.get("FlowControl"):
                 values["FlowControl"] = "execute"
-            if values.get("FlowControl") not in ["execute", "wait", "success", "failure"]:
-                raise ValueError("FlowControl must be 'execute', 'wait', 'success', or 'failure'")
+            if (
+                values.get("FlowControl")
+                and values.get("FlowControl") not in FLOW_CONTROLS
+            ):
+                raise ValueError(
+                    f"FlowControl must be one of {",".join(FLOW_CONTROLS)}"
+                )
         return values
 
     @model_validator(mode="after")
     def validate_task(self) -> Self:
+        if not self.Client:
+            self.Client = self.DeploymentDetails.Client
         if not self.Identity:
             self.Identity = self.DeploymentDetails.get_identity()
         if self.Package and not self.Package.Key:
@@ -106,7 +128,7 @@ class TaskPayload(BaseModel):
         return V_DEPLOYSPEC if self.Package and self.Package.DeploySpec else V_PIPELINE
 
     @staticmethod
-    def from_arguments(**kwargs):
+    def from_arguments(**kwargs) -> "TaskPayload":
 
         dd = kwargs.get("deployment_details", kwargs)
         if not isinstance(dd, DeploymentDetailsClass):
@@ -116,7 +138,8 @@ class TaskPayload(BaseModel):
             kwargs["deployment_details"] = dd
 
         return TaskPayload(
-            Task=kwargs.get("task", ""),
+            Client=dd.Client,
+            Task=kwargs.get("task", V_EMPTY),
             Force=kwargs.get("force", False),
             DryRun=kwargs.get("dry_run", False),
             Identity=kwargs.get("identity", dd.get_identity()),
@@ -127,7 +150,7 @@ class TaskPayload(BaseModel):
         )
 
     # Override
-    def model_dump(self, **kwargs):
+    def model_dump(self, **kwargs) -> dict:
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True
         return super().model_dump(**kwargs)

@@ -33,7 +33,7 @@ from .constants import (
     ENV_AWS_PROFILE,
     ENV_AWS_REGION,
     ENV_CLIENT,
-    ENV_CLIENT_NAME,  # CLIENT and CLIENT_NAME are the same thing
+    ENV_CLIENT_NAME,
     ENV_CLIENT_REGION,
     ENV_DYNAMODB_REGION,
     ENV_DYNAMODB_HOST,
@@ -43,9 +43,10 @@ from .constants import (
     ENV_ARTEFACT_BUCKET_REGION,
     ENV_MASTER_REGION,
     ENV_ENVIRONMENT,
-    ENV_SCOPE,  # An environment variable holding a prefix for ALL automation objects.  Typically "" or None else your knowledge is awesome.
-    ENV_STORE_VOLUME,
+    ENV_SCOPE,
+    ENV_VOLUME,
     ENV_DELIVERED_BY,
+    ENV_LOG_DIR,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
@@ -316,6 +317,7 @@ def generate_bucket_name(
     Returns:
         str: The bucket name
     """
+
     return f"{scope_prefix}{client}-{V_CORE_AUTOMATION}-{branch}".lower().strip("-")
 
 
@@ -330,6 +332,7 @@ def get_bucket_name(client: str | None = None) -> str:
 
     client = client or get_client() or ""
     automation_scope_prefix = get_automation_scope() or ""
+
     return os.environ.get(
         ENV_BUCKET_NAME,
         generate_bucket_name(client, V_DEFAULT_BRANCH, automation_scope_prefix),
@@ -434,7 +437,7 @@ def is_local_mode() -> bool:
 def get_storage_volume() -> str:
     """
     If you enable the envoronment variable LOCAL_MODE=true, you can specify a local storage volume for the core automation
-    objects.  This is specified in the environment variable STORE_VOLUME.  If not specified, the current working directory
+    objects.  This is specified in the environment variable VOLUME.  If not specified, the current working directory
     is used.
 
     When using docker, this is your volume mount point.
@@ -444,7 +447,7 @@ def get_storage_volume() -> str:
         .. code-block:: bash
 
             export LOCAL_MODE=true
-            export STORE_VOLUME=/mnt/data/core
+            export VOLUME=/mnt/data/core
 
     Then the engine will use /mnt/data/core/artefacts/**, /mnt/data/core/packages/**, /mnt/data/core/files/** as
     the storage locations.
@@ -456,7 +459,18 @@ def get_storage_volume() -> str:
     """
     if not is_local_mode():
         return V_EMPTY
-    return os.getenv(ENV_STORE_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
+    return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
+
+
+def get_temp_dir() -> str:
+    """
+    Get the temporary directory for the application.  This is specified in the environment variable TEMP_DIR.
+    If not specified, the default value is used based on the region and account number.
+
+    Returns:
+        str: The temporary directory
+    """
+    return os.getenv("TEMP_DIR", os.path.join(os.getcwd(), "local", "tmp"))
 
 
 def get_mode() -> str:
@@ -471,24 +485,54 @@ def get_mode() -> str:
 
 def get_client() -> str | None:
     """
-    Get the client name from the environment variable ENV_CLIENT or ENV_CLIENT_NAME.
+    Get the client name from the environment variable ENV_CLIENT.
 
     Returns:
         str | None: The client name
     """
-    return os.getenv(
-        ENV_CLIENT, os.getenv(ENV_CLIENT_NAME, os.getenv(ENV_AWS_PROFILE, "default"))
-    )
+    return os.getenv(ENV_CLIENT, os.getenv(ENV_AWS_PROFILE, "default"))
 
 
-def get_delivered_by() -> str | None:
+def get_client_name() -> str | None:
+    """
+    Get the client name from the environment variable ENV_CLIENT.
+
+    Returns:
+        str | None: The client name
+    """
+    return os.getenv(ENV_CLIENT_NAME, None)
+
+
+def get_store_volume() -> str:
+    """
+    Get the mount point for the storage volume.  This is specified in the environment variable VOLUME.  If not specified,
+    the current working directory is used.
+
+    Returns:
+        str: The mount point for the storage volume
+    """
+    return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), "local"))
+
+
+def get_log_dir() -> str:
+    """
+    Get the log directory for the core automation engine.  This is specified in the environment variable LOG_DIR.
+    If not specified, the current working directory is used.
+
+    Returns:
+        str: The log directory
+    """
+    return os.getenv(ENV_LOG_DIR, os.path.join(os.getcwd(), "local", "logs"))
+
+
+def get_delivered_by() -> str:
     """
     Get the delivered by value from the environment variable ENV_DELIVERED_BY.
 
     Returns:
-        str | None: The delivered by value
+        str: The delivered by value. Default is "automation"
     """
-    return os.getenv(ENV_DELIVERED_BY, None)
+    return os.getenv(ENV_DELIVERED_BY, "automation")
 
 
 def get_aws_profile() -> str:

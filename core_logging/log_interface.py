@@ -10,25 +10,24 @@ import logging
 from .log_classes import (
     CoreLogger,
     CoreLoggerHandler,
+    CoreLogTextFormatter,
+    CoreLogJsonFormatter,
     L_IDENTITY,
     DEFAULT_DATE_FORMAT,
+    DEFAULT_LOG_FORMAT,
+    ENV_LOG_JSON,
+    ENV_LOG_LEVEL,
+    ENV_LOG_DIR,
     INFO,
 )
 
-_log_level: int = logging._nameToLevel.get(os.getenv("LOG_LEVEL", "INFO"), INFO)
+# Our custom levels were added when the "core_logging.log_classes" module was loaded in the imports above
+_log_level: int = logging._nameToLevel.get(os.getenv(ENV_LOG_LEVEL, "INFO"), INFO)
 
 # Override the default logger class to use our custom logger class as methods were added (e.g. trace() and msg() functions).
 logging.root = CoreLogger("root", level=_log_level)  # type: ignore
 logging.Logger.root = logging.root
 logging.setLoggerClass(CoreLogger)
-
-# Configure logging.  note the format and datefmt are alrady defaults in CorLoggerHandler.
-logging.basicConfig(
-    level=_log_level,
-    format="%(message)s",
-    datefmt=DEFAULT_DATE_FORMAT,
-    handlers=[CoreLoggerHandler("root", level=_log_level)],
-)
 
 # Please note that Lambda has a time imit nd when it restarts, thread local variables are reset.
 _thread_local = local()
@@ -224,12 +223,59 @@ def get_logger_identity(**kwargs: dict) -> str:
     return str(kwargs.get(L_IDENTITY, identity))
 
 
-def getLogger(name: str | None) -> CoreLogger:
+def __get_formatter() -> logging.Formatter:
+
+    # Get the Core Automatin Formatters
+    date_fmt = DEFAULT_DATE_FORMAT
+    msg_fmt = DEFAULT_LOG_FORMAT
+
+    # default logging to text formatter unless LOG_AS_JSON is set to true
+    if os.environ.get(ENV_LOG_JSON, "false").lower() == "true":
+        return CoreLogJsonFormatter(msg_fmt, date_fmt)
+    else:
+        return CoreLogTextFormatter(msg_fmt, date_fmt)
+
+
+def __get_handlers(name, **kwargs) -> list[logging.Handler]:
+
+    handlers: list[logging.Handler] = []
+
+    formatter = __get_formatter()
+
+    # Add a console handler
+    console_hdlr = CoreLoggerHandler(name or "core")
+    console_hdlr.setFormatter(formatter)
+    handlers.append(console_hdlr)
+
+    # Add a file handler
+    log_dir = os.getenv(ENV_LOG_DIR)
+    if log_dir:
+
+        # TODO - If a LOG GROUP is defined, add it to the folder diretory path
+        log_group = kwargs.get("log_group", "")
+
+        # TODO - If a LOG STREAM is defined, set it as the filename
+        log_stream = kwargs.get("log_stream", "core")
+
+        log_file = os.path.join(log_dir, log_group, f"{log_stream}.log")
+
+        os.makedirs(log_dir, exist_ok=True)
+        hdlr = logging.FileHandler(log_file)
+        hdlr.setFormatter(formatter)
+        handlers.append(hdlr)
+
+    return handlers
+
+
+def getLogger(name: str | None, **kwargs) -> CoreLogger:
     """
     Return a logging object with the specified name.
 
     Args:
         name (str | None): The name/identity of the logger
+        kwargs (dict): experimental parameters "log_stream" and "log_group".
+            * log_stream: The name of the log stream filename.
+            * log_group: The name of the log group folder.
 
     Returns:
         CoreLogger: The logger object
@@ -240,9 +286,9 @@ def getLogger(name: str | None) -> CoreLogger:
     else:
         logger = logging.getLogger(name)  # type: ignore
     if not logger.handlers:
-        logger.addHandler(CoreLoggerHandler(name or "root"))
+        for handler in __get_handlers(name, **kwargs):
+            logger.addHandler(handler)
 
-    # FIXME: This may be a bug.  Using a global non-threadsafe variable may cause two loggers to conflict and may not be what the user wants.
     logger.setLevel(getLevel())
 
     return logger
@@ -254,7 +300,9 @@ def get_caller_info():
     module = inspect.getmodule(caller_frame)
     module_name = module.__name__ if module else "Unknown"
     function_name = caller_frame.f_code.co_name
-    return module_name, function_name
+    filename = caller_frame.f_code.co_filename
+    lineno = caller_frame.f_lineno
+    return module_name, function_name, filename, lineno
 
 
 def log(level: int, message: str | dict | None = None, *args, **kwargs):
@@ -268,7 +316,7 @@ def log(level: int, message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -285,7 +333,7 @@ def msg(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -302,7 +350,7 @@ def trace(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -319,7 +367,7 @@ def debug(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -336,7 +384,7 @@ def critical(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -353,7 +401,7 @@ def fatal(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -370,7 +418,7 @@ def error(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -387,7 +435,7 @@ def info(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -404,7 +452,7 @@ def warn(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -421,7 +469,7 @@ def warning(message: str | dict | None = None, *args, **kwargs):
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )
@@ -439,7 +487,7 @@ def status(code: str | int | None = None, reason: str | None = None, *args, **kw
         args (tuple): values used to replace the %s place holders in the message.
         kwargs: Name/Value pairs that will be added to the output. Defaults to None.
     """
-    module_name, function_name = get_caller_info()
+    module_name, function_name, _, _ = get_caller_info()
     logger = getLogger(
         get_logger_identity(module=module_name, function=function_name, **kwargs)
     )

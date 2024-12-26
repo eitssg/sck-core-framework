@@ -27,6 +27,7 @@ def setup_enivornment_variables():
 def runtime_arguments():
 
     arguments = {
+        "task": "deploy",
         "client": "my-client",
         "portfolio": "my-portfolio",
         "app": "my-app",
@@ -83,23 +84,50 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload is not None
 
+        assert task_payload.Task == "deploy"
+
         assert task_payload.Identity == "prn:my-portfolio:my-app:my-branch:my-build"
 
         assert task_payload.Actions.BucketName == "my-client-core-automation-master"
 
         assert task_payload.Actions.BucketRegion == "specified_region"
 
-        assert task_payload.Actions.Key == f"artefacts{os.path.sep}my-portfolio"
+        assert (
+            task_payload.Actions.Key
+            == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.actions"
+        )
 
         assert task_payload.Package.BucketName == "my-client-core-automation-master"
 
         assert task_payload.Package.BucketRegion == "specified_region"
 
-        assert task_payload.Package.Key == f"packages{os.path.sep}my-portfolio"
+        assert (
+            task_payload.Package.Key
+            == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
+        )
 
         assert task_payload.DeploymentDetails.Client == "my-client"
 
         assert task_payload.DeploymentDetails.Scope == "portfolio"
+
+        assert task_payload.DeploymentDetails.Environment == "dev"
+
+        assert task_payload.DeploymentDetails.DataCenter == "us-east-1"
+
+        assert task_payload.Package.BucketRegion == "specified_region"
+
+        assert task_payload.State.BucketName == "my-client-core-automation-master"
+
+        assert task_payload.State.BucketRegion == "specified_region"
+
+        assert (
+            task_payload.State.Key
+            == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.state"
+        )
+
+        assert task_payload.FlowControl == "execute"
+
+        assert task_payload.Type == "pipeline"
 
     except ValidationError as e:
         print(e.errors())
@@ -138,7 +166,7 @@ def test_package_details_model(runtime_arguments):
 
         # The scope is "portfolio"
 
-        assert package_details.Key == f"packages{os.path.sep}my-portfolio"
+        assert package_details.Key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
 
     except ValidationError as e:
         print(e.erros())

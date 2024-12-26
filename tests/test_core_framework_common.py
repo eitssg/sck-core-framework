@@ -120,7 +120,7 @@ def test_generate_branch_short_name():
     assert util.generate_branch_short_name("") == ""
 
     # Test with None as the branch name
-    assert util.generate_branch_short_name(None) == ""
+    assert util.generate_branch_short_name(None) is None
 
 
 def test_generate_task_payload():

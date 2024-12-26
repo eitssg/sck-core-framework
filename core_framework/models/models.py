@@ -54,9 +54,7 @@ def get_artefacts_path(
     Return:
         str | None: The path to the artefacts in the core automation s3 bucket
     """
-    return deployment_details.get_object_key(
-        OBJ_ARTEFACTS, name, s3
-    )
+    return deployment_details.get_object_key(OBJ_ARTEFACTS, name, s3)
 
 
 def get_packages_path(
