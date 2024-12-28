@@ -3763,4 +3763,4 @@ reference = "nexus"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "5e0d1e8e74c26208ba498b035bcf35a100f07ead7f7f2f440f8b285d6313bf71"
+content-hash = "bd4777fb97a60ff9ca8ef8b7d8d72a2d0f901e2e32c05fb1a13012a7c21e02ec"

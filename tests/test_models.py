@@ -166,7 +166,10 @@ def test_package_details_model(runtime_arguments):
 
         # The scope is "portfolio"
 
-        assert package_details.Key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
+        assert (
+            package_details.Key
+            == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
+        )
 
     except ValidationError as e:
         print(e.erros())
