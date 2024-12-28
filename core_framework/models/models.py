@@ -16,6 +16,7 @@ from .task_payload import TaskPayload
 def get_artefact_key(
     deployment_details: DeploymentDetails,
     name: str | None = None,
+    scope: str | None = None,
 ) -> str:
     """
     Helper function to get the artefacts key in the core automation s3 bucket for the deployment details.
@@ -26,19 +27,22 @@ def get_artefact_key(
 
     s3://<bucket-name>/artefacts/portfolio/app/branch/build-213/<name>
 
+    If you specify the **scope** then it will override the scope in the deployment details.
+
     Args:
         task_payload (dict): The task payload where the deployment details are stored
         name (str, optional): The name of the artefacts sub-folder, (e.g. /portfolio/app/branch/build-213/<name>)
-
+        scope (str, optional): The scope of the artefacts (default: None).  Allowed values are: portfolio, app, branch, build.
     Return:
         str: The path to the artefacts in the core automation s3 bucket
     """
-    return get_artefacts_path(deployment_details, name, True)
+    return get_artefacts_path(deployment_details, name, scope, True)
 
 
 def get_artefacts_path(
     deployment_details: DeploymentDetails,
     name: str | None = None,
+    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -46,20 +50,24 @@ def get_artefacts_path(
 
     Example: artefacts/portfolio/app/branch/build-213/<name>
 
+    If you specify the **scope** then it will override the scope in the deployment details.
+
     Args:
         deployment_details (DeploymentDetails): The deployment details describing the deployment
         name (str, optional): The name of the artefacts folder
+        scope (str, optional): The scope of the artefacts (default: None).  Allowed values are: portfolio, app, branch, build.
         s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
 
     Return:
         str | None: The path to the artefacts in the core automation s3 bucket
     """
-    return deployment_details.get_object_key(OBJ_ARTEFACTS, name, s3)
+    return deployment_details.get_object_key(OBJ_ARTEFACTS, name, scope, s3)
 
 
 def get_packages_path(
     deployment_details: DeploymentDetails,
     name: str | None = None,
+    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -67,20 +75,24 @@ def get_packages_path(
 
     Example: packages/portfolio/app/branch/build-213/<name>
 
+    If you specify the **scope** then it will override the scope in the deployment details.
+
     Args:
         deployment_details (DeploymentDetails): The deployment details describing the deployment
         name (str, optional): The name of the artefacts folder
+        scope (str, optional): The scope of the artefacts (default: None).  Allowed values are: portfolio, app, branch, build.
         s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
 
     Return:
         str: The path to the packages in the core automation s3 bucket
     """
-    return deployment_details.get_object_key(OBJ_PACKAGES, name, s3)
+    return deployment_details.get_object_key(OBJ_PACKAGES, name, scope, s3)
 
 
 def get_files_path(
     deployment_details: DeploymentDetails,
     name: str | None = None,
+    scope: str | None = None,
     s3: bool = False,
 ) -> str:
     """
@@ -88,15 +100,18 @@ def get_files_path(
 
     Example: files/portfolio/app/branch/build-213/<name>
 
+    If you specify the **scope** then it will override the scope in the deployment details.
+
     Args:
         deployment_details (DeploymentDetails): The deployment details describing the deployment
         name (str, optional): The name of the artefacts folder
+        scope (str, optional): The scope of the artefacts (default: None).  Allowed values are: portfolio, app, branch, build.
         s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
 
     Return:
         str: The path to the files in the core automation s3 bucket
     """
-    return deployment_details.get_object_key(OBJ_FILES, name, s3)
+    return deployment_details.get_object_key(OBJ_FILES, name, scope, s3)
 
 
 def generate_task_payload(**kwargs) -> TaskPayload:

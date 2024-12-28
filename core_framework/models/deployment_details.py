@@ -266,15 +266,19 @@ class DeploymentDetails(BaseModel):
         self,
         object_type: str,
         name: str | None = None,
+        scope: str | None = None,
         s3: bool = False,
     ) -> str:
         """
         Get the object path from the payload's deployment details. This will use os delimiters '/' for linux or SR
         or '\\' for Windows.  And if you need s3 keys, make sure that s3 parameter is set to True to for / delimiter.
 
+        If you specify the **scope** then it will override the scope in the deployment details.
+
         Args:
             object_type (str): The type of object to get the path for.  (files, packages, artefacts)
             name (str, optional): The name of the object to get the path for. (default: None)
+            scope (str, optional): The scope of the artefacts (default: None).  Allowed values are: portfolio, app, branch, build.
             s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
 
         Return:
@@ -294,13 +298,16 @@ class DeploymentDetails(BaseModel):
 
         separator = "/" if s3 else os.path.sep
 
-        if self.Scope == SCOPE_PORTFOLIO and portfolio:
+        if not scope:
+            scope = self.Scope
+
+        if scope == SCOPE_PORTFOLIO and portfolio:
             key = separator.join([object_type, portfolio])
-        elif self.Scope == SCOPE_APP and portfolio and app:
+        elif scope == SCOPE_APP and portfolio and app:
             key = separator.join([object_type, portfolio, app])
-        elif self.Scope == SCOPE_BRANCH and portfolio and app and branch:
+        elif scope == SCOPE_BRANCH and portfolio and app and branch:
             key = separator.join([object_type, portfolio, app, branch])
-        elif self.Scope == SCOPE_BUILD and portfolio and app and branch and build:
+        elif scope == SCOPE_BUILD and portfolio and app and branch and build:
             key = separator.join([object_type, portfolio, app, branch, build])
         else:
             key = object_type
