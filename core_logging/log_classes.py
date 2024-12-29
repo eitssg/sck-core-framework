@@ -402,14 +402,17 @@ class CoreLoggerHandler(logging.Handler):
         """
 
         # Count the number of "{}" strings in the message
-        count = message.count("{}")
-        # If there are more "{}" strings than there are values in the args tuple, then we need to add empty strings to args
-        if count > len(args):
-            args = args + tuple([""] * (count - len(args)))
-        # Replace the "{}" strings with the values in the args tuple
-        message = message.format(*args)
-        # Return the message and any unused values in the args tuple
-        unused_values = args[count:]
+        if args:
+            count = message.count("{}")
+            # If there are more "{}" strings than there are values in the args tuple, then we need to add empty strings to args
+            if count > len(args):
+                args = args + tuple([""] * (count - len(args)))
+            # Replace the "{}" strings with the values in the args tuple
+            message = message.format(*args)
+            # Return the message and any unused values in the args tuple
+            unused_values = args[count:]
+        else:
+            unused_values = ()
         return message, unused_values
 
     @staticmethod
