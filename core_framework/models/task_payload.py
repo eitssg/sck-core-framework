@@ -65,16 +65,16 @@ class TaskPayload(BaseModel):
         ..., description="The deployment details such as Portfolio, App, Branch, Build"
     )
     Package: PackageDetailsClass = Field(
-        ...,
         description="The package details.  Usually stored in packages/**/package.zip",
+        default_factory=lambda: PackageDetailsClass(),
     )
-    Actions: ActionDetailsClass | None = Field(
+    Actions: ActionDetailsClass = Field(
         description="The actions to perform.  Usually stored in artefacts/**/{task}.actions",
-        default=None,
+        default_factory=lambda: ActionDetailsClass(),
     )
-    State: StateDetailsClass | None = Field(
+    State: StateDetailsClass = Field(
         description="The state of the task.  Usually stored in artefacts/**/{task}.state",
-        default=None,
+        default_factory=lambda: StateDetailsClass(),
     )
     FlowControl: str = Field(
         description="The flow control of the task", default="execute"

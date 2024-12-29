@@ -76,31 +76,31 @@ class ActionDefinition(BaseModel):
     )
 
     Scope: str = Field(
-        ...,
         description="The scope of the action.  This is used to group actions together. Project/Portfolio, App, Branch, or Build",
+        default="build",
     )
 
-    Condition: str = Field(description="Condition clauses", default="True")
+    Condition: str | None = Field(description="Condition clauses", default=None)
 
-    Before: list = Field(
+    Before: list | None = Field(
         description="Before is a list of actions that should be perfomred before this one",
-        default=[],
+        default=None,
     )
-    After: list = Field(
+    After: list | None = Field(
         description="After is a list of actions that should be perfomred after this one",
-        default=[],
+        default=None,
     )
     SaveOutputs: bool = Field(
         description="SaveOutputs is a flag to save the outputs of the action",
         default=False,
     )
-    LifecycleHooks: list = Field(
+    LifecycleHooks: list | None = Field(
         description="Lifecycle Hooks",
-        default=[],
+        default=None,
     )
 
     @model_serializer
-    def ser_model(self) -> OrderedDict:
+    def ser_model(self) -> OrderedDict:  # noqa C901
 
         fields: list[tuple[str, Any]] = []
         if self.Label:
@@ -113,5 +113,15 @@ class ActionDefinition(BaseModel):
             fields.append(("Params", self.Params.model_dump()))
         if self.Scope:
             fields.append(("Scope", self.Scope))
+        if self.Condition:
+            fields.append(("Condition", self.Condition))
+        if self.Before:
+            fields.append(("Before", self.Before))
+        if self.After:
+            fields.append(("After", self.After))
+        if self.SaveOutputs:
+            fields.append(("SaveOutputs", self.SaveOutputs))
+        if self.LifecycleHooks:
+            fields.append(("LifecycleHooks", self.LifecycleHooks))
 
         return OrderedDict(fields)
