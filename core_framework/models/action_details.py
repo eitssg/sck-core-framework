@@ -84,7 +84,7 @@ class ActionDetails(BaseModel):
     @staticmethod
     def from_arguments(**kwargs) -> "ActionDetails":
 
-        key = kwargs.get("key", None)
+        key = kwargs.get("key", V_EMPTY)
         if not key:
             task = kwargs.get("task", None)
             action_file = kwargs.get("action_file", None)

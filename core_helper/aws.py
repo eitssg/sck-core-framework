@@ -194,7 +194,13 @@ def assume_role(role: str | None = None) -> dict[str, str] | None:
             sts_response = client.assume_role(
                 RoleArn=role, RoleSessionName=session_name
             )
-            __credentials[role] = sts_response["Credentials"]
+            if (
+                sts_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+                and "Credentials" in sts_response
+            ):
+                __credentials[role] = sts_response["Credentials"]
+            else:
+                __credentials[role] = None
 
         except ClientError as e:
             log.error("Failed to assume role {}: {}", role, e)
@@ -224,6 +230,9 @@ def get_identity() -> dict[str, str] | None:
 def get_client(service, region: str | None, role: str | None) -> Any:
 
     session = get_session()
+
+    if not region:
+        region = session.region_name
 
     credentials = assume_role(role)
 

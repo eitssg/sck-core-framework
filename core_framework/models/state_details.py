@@ -86,7 +86,7 @@ class StateDetails(BaseModel):
     @staticmethod
     def from_arguments(**kwargs) -> "StateDetails":
 
-        key = kwargs.get("key", None)
+        key = kwargs.get("key", V_EMPTY)
         if not key:
             state_file = kwargs.get("state_file", None)
             task = kwargs.get("task", None)

@@ -29,6 +29,7 @@ from .constants import (
     ENV_INVOKER_LAMBDA_ARN,
     ENV_INVOKER_LAMBDA_NAME,
     ENV_INVOKER_LAMBDA_REGION,
+    ENV_ENFORCE_VALIDATION,
     ENV_LOCAL_MODE,
     ENV_AWS_PROFILE,
     ENV_AWS_REGION,
@@ -483,6 +484,10 @@ def get_mode() -> str:
     return V_LOCAL if is_local_mode() else V_SERVICE
 
 
+def is_enforce_validation() -> bool:
+    return os.environ.get(ENV_ENFORCE_VALIDATION, "true").lower() == "true"
+
+
 def get_client() -> str | None:
     """
     Get the client name from the environment variable ENV_CLIENT.
@@ -501,17 +506,6 @@ def get_client_name() -> str | None:
         str | None: The client name
     """
     return os.getenv(ENV_CLIENT_NAME, None)
-
-
-def get_store_volume() -> str:
-    """
-    Get the mount point for the storage volume.  This is specified in the environment variable VOLUME.  If not specified,
-    the current working directory is used.
-
-    Returns:
-        str: The mount point for the storage volume
-    """
-    return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), "local"))
 
 
 def get_log_dir() -> str:

@@ -55,9 +55,9 @@ class PackageDetails(BaseModel):
         description="The name of the bucket where packages are stored.",
         default=V_EMPTY,
     )
-    Key: str | None = Field(
+    Key: str = Field(
         description="Key where the package is stored. Usually stored in packages/**",
-        default=None,
+        default=V_EMPTY,
     )
     CompileMode: str = Field(
         description="The compile mode of the package.  Either 'full' or 'incremental'.  Defaults to 'full'",
@@ -105,13 +105,19 @@ class PackageDetails(BaseModel):
                 values["BucketRegion"] = util.get_bucket_region()
         return values
 
+    def get_name(self) -> str:
+        if not self.Key:
+            return V_PACKAGE_ZIP
+        sep = os.path.sep if self.Mode == V_LOCAL else "/"
+        return self.Key.rsplit(sep, 1)[-1]
+
     def set_key(self, dd: DeploymentDetailsClass, filename: str):
         self.Key = dd.get_object_key(OBJ_PACKAGES, filename, s3=self.Mode != V_LOCAL)
 
     @staticmethod
     def from_arguments(**kwargs) -> "PackageDetails":
 
-        key = kwargs.get("key", None)
+        key = kwargs.get("key", kwargs.get("package_key", V_EMPTY))
         package_file = kwargs.get("package_file", V_PACKAGE_ZIP)
         if not key:
             dd = kwargs.get("deployment_details", kwargs)

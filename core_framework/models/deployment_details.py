@@ -19,6 +19,8 @@ from core_framework.constants import (
     ENV_BRANCH,
     ENV_BUILD,
     ENV_CLIENT,
+    OBJ_ARTEFACTS,
+    OBJ_FILES,
     V_EMPTY,
 )
 
@@ -137,16 +139,16 @@ class DeploymentDetails(BaseModel):
         return f"prn:{self.Portfolio}".lower()
 
     def get_app_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App}".lower()
+        return f"prn:{self.Portfolio}:{self.App or ""}".lower()
 
     def get_branch_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App}:{self.BranchShortName}".lower()
+        return f"prn:{self.Portfolio}:{self.App or ""}:{self.BranchShortName or ""}".lower()
 
     def get_build_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App}:{self.BranchShortName}:{self.Build}".lower()
+        return f"prn:{self.Portfolio}:{self.App or ""}:{self.BranchShortName or ""}:{self.Build or ""}".lower()
 
     def get_component_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App}:{self.BranchShortName}:{self.Build}:{self.Component}".lower()
+        return f"prn:{self.Portfolio}:{self.App or ""}:{self.BranchShortName or ""}:{self.Build or ""}:{self.Component or ""}".lower()
 
     @model_validator(mode="before")
     @classmethod
@@ -299,7 +301,7 @@ class DeploymentDetails(BaseModel):
         separator = "/" if s3 else os.path.sep
 
         if not scope:
-            scope = self.Scope
+            scope = self.Scope or SCOPE_BUILD
 
         if scope == SCOPE_PORTFOLIO and portfolio:
             key = separator.join([object_type, portfolio])
@@ -313,3 +315,64 @@ class DeploymentDetails(BaseModel):
             key = object_type
 
         return key if name is None else f"{key}{separator}{name}"
+
+    def get_artefacts_key(
+        self,
+        name: str | None = None,
+        scope: str | None = None,
+        s3: bool = False,
+    ) -> str:
+        """
+        Helper function to get the artefacts path in the core automation s3 bucket for the task payload.
+
+        Example: artefacts/portfolio/app/branch/build-213/<name>
+
+        If you specify the **scope** then it will override the scope in the deployment details.
+
+        Args:
+            deployment_details (DeploymentDetails): The deployment details describing the deployment
+            name (str, optional): The name of the artefacts folder
+            scope (str, optional): The scope of the artefacts (default: None).  Allowed values are: portfolio, app, branch, build.
+            s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
+
+        Return:
+            str | None: The path to the artefacts in the core automation s3 bucket
+        """
+        return self.get_object_key(OBJ_ARTEFACTS, name, scope, s3)
+
+    def get_files_key(
+        self,
+        name: str | None = None,
+        scope: str | None = None,
+        s3: bool = False,
+    ) -> str:
+        """
+        Helper function to get the artefacts path in the core automation s3 bucket for the task payload.
+
+        Example: artefacts/portfolio/app/branch/build-213/<name>
+
+        If you specify the **scope** then it will override the scope in the deployment details.
+
+        Args:
+            deployment_details (DeploymentDetails): The deployment details describing the deployment
+            name (str, optional): The name of the artefacts folder
+            scope (str, optional): The scope of the artefacts (default: None).  Allowed values are: portfolio, app, branch, build.
+            s3 (bool, optional): Forces slashes to '/' instead of os dependent (default: False)
+
+        Return:
+            str | None: The path to the artefacts in the core automation s3 bucket
+        """
+        return self.get_object_key(OBJ_FILES, name, scope, s3)
+
+    def get_client_portfolio_key(self) -> str:
+        """
+        Return the client portfolio key for the deployment details `AppFacts`
+
+        The key is in the format: key = {client}:{portfolio}
+
+        Example: client:portfolio
+
+        Returns:
+            str: The key for AppFacts retrieval
+        """
+        return f"{self.Client}:{self.Portfolio}"
