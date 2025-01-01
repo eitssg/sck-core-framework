@@ -196,7 +196,8 @@ def test_assume_role(mock_boto_session, real_aws):
                 "SecretAccessKey": "mock_secret_key",
                 "SessionToken": "mock_session_token",
                 "Expiration": datetime.now(timezone.utc) + timedelta(hours=1),
-            }
+            },
+            "ResponseMetadata": {"HTTPStatusCode": 200},
         }
         mock_client.assume_role.return_value = mock_response
 
