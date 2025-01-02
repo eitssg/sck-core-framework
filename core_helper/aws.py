@@ -2,12 +2,9 @@
 
 from typing import Any
 
-import os
 import json
 import boto3
-import uuid
 
-from datetime import datetime, timedelta
 from boto3.session import Session
 
 from botocore.config import Config
@@ -22,9 +19,9 @@ from core_framework.constants import (
 
 import core_logging as log
 
-__credentials: dict = {}
-__session = None
-__session_id = None
+from .cache import InsecureEnclave
+
+store = InsecureEnclave()
 
 
 def transform_stack_parameter_dict(keyvalues: dict[str, str]) -> dict[str, str]:
@@ -66,17 +63,28 @@ def transform_tag_hash(keyvalues: dict[str, str]) -> list[dict[str, str]]:
     return __transform_keyvalues_to_array(keyvalues, "Key", "Value")
 
 
-def get_session() -> Session:
-    global __session, __session_id
-    if __session is None:
-        __session = (
-            boto3.session.Session()
-        )  # Use the name we will "patch" with in pytest
-        __session_id = str(uuid.uuid4())
-    return __session
+def get_session_key(session: Session) -> str | None:
+    return f"session:{session.profile_name}-{session.region_name}"
 
 
-def get_session_credentials() -> dict | None:
+def get_session(**kwargs) -> Session:
+
+    region = kwargs.get("region", util.get_region())
+    profile_name = kwargs.get("aws_profile", util.get_aws_profile())
+
+    # the store key is generated from the profile and region
+    key = f"session:{profile_name}:{region}"
+
+    session = store.retrieve_session(key)
+
+    if session is None:
+        session = boto3.session.Session(region_name=region, profile_name=profile_name)
+        store.store_session(key, session, ttl=300)  # 5 minutes
+
+    return session
+
+
+def get_session_credentials(**kwargs) -> dict | None:
     """
     REturns the credentials information for the current session/role that has been assumed.
     If no role assumed, then this is the user's credentials.
@@ -87,26 +95,28 @@ def get_session_credentials() -> dict | None:
             - SecretAccessKey
             - SessionToken
     """
-    session = get_session()
+    session = get_session(**kwargs)
     credentials = session.get_credentials()
 
     if credentials:
         frozen_credentials = credentials.get_frozen_credentials()
         if frozen_credentials:
-            return {
+            # ALWAYS expire defauult credentials
+            creds = {
                 "AccessKeyId": frozen_credentials.access_key,
                 "SecretAccessKey": frozen_credentials.secret_key,
                 "SessionToken": frozen_credentials.token,
-                "Expiration": datetime.fromordinal(
-                    1
-                ),  # ALWAYS expire defauult credentials
             }
+            return creds
+
     return None
 
 
-def login_to_aws(auth: dict[str, str], role: str) -> dict[str, str] | None:
+def login_to_aws(auth: dict[str, str], **kwargs) -> dict[str, str] | None:
 
-    sts_client = get_session().client(
+    role = kwargs.get("role", None)
+
+    sts_client = get_session(**kwargs).client(
         "sts",
         aws_access_key_id=auth["AccessKeyId"],
         aws_secret_access_key=auth["SecretAccessKey"],
@@ -154,7 +164,7 @@ def check_if_user_authorised(auth: dict[str, str] | None, role: str) -> bool:
         return False
 
 
-def assume_role(role: str | None = None) -> dict[str, str] | None:
+def assume_role(**kwargs) -> dict[str, str] | None:
     """
     Assume a role using the current session credentials and get the credentials.
 
@@ -166,47 +176,50 @@ def assume_role(role: str | None = None) -> dict[str, str] | None:
     Returns:
         dict[str, str] | None: credetials object containing AccessKeyId, SecretAccessKey, and SessionToken.
     """
-    global __credentials
-    global __session_id
+
+    role = kwargs.get("role", None)
 
     if role is None:
         return get_session_credentials()
 
-    # Generate a unique session name if not provided
-    session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{__session_id}"
+    credentials = store.retrieve_data(role)
+    if credentials:
+        return credentials
 
-    # Assume the role if no role credentials exist or existing credentials have expired
-    if role not in __credentials or __should_renew(__credentials[role]["Expiration"]):
+    try:
+        # Assume the role if no role credentials exist or existing credentials have expired
 
-        session = get_session()
+        session = get_session(**kwargs)
 
-        try:
-            # Assume / re-assume the role to get new credentials
-            log.debug("Assuming IAM Role (role: {})", role)
+        key = get_session_key(session)
 
-            client = session.client(
-                "sts",
-                config=Config(
-                    connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
-                ),
-            )
+        # Generate a unique session name if not provided
+        session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{key}"
 
-            sts_response = client.assume_role(
-                RoleArn=role, RoleSessionName=session_name
-            )
-            if (
-                sts_response["ResponseMetadata"]["HTTPStatusCode"] == 200
-                and "Credentials" in sts_response
-            ):
-                __credentials[role] = sts_response["Credentials"]
-            else:
-                __credentials[role] = None
+        # Assume / re-assume the role to get new credentials
+        log.debug("Assuming role [{}] session namae [{}]", role)
 
-        except ClientError as e:
-            log.error("Failed to assume role {}: {}", role, e)
-            __credentials[role] = get_session_credentials()
+        client = session.client(
+            "sts",
+            config=Config(
+                connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
+            ),
+        )
 
-    return __credentials[role]
+        sts_response = client.assume_role(RoleArn=role, RoleSessionName=session_name)
+        if (
+            sts_response["ResponseMetadata"]["HTTPStatusCode"] == 200
+            and "Credentials" in sts_response
+        ):
+            credentials = sts_response["Credentials"]
+            if isinstance(credentials, dict):
+                store.store_data(role, credentials, ttl=300)  # 5 minutes
+                return credentials
+
+    except ClientError as e:
+        log.error("Failed to assume role {}: {}", role, e)
+
+    return get_session_credentials()
 
 
 def get_identity() -> dict[str, str] | None:
@@ -227,19 +240,16 @@ def get_identity() -> dict[str, str] | None:
         return None
 
 
-def get_client(service, region: str | None, role: str | None) -> Any:
+def get_client(service, **kwargs) -> Any:
 
-    session = get_session()
+    session = get_session(**kwargs)
 
-    if not region:
-        region = session.region_name
-
-    credentials = assume_role(role)
+    # you better have "role" paramter in kwargs!
+    credentials = assume_role(**kwargs)
 
     if credentials is None:
         client = session.client(
             service,
-            region_name=region,
             config=Config(
                 connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
             ),
@@ -247,7 +257,6 @@ def get_client(service, region: str | None, role: str | None) -> Any:
     else:
         client = session.client(
             service,
-            region_name=region,
             aws_access_key_id=credentials["AccessKeyId"],
             aws_secret_access_key=credentials["SecretAccessKey"],
             aws_session_token=credentials["SessionToken"],
@@ -258,76 +267,75 @@ def get_client(service, region: str | None, role: str | None) -> Any:
     return client
 
 
-def sts_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("sts", region, role)
+def sts_client(**kwargs) -> Any:
+    return get_client("sts", **kwargs)
 
 
-def cfn_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("cloudformation", region, role)
+def cfn_client(**kwargs) -> Any:
+    return get_client("cloudformation", **kwargs)
 
 
-def cloudwatch_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("cloudwatch", region, role)
+def cloudwatch_client(**kwargs) -> Any:
+    return get_client("cloudwatch", **kwargs)
 
 
-def cloudfront_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("cloudfront", region, role)
+def cloudfront_client(**kwargs) -> Any:
+    return get_client("cloudfront", **kwargs)
 
 
-def ec2_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("ec2", region, role)
+def ec2_client(**kwargs) -> Any:
+    return get_client("ec2", **kwargs)
 
 
-def ecr_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("ecr", region, role)
+def ecr_client(**kwargs) -> Any:
+    return get_client("ecr", **kwargs)
 
 
-def elb_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("elb", region, role)
+def elb_client(**kwargs) -> Any:
+    return get_client("elb", **kwargs)
 
 
-def elbv2_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("elbv2", region, role)
+def elbv2_client(**kwargs) -> Any:
+    return get_client("elbv2", **kwargs)
 
 
-def iam_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("iam", region, role)
+def iam_client(**kwargs) -> Any:
+    return get_client("iam", **kwargs)
 
 
-def kms_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("kms", region, role)
+def kms_client(**kwargs) -> Any:
+    return get_client("kms", **kwargs)
 
 
-def lambda_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("lambda", region, role)
+def lambda_client(**kwargs) -> Any:
+    return get_client("lambda", **kwargs)
 
 
-def rds_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("rds", region, role)
+def rds_client(**kwargs) -> Any:
+    return get_client("rds", **kwargs)
 
 
-def s3_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("s3", region, role)
+def s3_client(**kwargs) -> Any:
+    return get_client("s3", **kwargs)
 
 
-def org_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("organizations", region, role)
+def org_client(**kwargs) -> Any:
+    return get_client("organizations", **kwargs)
 
 
-def step_functions_client(region: str | None = None, role: str | None = None) -> Any:
-    return get_client("stepfunctions", region, role)
+def step_functions_client(**kwargs) -> Any:
+    return get_client("stepfunctions", **kwargs)
 
 
-def get_resource(service, region: str | None = None, role: str | None = None) -> Any:
+def get_resource(service, **kwargs) -> Any:
 
-    session = get_session()
+    session = get_session(**kwargs)
 
-    credentials = assume_role(role)
+    credentials = assume_role(**kwargs)
 
     if credentials is None:
         resource = session.resource(
             service,
-            region_name=region,
             config=Config(
                 connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
             ),
@@ -335,7 +343,6 @@ def get_resource(service, region: str | None = None, role: str | None = None) ->
     else:
         resource = session.resource(
             service,
-            region_name=region,
             aws_access_key_id=credentials["AccessKeyId"],
             aws_secret_access_key=credentials["SecretAccessKey"],
             aws_session_token=credentials["SessionToken"],
@@ -346,22 +353,23 @@ def get_resource(service, region: str | None = None, role: str | None = None) ->
     return resource
 
 
-def s3_resource(region: str | None = None, role: str | None = None) -> Any:
-    return get_resource("s3", region, role)
+def s3_resource(**kwargs) -> Any:
+    return get_resource("s3", **kwargs)
 
 
-def dynamodb_resource(region: str | None = None, role: str | None = None) -> Any:
-    if not region:
-        region = os.environ.get("DYNAMODB_REGION", "us-east-1")
-    return get_resource("dynamodb", region, role)
+def dynamodb_resource(**kwargs) -> Any:
+    region = kwargs.get("region", util.get_dynamodb_region())
+    kwargs["region"] = region
+    return get_resource("dynamodb", **kwargs)
 
 
 def invoke_lambda(
-    arn: str, request_payload: dict[str, Any], role: str | None = None
+    arn: str, request_payload: dict[str, Any], **kwargs
 ) -> dict[str, Any]:
 
-    region = arn.split(":")[3]
-    client = lambda_client(region, role)
+    kwargs["region"] = kwargs.get("region", arn.split(":")[3])
+
+    client = lambda_client(**kwargs)
 
     log.trace(
         "Invoking Lambda", details={"FunctionName": arn, "Payload": request_payload}
@@ -424,15 +432,6 @@ def invoke_lambda(
     return {TR_STATUS: status, TR_RESPONSE: response_payload}
 
 
-# Determine if credentials should be renewed
-# Returns true if expiration date has passed or is less than 5 minutes away
-def __should_renew(expiration: datetime | None) -> bool:
-    if expiration is None:
-        return False
-    else:
-        return (expiration - datetime.now(expiration.tzinfo)) < timedelta(minutes=5)
-
-
 def __transform_keyvalues_to_array(
     keyvalues: dict[str, str], key_key: str, value_key: str
 ) -> list[dict[str, str]]:
@@ -453,7 +452,7 @@ def generate_context() -> dict:
 
 
 def grant_assume_role_permission(
-    user_name: str, role_name: str, account_id: str
+    user_name: str, role_name: str, account_id: str, **kwargs
 ) -> None:
     """
     This function grants the user the ability to assume the role sepecified in the account
@@ -467,7 +466,7 @@ def grant_assume_role_permission(
     # Define the policy name
     policy_name = "AssumeRolePolicy"
 
-    client = iam_client()
+    client = iam_client(**kwargs)
 
     # Try to retrieve the existing user policy
     try:
@@ -538,9 +537,11 @@ def grant_assume_role_permission(
     )
 
 
-def revoke_assume_role_permission(user_name: str, role_name: str, account_id: str):
+def revoke_assume_role_permission(
+    user_name: str, role_name: str, account_id: str, **kwargs
+):
 
-    client = iam_client()
+    client = iam_client(**kwargs)
 
     # Define the policy name
     policy_name = "AssumeRolePolicy"

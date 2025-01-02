@@ -47,8 +47,8 @@ def runtime_arguments():
 def deployspec_sample():
 
     # Get the path of this current script file
-    app_path = os.path.dirname(os.path.realpath(__file__))
-    file_path = os.path.join(app_path, "sample_deployspec.yaml")
+    data_path = os.path.dirname(os.path.realpath(__file__))
+    file_path = os.path.join(data_path, "sample_deployspec.yaml")
     with open(file_path, "r") as file:
         deployspec = yaml.safe_load(file)
 

@@ -7,9 +7,16 @@ import mimetypes
 import hashlib
 from datetime import datetime
 
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict
 
-from .common import get_storage_volume, get_bucket_name, get_region
+from core_framework.common import (
+    get_storage_volume,
+    get_bucket_name,
+    get_region,
+    is_use_s3,
+)
+
+import core_helper.aws as aws
 
 
 class MagicObject(BaseModel):
@@ -23,25 +30,12 @@ class MagicObject(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     bucket_name: str = Field(default_factory=get_bucket_name, alias="Bucket")
-    bucket_region: str = Field(default_factory=get_region, alias="Region")
     key: str | None = Field(default=None, alias="Key")
-    app_path: str = Field(default_factory=get_storage_volume, alias="AppPath")
+    data_path: str = Field(default_factory=get_storage_volume, alias="DataPath")
     version_id: str | None = Field(default=None, alias="VersionId")
     content_type: str | None = Field(default=None, alias="ContentType")
     etag: str | None = Field(default=None, alias="ETag")
     error: str | None = Field(default=None, alias="Error")
-
-    @model_validator(mode="before")
-    @classmethod
-    def validaate_before(cls, v) -> Any:
-        if isinstance(v, dict):
-            if not v.get("bucket_name"):
-                v["bucket_name"] = get_bucket_name()
-            if not v.get("bucket_region"):
-                v["bucket_region"] = get_region()
-            if not v.get("app_path"):
-                v["app_path"] = get_storage_volume()
-        return v
 
     def head_object(self, **kwargs) -> Self:
         """Emulate the S3 head_object() API method to get the metadata of an object"""
@@ -50,7 +44,7 @@ class MagicObject(BaseModel):
             if not self.key:
                 raise ValueError("Key is required")
 
-            fn = os.path.join(self.app_path, self.bucket_name, self.key)
+            fn = os.path.join(self.data_path, self.bucket_name, self.key)
 
             if os.path.exists(fn):
                 # get the timestamp of the file
@@ -119,8 +113,8 @@ class MagicObject(BaseModel):
                     )
                 )
 
-            source_fn = os.path.join(self.app_path, source_bucket, source_key)
-            target_fn = os.path.join(self.app_path, self.bucket_name, self.key)
+            source_fn = os.path.join(self.data_path, source_bucket, source_key)
+            target_fn = os.path.join(self.data_path, self.bucket_name, self.key)
 
             if source_key and self.key:
                 os.makedirs(os.path.dirname(target_fn), exist_ok=True)
@@ -164,7 +158,7 @@ class MagicObject(BaseModel):
             if not self.key:
                 raise ValueError("Key is required")
 
-            key = os.path.join(self.app_path, self.bucket_name, self.key)
+            key = os.path.join(self.data_path, self.bucket_name, self.key)
 
             fileobj = kwargs.get("Fileobj")
             if fileobj is None:
@@ -196,7 +190,7 @@ class MagicObject(BaseModel):
             if not body:
                 raise ValueError("Body is required")
 
-            fn = os.path.join(self.app_path, self.bucket_name, self.key)
+            fn = os.path.join(self.data_path, self.bucket_name, self.key)
 
             # get the directory of the file fn
             dirname = os.path.dirname(fn)
@@ -222,23 +216,8 @@ class MagicBucket(BaseModel):
     The purpose is to read objects from the local filesystem instead of S3 using s3 api.
     """
 
-    bucket_name: str = Field(default_factory=get_bucket_name, alias="Bucket")
-    bucket_region: str = Field(default_factory=get_region, alias="Region")
-    app_path: str = Field(default_factory=get_storage_volume, alias="AppPath")
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_before(cls, v) -> Any:
-        # did you know, a bucket name and an app_path
-        # are the same thing? I think we can combine them.
-        if isinstance(v, dict):
-            if not v.get("bucket_name"):
-                v["bucket_name"] = get_bucket_name()
-            if not v.get("bucket_region"):
-                v["bucket_region"] = get_region()
-            if not v.get("app_path"):
-                v["app_path"] = get_storage_volume()
-        return v
+    name: str = Field(default_factory=get_bucket_name, alias="Bucket")
+    data_path: str | None = Field(default_factory=get_storage_volume, alias="DataPath")
 
     def head_object(self, **kwargs) -> dict:
         """Emulate the S3 head_object() API method to get the metadata of an object"""
@@ -259,7 +238,15 @@ class MagicBucket(BaseModel):
         return object.download_fileobj(**kwargs).model_dump(exclude_none=True)
 
     def put_object(self, **kwargs) -> MagicObject:
-        """Put an object on the local filesystem instead of S3"""
+        """Put an object on the local filesystem instead of S3
+
+        Args:
+            Key (str): The key of the object
+            Body (str): The body of the object
+            ContentType (str): The content type of the object
+            ServerSideEncryption (str): The server side encryption type
+
+        """
 
         key = kwargs.pop("Key", None)
 
@@ -277,12 +264,17 @@ class MagicBucket(BaseModel):
         Returns:
             MagicObject: A MagicObject that behaves like an S3 Object
         """
-        return MagicObject(
-            Bucket=self.bucket_name,
-            Region=self.bucket_region,
-            Key=key,
-            AppPath=self.app_path,
-        )
+        if self.data_path:
+            return MagicObject(
+                Bucket=self.name,
+                Key=key,
+                DataPath=self.data_path
+            )
+        else:
+            return MagicObject(
+                Bucket=self.name,
+                Key=key
+            )
 
 
 class MagicS3Client(BaseModel):
@@ -292,26 +284,13 @@ class MagicS3Client(BaseModel):
     The purpose is to read and write objects to the local filesystem instead of S3 using s3 api.
     """
 
-    bucket_name: str = Field(default_factory=get_bucket_name, alias="Bucket")
     region_name: str = Field(default_factory=get_region, alias="Region")
-    app_path: str = Field(default_factory=get_storage_volume, alias="AppPath")
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_before(cls, v) -> Any:
-        if isinstance(v, dict):
-            if not v.get("bucket_name"):
-                v["bucket_name"] = get_bucket_name()
-            if not v.get("region_name"):
-                v["region_name"] = get_region()
-            if not v.get("app_path"):
-                v["app_path"] = get_storage_volume()
-        return v
+    data_path: str | None = Field(alias="DataPath", default=None)
 
     def head_object(self, **kwargs) -> dict:
         """Emulate the S3 head_object() API method to get the metadata of an object"""
 
-        bucket_name = kwargs.pop("Bucket", self.bucket_name)
+        bucket_name = kwargs.pop("Bucket", None)
 
         bucket = self.Bucket(bucket_name)
 
@@ -333,7 +312,7 @@ class MagicS3Client(BaseModel):
         Returns:
             dict: A dictionary emulating what S3 would return for a download_fileobj() call
         """
-        bucket_name = kwargs.pop("Bucket", self.bucket_name)
+        bucket_name = kwargs.pop("Bucket", None)
 
         bucket = self.Bucket(bucket_name)
 
@@ -353,7 +332,7 @@ class MagicS3Client(BaseModel):
         Returns:
             dict: A dictionary that would emulate what S3 would return for a put_object() call
         """
-        bucket_name = kwargs.pop("Bucket", self.bucket_name)
+        bucket_name = kwargs.pop("Bucket", None)
 
         bucket = self.Bucket(bucket_name)
 
@@ -369,6 +348,44 @@ class MagicS3Client(BaseModel):
         Returns:
             MagicBucket: A MagicBucket that behaves like an S3 Bucket
         """
-        return MagicBucket(
-            Bucket=bucket_name, Region=self.region_name, AppPath=self.app_path
-        )
+        return MagicBucket(Bucket=bucket_name, DataPath=self.data_path)
+
+    @staticmethod
+    def get_bucket(Region: str, BucketName: str, DataPath: str | None = None) -> Any:
+        """
+        Get a Bucket object.  Will be S3 bucket or MagicBucket
+
+        Args:
+            Region (str): The region of the bucket
+            DataPath (str): The path to the bucket
+
+        Returns:
+            MagicBucket: A MagicBucket object
+        """
+        if is_use_s3():
+            s3 = aws.s3_resource(region=BucketName)
+            bucket = s3.Bucket(BucketName)
+        else:
+            local = MagicS3Client(Region=Region, DataPath=DataPath)
+            bucket = local.Bucket(BucketName)
+
+        return bucket
+
+    @staticmethod
+    def get_client(Region: str, DataPath: str | None = None) -> Any:
+        """
+        Get a S3 client object.  Will be S3 client or MagicS3Client
+
+        Args:
+            Region (str): The region of the bucket
+            DataPath (str): The path to the bucket
+
+        Returns:
+            MagicS3Client: A MagicS3Client object
+        """
+        if is_use_s3():
+            client = aws.s3_client(region=Region)
+        else:
+            client = MagicS3Client(Region=Region, DataPath=DataPath)
+
+        return client

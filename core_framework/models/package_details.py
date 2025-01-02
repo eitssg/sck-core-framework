@@ -6,8 +6,6 @@ import os
 
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
-import tempfile
-
 import core_framework as util
 
 from .deployment_details import DeploymentDetails as DeploymentDetailsClass
@@ -36,7 +34,7 @@ class PackageDetails(BaseModel):
         BucketName (str): The name of the bucket where packages are stored.
         Key (str): Key where the package is stored. Usually stored in packages/\\*\\*.
         Mode (str): The mode of the package.  Either "local" or "service".  defaults to "service"
-        AppPath (str): The path to the application.  Used for local mode only.  Defaults to the current directory.
+        DataPath (str): The path to the application.  Used for local mode only.  Defaults to the current directory.
         CompileMode (str): The compile mode of the package.  Either "full" or "incremental".  Defaults to "full"
         DeploySpec (DeploySpecClass): DeploySpec is optional because it's added later by the lambda handlers
         TempDir (str): The temporary directory to use for processing the package.  Defaults to the system temp directory.
@@ -81,18 +79,14 @@ class PackageDetails(BaseModel):
         return V_LOCAL if util.is_local_mode() else V_SERVICE
 
     @property
-    def AppPath(self) -> str:
+    def DataPath(self) -> str:
         """The storage volume for the application. Used for local mode only else Blank  Defaults to the current directory."""
-        if util.is_local_mode():
-            return util.get_storage_volume()
-        return V_EMPTY
+        return util.get_storage_volume()
 
     @property
     def TempDir(self) -> str:
         """The temporary directory to use for processing the package.  Defaults to the system temp directory."""
-        if util.is_local_mode():
-            return util.get_temp_dir()
-        return tempfile.gettempdir()
+        return util.get_temp_dir()
 
     @model_validator(mode="before")
     def validate_artefacts_before(cls, values: Any) -> Any:
@@ -112,7 +106,7 @@ class PackageDetails(BaseModel):
         return self.Key.rsplit(sep, 1)[-1]
 
     def set_key(self, dd: DeploymentDetailsClass, filename: str):
-        self.Key = dd.get_object_key(OBJ_PACKAGES, filename, s3=self.Mode != V_LOCAL)
+        self.Key = dd.get_object_key(OBJ_PACKAGES, filename)
 
     @staticmethod
     def from_arguments(**kwargs) -> "PackageDetails":
@@ -124,9 +118,7 @@ class PackageDetails(BaseModel):
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = dd.get_object_key(
-                    OBJ_PACKAGES, package_file, s3=not util.is_local_mode()
-                )
+                key = dd.get_object_key(OBJ_PACKAGES, package_file)
 
         client = kwargs.get("client", util.get_client())
         bucket_name = kwargs.get("bucket_name", util.get_bucket_name(client))

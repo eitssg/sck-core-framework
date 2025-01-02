@@ -269,7 +269,7 @@ class DeploymentDetails(BaseModel):
         object_type: str,
         name: str | None = None,
         scope: str | None = None,
-        s3: bool = False,
+        s3: bool | None = None,
     ) -> str:
         """
         Get the object path from the payload's deployment details. This will use os delimiters '/' for linux or SR
@@ -298,6 +298,9 @@ class DeploymentDetails(BaseModel):
         build = self.Build or V_EMPTY
         build = build.lower()
 
+        if s3 is None:
+            s3 = util.is_use_s3()
+
         separator = "/" if s3 else os.path.sep
 
         if not scope:
@@ -320,7 +323,7 @@ class DeploymentDetails(BaseModel):
         self,
         name: str | None = None,
         scope: str | None = None,
-        s3: bool = False,
+        s3: bool | None = None,
     ) -> str:
         """
         Helper function to get the artefacts path in the core automation s3 bucket for the task payload.
@@ -344,7 +347,7 @@ class DeploymentDetails(BaseModel):
         self,
         name: str | None = None,
         scope: str | None = None,
-        s3: bool = False,
+        s3: bool | None = None,
     ) -> str:
         """
         Helper function to get the artefacts path in the core automation s3 bucket for the task payload.

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import json
 import pytest
 from unittest.mock import patch, MagicMock
@@ -195,14 +195,13 @@ def test_assume_role(mock_boto_session, real_aws):
                 "AccessKeyId": "mock_access_key",
                 "SecretAccessKey": "mock_secret_key",
                 "SessionToken": "mock_session_token",
-                "Expiration": datetime.now(timezone.utc) + timedelta(hours=1),
             },
             "ResponseMetadata": {"HTTPStatusCode": 200},
         }
         mock_client.assume_role.return_value = mock_response
 
     role = "arn:aws:iam::123456789012:role/mock-role"
-    credentials = aws.assume_role(role)
+    credentials = aws.assume_role(role=role)
 
     assert credentials["AccessKeyId"] == "mock_access_key"
     assert credentials["SecretAccessKey"] == "mock_secret_key"
@@ -210,13 +209,12 @@ def test_assume_role(mock_boto_session, real_aws):
 
 
 def test_get_client(mock_boto_session, real_aws):
-    if real_aws:
-        client = aws.get_client("s3", "us-west-2", None)
-        assert client is not None
-    else:
-        client = aws.get_client("s3", "us-west-2", None)
+
+    client = aws.get_client("s3", region="us-west-2")
+    assert client is not None
+
+    if not real_aws:
         assert mock_boto_session[0].called
-        assert client is not None
 
 
 def test_transform_stack_parameter_hash():

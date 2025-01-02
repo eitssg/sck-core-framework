@@ -145,7 +145,7 @@ class CoreLogTextFormatter(CoreLogFormatter):
 
         self.yaml = yaml.YAML(typ="rt")
         self.yaml.default_flow_style = False
-        self.yaml.indent(mapping=2, sequence=3, offset=3)
+        self.yaml.indent(mapping=2, sequence=4, offset=2)
         self.yaml.representer.add_representer(OrderedDict, self.represent_ordereddict)
 
     @staticmethod

@@ -76,8 +76,8 @@ class TaskPayload(BaseModel):
         description="The state of the task.  Usually stored in artefacts/**/{task}.state",
         default_factory=lambda: StateDetailsClass(),
     )
-    FlowControl: str = Field(
-        description="The flow control of the task", default="execute"
+    FlowControl: str | None = Field(
+        description="The flow control of the task", default=None
     )
 
     @model_validator(mode="before")
@@ -98,12 +98,8 @@ class TaskPayload(BaseModel):
                 values["Actions"] = ActionDetailsClass(Client=client)
             if not values.get("State"):
                 values["State"] = StateDetailsClass(Client=client)
-            if not values.get("FlowControl"):
-                values["FlowControl"] = "execute"
-            if (
-                values.get("FlowControl")
-                and values.get("FlowControl") not in FLOW_CONTROLS
-            ):
+            fc = values.get("FlowControl")
+            if fc and fc not in FLOW_CONTROLS:
                 raise ValueError(
                     f"FlowControl must be one of {",".join(FLOW_CONTROLS)}"
                 )

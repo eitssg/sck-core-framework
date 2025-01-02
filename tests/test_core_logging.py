@@ -88,8 +88,10 @@ def test_info(capsys, mock_format_time):
     assert (
         captured.out == "2021-07-01 12:00:00 [prn:core:network:master:1] [INFO] "
         "Status: 10% complete (5 running, 10 runnable, 3 pending, 2 completed, 1 incomplete)\n"
-        "    RunnableActions:\n    - boo2\n"
-        "    RunningActions:\n    - boo1\n"
+        "    RunningActions:\n"
+        "      - boo1\n"
+        "    RunnableActions:\n"
+        "      - boo2\n"
     )
 
 
@@ -107,7 +109,7 @@ def test_status_with_format(capsys, mock_format_time):
     captured = capsys.readouterr()
     assert (
         captured.out
-        == "2021-07-01 12:00:00 [prn:core:network:master:1] [STATUS] RELEASE_IN_PROGRESS Build release started\n    blanked: true\n    item: 3\n"
+        == "2021-07-01 12:00:00 [prn:core:network:master:1] [STATUS] RELEASE_IN_PROGRESS Build release started\n    item: 3\n    blanked: true\n"
     )
 
 

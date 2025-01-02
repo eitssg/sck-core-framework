@@ -44,9 +44,16 @@ from .common import (
     get_environment,
     get_mode,
     is_local_mode,
+    is_use_s3,
     is_enforce_validation,
     to_json,
     from_json,
+    read_json,
+    write_json,
+    to_yaml,
+    from_yaml,
+    read_yaml,
+    write_yaml
 )
 
 from ._version import __version__
@@ -125,9 +132,16 @@ __all__ = [
     "get_environment",
     "get_mode",
     "is_local_mode",
+    "is_use_s3",
     "is_enforce_validation",
     "to_json",
     "from_json",
+    "read_json",
+    "write_json",
+    "to_yaml",
+    "from_yaml",
+    "read_yaml",
+    "write_yaml",
     "get_prn_scope",
     "validate_item_prn",
     "validate_portfolio_prn",

@@ -54,18 +54,14 @@ class StateDetails(BaseModel):
         return V_LOCAL if util.is_local_mode() else V_SERVICE
 
     @property
-    def AppPath(self) -> str:
+    def DataPath(self) -> str:
         """The storage volume for the application. Used for local mode only else Blank  Defaults to the current directory."""
-        if util.is_local_mode():
-            return util.get_storage_volume()
-        return V_EMPTY
+        return util.get_storage_volume()
 
     @property
     def TempDir(self) -> str:
         """The temporary directory to use for local mode.  Defaults to the system temp directory."""
-        if util.is_local_mode():
-            return util.get_temp_dir()
-        return V_EMPTY
+        return util.get_temp_dir()
 
     @model_validator(mode="before")
     def validate_artefacts_before(cls, values: Any) -> Any:
@@ -79,9 +75,7 @@ class StateDetails(BaseModel):
         return values
 
     def set_key(self, dd: DeploymentDetailsClass, filename: str):
-        self.Key = dd.get_object_key(
-            OBJ_ARTEFACTS, filename, s3=not util.is_local_mode()
-        )
+        self.Key = dd.get_object_key(OBJ_ARTEFACTS, filename)
 
     @staticmethod
     def from_arguments(**kwargs) -> "StateDetails":
@@ -96,9 +90,7 @@ class StateDetails(BaseModel):
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
-                key = dd.get_object_key(
-                    OBJ_ARTEFACTS, state_file, s3=not util.is_local_mode()
-                )
+                key = dd.get_object_key(OBJ_ARTEFACTS, state_file)
 
         client = kwargs.get("client", util.get_client())
         bucket_name = kwargs.get("bucket_name", util.get_artefact_bucket_name(client))

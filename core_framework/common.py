@@ -7,15 +7,18 @@ other very commont tasks.
 
 import warnings
 from typing import Any
+import tempfile
 import json
 import datetime
 from decimal import Decimal
 import os
 import re
+import io
 import boto3
 from botocore.exceptions import ProfileNotFound
 
 from ruamel.yaml import YAML
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from .constants import (
     # Environment Variables
@@ -24,6 +27,7 @@ from .constants import (
     ENV_API_LAMBDA_ARN,
     ENV_COMPONENT_COMPILER_LAMBDA_ARN,
     ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN,
+    ENV_RUNNER_STEP_FUNCTION_ARN,
     ENV_START_RUNNER_LAMBDA_ARN,
     ENV_EXECUTE_LAMBDA_ARN,
     ENV_INVOKER_LAMBDA_ARN,
@@ -48,13 +52,13 @@ from .constants import (
     ENV_VOLUME,
     ENV_DELIVERED_BY,
     ENV_LOG_DIR,
+    ENV_USE_S3,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
     V_DEFAULT_BRANCH,
     V_DEFAULT_REGION_ALIAS,
     V_DEPLOYSPEC_FILE_YAML,
-    V_DEPLOYSPEC_FILE_YML,
     V_DEPLOYSPEC_FILE_JSON,
     V_FALSE,
     V_TRUE,
@@ -234,15 +238,10 @@ def load_deployspec(app_dir: str | None = None) -> Any:
             with open(fn, "r") as f:
                 data = YAML(typ="safe").load(f)
         else:
-            fn = os.path.join(app_dir, V_DEPLOYSPEC_FILE_YML)
+            fn = os.path.join(app_dir, V_DEPLOYSPEC_FILE_JSON)
             if os.path.exists(fn):
                 with open(fn, "r") as f:
-                    data = YAML(typ="safe").load(f)
-            else:
-                fn = os.path.join(app_dir, V_DEPLOYSPEC_FILE_JSON)
-                if os.path.exists(fn):
-                    with open(fn, "r") as f:
-                        data = json.load(f)
+                    data = json.load(f)
 
         if isinstance(data, dict):
             return [data]
@@ -422,6 +421,17 @@ def get_provisioning_role_arn(account: str) -> str:
     )
 
 
+def is_use_s3() -> bool:
+    """
+    Check if the deployment is using S3 for storage.  This is specified in the environment variable LOCAL_MODE.
+    If not specified, the default value is used based on the region and account number.
+
+    Returns:
+        bool: True if the deployment is using S3 for storage
+    """
+    return os.getenv(ENV_USE_S3, str(not is_local_mode())).lower() == V_TRUE
+
+
 def is_local_mode() -> bool:
     """
     You may set the mode to local in the PACKAGE_DETAILS object or the ENV_LOCAL_MODE environment variable.
@@ -435,7 +445,7 @@ def is_local_mode() -> bool:
     return os.getenv(ENV_LOCAL_MODE, V_FALSE).lower() == V_TRUE
 
 
-def get_storage_volume() -> str:
+def get_storage_volume(region: str | None = None) -> str:
     """
     If you enable the envoronment variable LOCAL_MODE=true, you can specify a local storage volume for the core automation
     objects.  This is specified in the environment variable VOLUME.  If not specified, the current working directory
@@ -443,24 +453,28 @@ def get_storage_volume() -> str:
 
     When using docker, this is your volume mount point.
 
-        Examples.
-
-        .. code-block:: bash
-
-            export LOCAL_MODE=true
-            export VOLUME=/mnt/data/core
+        export LOCAL_MODE=true
+        export VOLUME=/mnt/data/core
 
     Then the engine will use /mnt/data/core/artefacts/**, /mnt/data/core/packages/**, /mnt/data/core/files/** as
     the storage locations.
 
     setting LOCAL_MODE=false will store artefacts on S3.
 
+    And, thus the storage volume is the S3 URL https://s3-{region}.amazonaws.com.
+
+    Args:
+        region (str | None, optional): The AWS region. Defaults to get_region() (envionment setting BUCKET_REGION).
+
     Returns:
         str: Storage Volumen Path.
     """
-    if not is_local_mode():
-        return V_EMPTY
-    return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
+    if is_use_s3():
+        if not region:
+            region = get_region()
+        return f"https://s3-{region}.amazonaws.com"
+    else:
+        return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
 
 
 def get_temp_dir() -> str:
@@ -471,7 +485,7 @@ def get_temp_dir() -> str:
     Returns:
         str: The temporary directory
     """
-    return os.getenv("TEMP_DIR", os.path.join(os.getcwd(), "local", "tmp"))
+    return os.getenv("TEMP_DIR", os.getenv("TEMP", tempfile.gettempdir()))
 
 
 def get_mode() -> str:
@@ -645,9 +659,13 @@ def get_step_function_arn() -> str:
         str: The ARN for the Core Automation Step Function
     """
     region = get_region()
+
+    if is_local_mode():
+        return f"arn:aws:states:{region}:local:execution:stateMachineName:CoreAutomationRunner"
+
     account = get_automation_account()
     return os.environ.get(
-        "RUNNER_STEP_FUNCTION_ARN",
+        ENV_RUNNER_STEP_FUNCTION_ARN,
         f"arn:aws:states:{region}:{account}:stateMachine:CoreAutomationRunner",
     )
 
@@ -784,7 +802,7 @@ def get_environment() -> str:
     return os.getenv(ENV_ENVIRONMENT, "prod")
 
 
-def to_json(data: dict | str | None) -> str:
+def to_json(data: dict | list | str | None) -> str:
     """
     The Json serializer for the data object.  This will serialize datetime objects and other objects that are not
     serializable by the default json serializer.
@@ -797,7 +815,7 @@ def to_json(data: dict | str | None) -> str:
     """
     if data is None:
         return V_EMPTY
-    return json.dumps(data, default=custom_serializer)
+    return json.dumps(data, indent=2, default=custom_serializer)
 
 
 def from_json(data: str) -> dict:
@@ -811,3 +829,63 @@ def from_json(data: str) -> dict:
         dict: The deserialized data object
     """
     return json.loads(data)
+
+
+def quote_strings(data):
+    """Recursively quote all strings in the data."""
+    if isinstance(data, dict):
+        return {k: v if k == "Label" else quote_strings(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [quote_strings(v) for v in data]
+    elif isinstance(data, str):
+        return DoubleQuotedScalarString(data)
+    else:
+        return data
+
+
+def to_yaml(data: dict | list) -> str:
+    """Convert data to yaml string."""
+    quoted_data = quote_strings(data)
+
+    y = YAML(typ="rt")
+    y.default_flow_style = False
+    y.indent(mapping=2, sequence=4, offset=2)
+
+    s = io.StringIO()
+    y.dump(quoted_data, s)
+    return s.getvalue()
+
+
+def from_yaml(data: str) -> dict | list:
+    """Convert yaml string to data."""
+    y = YAML(typ="rt")
+    return y.load(data)
+
+
+def read_yaml(stream) -> dict | list:
+    """Load the yaml data"""
+    yaml = YAML(typ="rt")
+    return yaml.load(stream)
+
+
+def write_yaml(data: dict | list, stream) -> None:
+    """Write the yaml data"""
+
+    quoted_actions_list = quote_strings(data)
+
+    y = YAML(typ="rt")
+    y.default_flow_style = False
+    y.preserve_quotes = True
+    y.indent(mapping=2, sequence=4, offset=2)
+
+    y.dump(quoted_actions_list, stream)
+
+
+def read_json(stream) -> dict | list:
+    """Load the json data"""
+    return json.load(stream.read())
+
+
+def write_json(data: dict | list, stream) -> None:
+    """Write the json data"""
+    json.dump(data, stream, indent=2)
