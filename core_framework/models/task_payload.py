@@ -79,6 +79,10 @@ class TaskPayload(BaseModel):
     FlowControl: str | None = Field(
         description="The flow control of the task", default=None
     )
+    Type: str = Field(
+        description="The type of templates to use (pipeline/deployspec)",
+        default=V_PIPELINE,
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -103,6 +107,9 @@ class TaskPayload(BaseModel):
                 raise ValueError(
                     f"FlowControl must be one of {",".join(FLOW_CONTROLS)}"
                 )
+            typ = values.get("Type")
+            if typ and typ not in [V_PIPELINE, V_DEPLOYSPEC]:
+                raise ValueError(f"Type must be one of {V_PIPELINE},{V_DEPLOYSPEC}")
         return values
 
     @model_validator(mode="after")
@@ -111,17 +118,13 @@ class TaskPayload(BaseModel):
             self.Client = self.DeploymentDetails.Client
         if not self.Identity:
             self.Identity = self.DeploymentDetails.get_identity()
-        if self.Package and not self.Package.Key:
+        if self.Package:
             self.Package.set_key(self.DeploymentDetails, "package.zip")
-        if self.Actions and not self.Actions.Key:
+        if self.Actions:
             self.Actions.set_key(self.DeploymentDetails, self.Task + ".actions")
-        if self.State and not self.State.Key:
+        if self.State:
             self.State.set_key(self.DeploymentDetails, self.Task + ".state")
         return self
-
-    @property
-    def Type(self) -> str:
-        return V_DEPLOYSPEC if self.Package and self.Package.DeploySpec else V_PIPELINE
 
     @staticmethod
     def from_arguments(**kwargs) -> "TaskPayload":
@@ -139,6 +142,7 @@ class TaskPayload(BaseModel):
             Force=kwargs.get("force", False),
             DryRun=kwargs.get("dry_run", False),
             Identity=kwargs.get("identity", dd.get_identity()),
+            Type=kwargs.get("automation_type", V_PIPELINE),
             DeploymentDetails=dd,
             Package=PackageDetailsClass.from_arguments(**kwargs),
             Actions=ActionDetailsClass.from_arguments(**kwargs),

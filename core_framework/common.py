@@ -802,7 +802,7 @@ def get_environment() -> str:
     return os.getenv(ENV_ENVIRONMENT, "prod")
 
 
-def to_json(data: dict | list | str | None) -> str:
+def to_json(data: Any) -> str:
     """
     The Json serializer for the data object.  This will serialize datetime objects and other objects that are not
     serializable by the default json serializer.
@@ -818,7 +818,7 @@ def to_json(data: dict | list | str | None) -> str:
     return json.dumps(data, indent=2, default=custom_serializer)
 
 
-def from_json(data: str) -> dict:
+def from_json(data: Any) -> Any:
     """
     The Json deserializer for the data object.  This will deserialize datetime objects and other objects that are not
 
@@ -831,7 +831,7 @@ def from_json(data: str) -> dict:
     return json.loads(data)
 
 
-def quote_strings(data):
+def quote_strings(data: Any):
     """Recursively quote all strings in the data."""
     if isinstance(data, dict):
         return {k: v if k == "Label" else quote_strings(v) for k, v in data.items()}
@@ -843,7 +843,7 @@ def quote_strings(data):
         return data
 
 
-def to_yaml(data: dict | list) -> str:
+def to_yaml(data: Any) -> str:
     """Convert data to yaml string."""
     quoted_data = quote_strings(data)
 
@@ -856,19 +856,19 @@ def to_yaml(data: dict | list) -> str:
     return s.getvalue()
 
 
-def from_yaml(data: str) -> dict | list:
+def from_yaml(data: Any) -> Any:
     """Convert yaml string to data."""
     y = YAML(typ="rt")
     return y.load(data)
 
 
-def read_yaml(stream) -> dict | list:
+def read_yaml(stream: Any) -> Any:
     """Load the yaml data"""
     yaml = YAML(typ="rt")
     return yaml.load(stream)
 
 
-def write_yaml(data: dict | list, stream) -> None:
+def write_yaml(data: Any, stream) -> None:
     """Write the yaml data"""
 
     quoted_actions_list = quote_strings(data)
@@ -881,11 +881,11 @@ def write_yaml(data: dict | list, stream) -> None:
     y.dump(quoted_actions_list, stream)
 
 
-def read_json(stream) -> dict | list:
+def read_json(stream: Any) -> Any:
     """Load the json data"""
-    return json.load(stream.read())
+    return json.load(stream)
 
 
-def write_json(data: dict | list, stream) -> None:
+def write_json(data: Any, stream) -> None:
     """Write the json data"""
     json.dump(data, stream, indent=2)

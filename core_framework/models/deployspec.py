@@ -95,14 +95,6 @@ class ActionSpecParams(BaseModel):
                         value[i] = str(value[i])
         return value
 
-    @model_validator(mode="before")
-    def validate_template(cls, values) -> dict:
-        stack_name = values.get("stack_name")
-        if stack_name and len(stack_name) > 0:
-            if "template" not in values:
-                raise ValueError(f"Missing template file for stack: {stack_name}")
-        return values
-
     @model_validator(mode="after")
     def validate_params(self) -> Self:
         if not self.accounts and not self.account:
