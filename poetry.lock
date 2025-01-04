@@ -3572,6 +3572,22 @@ url = "https://monster-jj.jvj28.com:9091/repository/pypi/simple"
 reference = "nexus"
 
 [[package]]
+name = "types-netaddr"
+version = "1.3.0.20240530"
+description = "Typing stubs for netaddr"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-netaddr-1.3.0.20240530.tar.gz", hash = "sha256:742c2ec1f202b666f544223e2616b34f1f13df80c91e5aeaaa93a72e4d0774ea"},
+    {file = "types_netaddr-1.3.0.20240530-py3-none-any.whl", hash = "sha256:354998d018e326da4f1d9b005fc91137b7c2c473aaf03c4ef64bf83c6861b440"},
+]
+
+[package.source]
+type = "legacy"
+url = "https://monster-jj.jvj28.com:9091/repository/pypi/simple"
+reference = "nexus"
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.20241221"
 description = "Typing stubs for PyYAML"
@@ -3763,4 +3779,4 @@ reference = "nexus"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "bd4777fb97a60ff9ca8ef8b7d8d72a2d0f901e2e32c05fb1a13012a7c21e02ec"
+content-hash = "5c1f130303a33eaee4dd8cb6c3c4d40a7a2826cbf3166b695d0059b1c28d151d"

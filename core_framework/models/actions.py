@@ -1,12 +1,39 @@
-""" The params module contains the ActionParams class which provides a model for how parameters are to
-be based to actions in the ActionLib library """
+"""
+This module contains the AcActionDefinitiontion class which provides a model for how Tasks or Actions are to
+be provided to the core-execute library.
+"""
 
 from typing import Any
-
 from collections import OrderedDict
-
 from pydantic import BaseModel, Field, ConfigDict, model_serializer
 
+
+# Give constants for the keys in the definition
+LABEL = "Label"
+""" The name of the label field in the Actions object.
+
+    Value: Label
+"""
+TYPE = "Type"
+""" The name of the type field in the Actions object.
+
+    Value: Type
+"""
+DEPENDS_ON = "DependsOn"
+""" The name of the depends_on field in the Actions object.
+
+    Value: DependsOn
+"""
+PARAMS = "Params"
+""" The name of the params field in the Actions object.
+
+    Value: Params
+"""
+SCOPE = "Scope"
+""" The name of the scope field in the Actions object.
+
+    Value: Scope
+"""
 # Give constants for the keys in the definition
 STACKNAME = "StackName"
 """ The name of the stack field in the Actions object.
@@ -195,6 +222,12 @@ class ActionParams(BaseModel):
 
     @model_serializer
     def ser_model(self) -> OrderedDict:  # noqa: C901
+        """
+        Serialize the model to an OrderedDict.  I like order.
+
+        Returns:
+            OrderedDict: The parameters sorted the way I want.
+        """
         fields: list[tuple[str, Any]] = []
         if self.Account is not None:
             fields.append(("Account", self.Account))
@@ -270,5 +303,100 @@ class ActionParams(BaseModel):
             fields.append(("Prefix", self.Prefix))
         if self.ApiParams is not None:
             fields.append(("ApiParams", self.ApiParams))
+
+        return OrderedDict(fields)
+
+
+class ActionDefinition(BaseModel):
+    """
+    The ActionDefinition class defines an "action" or "task" that Core Automation will perform when deploying infrastructure to your Cloud.
+
+    Tasks could include adding tags to resources, ajdusting DNS entries, etc.  Tasks are excuted by core-execute
+    and are defined in the core-execute.actionlib library.
+
+    Attributes:
+        Label (str): The label of the action. A unique identifier for the action.
+        Type (str): The action type. This is the name of the action in core_execute.actionlib.
+        DependsOn (list[str]): A list of labels of actions that this action depends on.
+        Params (ActionParams | None): The parameters for the action. See :class:`ActionParams` for more information.
+        Scope (str): The scope of the action. This is used to group actions together.
+
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    Label: str = Field(
+        ..., description="The label of the action.  A unique identifier for the action"
+    )
+
+    Type: str = Field(
+        ...,
+        description="The action type.  This is the name of the action in core_execute.actionlib",
+    )
+
+    DependsOn: list[str] = Field(
+        [],
+        description="A list of labels of actions that this action depends on",
+    )
+
+    Params: ActionParams = Field(
+        ...,
+        description="The parameters for the action.  See :class:`ActionParams` for more information on the parameters for the action",
+    )
+
+    Scope: str = Field(
+        description="The scope of the action.  This is used to group actions together. Project/Portfolio, App, Branch, or Build",
+        default="build",
+    )
+
+    Condition: str | None = Field(description="Condition clauses.  In code, the default is 'True'", default=None)
+
+    Before: list | None = Field(
+        description="Before is a list of actions that should be perfomred before this one",
+        default=None,
+    )
+    After: list | None = Field(
+        description="After is a list of actions that should be perfomred after this one",
+        default=None,
+    )
+    SaveOutputs: bool = Field(
+        description="SaveOutputs is a flag to save the outputs of the action",
+        default=False,
+    )
+    LifecycleHooks: list | None = Field(
+        description="Lifecycle Hooks.  Although I don't specify for typing, "
+        "this is a list of ActionDefinition objects",
+        default=None,
+    )
+
+    @model_serializer
+    def ser_model(self) -> OrderedDict:  # noqa C901
+        """
+        Serialize the model to an OrderedDict.  I like order.
+
+        Returns:
+            OrderedDict: The attributes sorted the way I want.
+        """
+        fields: list[tuple[str, Any]] = []
+        if self.Label:
+            fields.append(("Label", self.Label))
+        if self.Type:
+            fields.append(("Type", self.Type))
+        if self.DependsOn:
+            fields.append(("DependsOn", tuple(self.DependsOn)))
+        if self.Params:
+            fields.append(("Params", self.Params.model_dump()))
+        if self.Scope:
+            fields.append(("Scope", self.Scope))
+        if self.Condition:
+            fields.append(("Condition", self.Condition))
+        if self.Before:
+            fields.append(("Before", self.Before))
+        if self.After:
+            fields.append(("After", self.After))
+        if self.SaveOutputs:
+            fields.append(("SaveOutputs", self.SaveOutputs))
+        if self.LifecycleHooks:
+            fields.append(("LifecycleHooks", self.LifecycleHooks))
 
         return OrderedDict(fields)

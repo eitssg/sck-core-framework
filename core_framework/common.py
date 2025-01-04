@@ -6,7 +6,7 @@ other very commont tasks.
 """
 
 import warnings
-from typing import Any
+from typing import Any, IO
 import tempfile
 import json
 import datetime
@@ -94,30 +94,6 @@ def generate_branch_short_name(branch: str | None) -> str | None:
         return None
 
     return re.sub(r"[^a-z0-9-]", "-", branch.lower())[0:20].rstrip("-")
-
-
-def custom_serializer(obj: Any) -> Any:
-    """
-    Handy tool for deserializing json objects that contain datetime objects as for SOME reason
-    the standard json deserializer does not support datetime objects. (No one knows why)
-
-    Args:
-        obj: The object to serialize
-
-    Returns:
-        Any: The serialized object
-    """
-    """Custom serializer for objects not serializable by default json code"""
-    if isinstance(obj, datetime.datetime):
-        return obj.isoformat()
-    elif isinstance(obj, datetime.date):
-        return obj.isoformat()
-    elif isinstance(obj, datetime.time):
-        return obj.isoformat()
-    elif isinstance(obj, Decimal):
-        return float(obj)  # or str(obj) if precision is important
-    # No need to handle strings, ints, lists, dicts, etc. as they are already supported
-    raise TypeError(f"Type {type(obj)} not serializable")
 
 
 def split_prn(
@@ -802,25 +778,92 @@ def get_environment() -> str:
     return os.getenv(ENV_ENVIRONMENT, "prod")
 
 
-def to_json(data: Any) -> str:
+def __custom_serializer(obj: Any) -> Any:
+    """
+    Handy tool for deserializing json objects that contain datetime objects as for SOME reason
+    the standard json deserializer does not support datetime objects. (No one knows why)
+
+    Args:
+        obj: The object to serialize
+
+    Returns:
+        Any: The serialized object
+    """
+    """Custom serializer for objects not serializable by default json code"""
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    elif isinstance(obj, datetime.date):
+        return obj.isoformat()
+    elif isinstance(obj, datetime.time):
+        return obj.isoformat()
+    elif isinstance(obj, Decimal):
+        return float(obj)  # or str(obj) if precision is important
+    # No need to handle strings, ints, lists, dicts, etc. as they are already supported
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+
+def to_json(data: Any, pretty: int | None = None) -> str:
     """
     The Json serializer for the data object.  This will serialize datetime objects and other objects that are not
     serializable by the default json serializer.
 
+    !!! NOTICE !!!
+
+    This function will convert date time objects to strings in the ISO8601 format.
+
     Args:
         data (dict): The data object to serialize
+        pretty (int, optional): The pretty print indent level. Defaults to None
 
     Returns:
         str: JSON string
     """
     if data is None:
-        return V_EMPTY
-    return json.dumps(data, indent=2, default=custom_serializer)
+        return V_EMPTY  # or should we return "[]" or "{}"?
+
+    return json.dumps(data, indent=pretty, default=__custom_serializer)
 
 
-def from_json(data: Any) -> Any:
+def write_json(data: Any, output_stream: IO, pretty: int | None = None) -> None:
+    """Write the json data dict or list to a JSON file on the output_stream.
+
+    !!! NOTICE !!!
+
+    This function will convert date time objects to strings in the ISO8601 format.
+
+    Args:
+        data (Any): The data to write to the output stream
+        output_stream (Any): The output stream to write the data to.
+        pretty (int, optional): The pretty print indent level. Defaults to None
+
     """
-    The Json deserializer for the data object.  This will deserialize datetime objects and other objects that are not
+    json.dump(data, output_stream, indent=pretty, default=__custom_serializer)
+
+
+def __iso8601_parser(data: Any) -> Any:
+
+    if isinstance(data, str):
+        try:
+            return datetime.datetime.fromisoformat(data)
+        except ValueError:
+            return data
+    elif isinstance(data, dict):
+        return {key: __iso8601_parser(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [__iso8601_parser(item) for item in data]
+    return data
+
+
+def from_json(data: str) -> Any:
+    """
+    The Json deserializer for the data object.  This will deserialize
+    datetime objects and other objects that are not standard JSON objects.
+
+    !!! WARNING !!!
+
+    This function will convert date time strings in the json data to datetime objects.
+
+    If you want strings, you will have to reconvert them back to strings yourself.
 
     Args:
         data (str): The JSON string to deserialize
@@ -828,27 +871,57 @@ def from_json(data: Any) -> Any:
     Returns:
         dict: The deserialized data object
     """
-    return json.loads(data)
+    return json.loads(data, object_hook=__iso8601_parser)
 
 
-def quote_strings(data: Any):
+def read_json(input_stream: IO) -> Any:
+    """Load the json data from the input stream. and respond with a dict or list object.
+
+    !!! WARNING !!!
+
+    This function will convert date time strings in the json data to datetime objects.
+
+    If you want strings, you will have to reconvert them back to strings yourself.
+
+    Args:
+        input_stream (Any): The input stream to read the json data from
+
+    Returns:
+        Any: The json data as a dict or list object
+
+    """
+    return json.load(input_stream, object_hook=__iso8601_parser)
+
+
+def __quote_strings(data: Any):
     """Recursively quote all strings in the data."""
     if isinstance(data, dict):
-        return {k: v if k == "Label" else quote_strings(v) for k, v in data.items()}
+        return {k: v if k == "Label" else __quote_strings(v) for k, v in data.items()}
     elif isinstance(data, list):
-        return [quote_strings(v) for v in data]
+        return [__quote_strings(v) for v in data]
     elif isinstance(data, str):
         return DoubleQuotedScalarString(data)
+    elif isinstance(data, datetime.datetime):
+        return DoubleQuotedScalarString(data.isoformat())
+    elif isinstance(data, datetime.date):
+        return DoubleQuotedScalarString(data.isoformat())
+    elif isinstance(data, datetime.time):
+        return DoubleQuotedScalarString(data.isoformat())
     else:
         return data
 
 
 def to_yaml(data: Any) -> str:
-    """Convert data to yaml string."""
-    quoted_data = quote_strings(data)
+    """Convert data dict or list to a YAML string.
+
+    Strings are "Quoted" so you won't run into issues with string "000001" being converted to an integer "1".
+
+    """
+    quoted_data = __quote_strings(data)
 
     y = YAML(typ="rt")
     y.default_flow_style = False
+    y.preserve_quotes = True
     y.indent(mapping=2, sequence=4, offset=2)
 
     s = io.StringIO()
@@ -856,36 +929,84 @@ def to_yaml(data: Any) -> str:
     return s.getvalue()
 
 
-def from_yaml(data: Any) -> Any:
-    """Convert yaml string to data."""
-    y = YAML(typ="rt")
-    return y.load(data)
+def write_yaml(data: Any, stream: IO) -> None:
+    """Write the dictionary (or list) data to the proided output stream as YAML.
 
+    !!! NOTICE !!!
 
-def read_yaml(stream: Any) -> Any:
-    """Load the yaml data"""
-    yaml = YAML(typ="rt")
-    return yaml.load(stream)
+    datetime object will be converted to strings in the ISO8601 format.
 
+    Args:
+        data (Any): The data to write to the output stream
+        stream (Any): The output stream to write the data to.
 
-def write_yaml(data: Any, stream) -> None:
-    """Write the yaml data"""
+    """
 
-    quoted_actions_list = quote_strings(data)
+    quoted_data = __quote_strings(data)
 
     y = YAML(typ="rt")
     y.default_flow_style = False
     y.preserve_quotes = True
     y.indent(mapping=2, sequence=4, offset=2)
 
-    y.dump(quoted_actions_list, stream)
+    y.dump(quoted_data, stream)
 
 
-def read_json(stream: Any) -> Any:
-    """Load the json data"""
-    return json.load(stream)
+def __iso8601_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    try:
+        return datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return value
 
 
-def write_json(data: Any, stream) -> None:
-    """Write the json data"""
-    json.dump(data, stream, indent=2)
+def from_yaml(data: str) -> Any:
+    """Convert yaml str to a dict or list.
+
+    # TODO - compare this to the from_yaml in the yamlmerge object and
+    # let's do a lot of testing and see if they can be combined into
+    # a single function.  The yamlmerge object is a bit more complex
+
+    !!! WARNING !!!
+
+    This is not entirely a RoundTrip parser.  If you have dates in your data
+    this function will convert them to datetime objects.
+
+    If you are expecing dates to be a string.  Sorry, you will need to convert
+    them back to a string yourself.
+
+    Args:
+        data (str): The yaml string to convert to a dict or list
+
+    Returns:
+        Any: The yaml data as a dict or list object
+
+    """
+    y = YAML(typ="rt")
+    y.Constructor.add_constructor("tag:yaml.org,2002:str", __iso8601_constructor)
+    return y.load(data)
+
+
+def read_yaml(input_stream: IO) -> Any:
+    """Load the yaml data from the input stream.
+
+    This uses the "rount-trip" yaml parser. so you will get an OrderedDict
+    as a response.  But it is not entirely "round Trip"
+
+    !!! WARNING !!!
+
+    This is not entirely a RoundTrip parser.  If you have dates in your data
+    this function will convert them to datetime objects.
+
+    If you are expecing dates to be a string.  Sorry, you will need to convert
+    them back to a string yourself.
+
+    Args:
+        input_stream (Any): The input stream to read the yaml data from
+
+    Returns:
+        Any: The yaml data is a dict or list object
+    """
+    y = YAML(typ="rt")
+    y.Constructor.add_constructor("tag:yaml.org,2002:str", __iso8601_constructor)
+    return y.load(input_stream)

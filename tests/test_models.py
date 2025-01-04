@@ -125,7 +125,7 @@ def test_task_payload_model(runtime_arguments):
             == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.state"
         )
 
-        assert task_payload.FlowControl == "execute"
+        assert task_payload.FlowControl is None
 
         assert task_payload.Type == "pipeline"
 

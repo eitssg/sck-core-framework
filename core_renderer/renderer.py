@@ -13,8 +13,6 @@ import json
 
 from .filters import load_filters
 
-import logging
-
 
 class Jinja2Renderer:
     """
@@ -60,13 +58,6 @@ class Jinja2Renderer:
 
         load_filters(self.env)
 
-        handler = logging.StreamHandler()
-        handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        handler.setFormatter(formatter)
-
     def render_string(self, string: str, context: dict[str, Any]) -> str:
         return self.env.from_string(string).render(context)
 
@@ -82,9 +73,13 @@ class Jinja2Renderer:
 
     def render_files(self, path: str, context: dict[str, Any]) -> dict[str, str]:
 
-        files = {}
+        files: dict = {}
 
-        files_path = pathlib.Path(os.path.join(self.template_path or "", path))
+        if self.template_path is None:
+            log.warning("No template path set.  Cannot render files.")
+            return files
+
+        files_path = pathlib.Path(os.path.join(self.template_path, path))
         for file_path in files_path.glob("**/*"):
 
             # Skip non-files (directories, etc)
@@ -93,7 +88,7 @@ class Jinja2Renderer:
 
             # Retrieve file path relative to the files path and the base path
             short_path = str(file_path.relative_to(files_path))
-            renderer_path = str(file_path.relative_to(self.template_path or ""))
+            renderer_path = str(file_path.relative_to(self.template_path))
 
             # Jinja2 expects forward slash. See split_template_path.
             # Update short_path as well, to ensure we upload correctly to s3.

@@ -1,13 +1,20 @@
+from typing import Any
+
 import copy
-from typing import Optional
 import jinja2
 import jmespath
-import json
 import re
 import yaml
 import random
 import string
+import netaddr
+
 from datetime import date
+
+from jinja2 import pass_context
+from jinja2.environment import Context, Environment
+
+import core_framework as util
 
 from core_framework.constants import (
     CTX_ACCOUNT_ALIASES,
@@ -52,11 +59,14 @@ from core_framework.constants import (
 )
 
 
-def filter_aws_tags(render_context, scope, component_name=None):
+@pass_context
+def filter_aws_tags(
+    render_context: Context, scope: str, component_name: str | None = None
+) -> list[dict]:
 
     tags_hash = filter_tags(render_context, scope, component_name)
 
-    items = []
+    items: list[dict] = []
 
     for key, value in tags_hash.items():
         items.append({"Key": key, "Value": value})
@@ -64,11 +74,12 @@ def filter_aws_tags(render_context, scope, component_name=None):
     return items
 
 
-def filter_docker_image(render_context, object):
+@pass_context
+def filter_docker_image(render_context: Context, object: Any) -> str | None:
 
-    context = render_context.get(CTX_CONTEXT)  # Context is a DeploymentDetails object
+    facts = render_context.get(CTX_CONTEXT)
 
-    if context is None:
+    if facts is None:
         return None
 
     if "Fn::Pipeline::DockerImage" not in object:
@@ -77,38 +88,38 @@ def filter_docker_image(render_context, object):
         )
 
     ecr_repository_name = "private/{}-{}-{}-{}-{}".format(
-        context[DD_PORTFOLIO],
-        context[DD_APP],
-        context[DD_BRANCH_SHORT_NAME],
-        context[DD_BUILD],
+        facts[DD_PORTFOLIO],
+        facts[DD_APP],
+        facts[DD_BRANCH_SHORT_NAME],
+        facts[DD_BUILD],
         render_context[CTX_COMPONENT_NAME],
     )
 
     image_name = object["Fn::Pipeline::DockerImage"]["Name"]
 
     return "{}/{}:{}".format(
-        context[DD_ECR][ECR_REGISTRY_URI], ecr_repository_name, image_name
+        facts[DD_ECR][ECR_REGISTRY_URI], ecr_repository_name, image_name
     )
 
 
-def filter_ensure_list(object):
+def filter_ensure_list(object: Any) -> list[Any]:
     """
     Wrap the object in a list if it isn't already a list.
+
     """
     if isinstance(object, list):
         # Already a list, simply return it
-        ret = object
+        return object
     elif object is None or isinstance(object, jinja2.Undefined):
         # None or Undefined, return empty list
-        ret = []
+        return []
     else:
         # Place the object into a list
-        ret = [object]
-
-    return ret
+        return [object]
 
 
-def filter_extract(object, path, default="_error_"):
+def filter_extract(object: Any, path: str, default: str = "_error_") -> str:
+
     if object is None or isinstance(object, jinja2.Undefined):
         value = None
     else:
@@ -117,7 +128,9 @@ def filter_extract(object, path, default="_error_"):
     if value is None:
         if default == "_error_":
             raise jinja2.exceptions.UndefinedError(
-                "Error during value extraction - no attribute '{}'".format(path)
+                "Filter_extract: Error during value extraction - no attribute '{}'".format(
+                    path
+                )
             )
         else:
             value = default
@@ -125,7 +138,7 @@ def filter_extract(object, path, default="_error_"):
     return value
 
 
-def filter_min_int(*values):
+def filter_min_int(*values) -> Any:
     """
     Useful for stuff like MinSuccessfulInstancesPercent, where you want to establish a "floor" value.
     """
@@ -134,44 +147,54 @@ def filter_min_int(*values):
     return min(values)
 
 
-def filter_iam_rules(render_context, resource):
+@pass_context
+def filter_iam_rules(render_context: Context, resource: dict) -> list:
 
-    context = render_context.get(CTX_CONTEXT)  # Conteext is a DeploymentDetails object
+    facts = render_context.get(CTX_CONTEXT)  # Conteext is a DeploymentDetails object
 
-    if context is None:
+    if facts is None:
         return []
 
     app = render_context[CTX_APP]
 
     security_rules = []
     for security_rule in resource.get("Pipeline::Security", []):
+
         for security_source in filter_ensure_list(security_rule["Source"]):
+
             if security_source in app:
+
                 # Source is component
                 security_rules.append(
                     {
                         "Type": "component",
-                        "Value": "{}-{}-{}-{}-security:RoleName".format(
-                            context[DD_PORTFOLIO],
-                            context[DD_APP],
-                            context[DD_BRANCH_SHORT_NAME],
-                            security_source,
+                        "Value": "-".join(
+                            [
+                                facts[DD_PORTFOLIO],
+                                facts[DD_APP],
+                                facts[DD_BRANCH_SHORT_NAME],
+                                security_source,
+                                "security:RoleName",
+                            ]
                         ),
                         "Description": "Component {}".format(security_source),
                         "Allow": filter_ensure_list(security_rule.get("Allow")),
                         "SourceType": app[security_source]["Type"],
-                        "SecurityGroupId": "{}-{}-{}-{}-security:SecurityGroupId".format(
-                            context[DD_PORTFOLIO],
-                            context[DD_APP],
-                            context[DD_BRANCH_SHORT_NAME],
-                            security_source,
+                        "SecurityGroupId": "-".join(
+                            [
+                                facts[DD_PORTFOLIO],
+                                facts[DD_APP],
+                                facts[DD_BRANCH_SHORT_NAME],
+                                security_source,
+                                "security:SecurityGroupId",
+                            ]
                         ),
                     }
                 )
             else:
                 # Unknown source
                 raise jinja2.exceptions.UndefinedError(
-                    "Invalid security source '{}' - must be a component".format(
+                    "Filter_iam_rules: Invalid security source '{}' - must be a component".format(
                         security_source
                     )
                 )
@@ -179,19 +202,20 @@ def filter_iam_rules(render_context, resource):
     return security_rules
 
 
-def filter_policy_statements(render_context, statement) -> dict:
+@pass_context
+def filter_policy_statements(render_context: Context, statement: dict) -> dict:
 
-    context = render_context.get(CTX_CONTEXT)  # Context is a DeploymentDetails object]
+    facts = render_context.get(CTX_CONTEXT)  # Context is a DeploymentDetails object]
 
-    if context is None:
+    if facts is None:
         return {}
 
     base_resource_name_hyphenated = "-".join(
-        [context[DD_PORTFOLIO], context[DD_APP], context[DD_BRANCH_SHORT_NAME]]
+        [facts[DD_PORTFOLIO], facts[DD_APP], facts[DD_BRANCH_SHORT_NAME]]
     )
 
     resources = []
-    added = set()
+    added: set[str] = set()
 
     # AWS Poliction Statement
     for action in statement["Action"]:
@@ -199,15 +223,15 @@ def filter_policy_statements(render_context, statement) -> dict:
         if group not in added:
             arn = create_resource_arn(
                 group,
-                context["AwsRegion"],
-                context["AwsAccountId"],
+                facts["AwsRegion"],
+                facts["AwsAccountId"],
                 base_resource_name_hyphenated,
             )
             if arn is not None:
                 resources.append(arn)
             else:
                 raise jinja2.exceptions.UndefinedError(
-                    f"Currently free form policy for group {group} not supported"
+                    f"Filter_policy_statements: Currently free form policy for group {group} not supported"
                 )
 
     return {
@@ -217,7 +241,13 @@ def filter_policy_statements(render_context, statement) -> dict:
     }
 
 
-def format_arn(service, region, account_id, resource, resource_type=None):
+def format_arn(
+    service: str,
+    region: str,
+    account_id: str,
+    resource: str,
+    resource_type: str | None = None,
+) -> str:
     """
     Format an ARN based on the provided parameters.
 
@@ -234,7 +264,10 @@ def format_arn(service, region, account_id, resource, resource_type=None):
         return f"arn:aws:{service}:{region}:{account_id}:{resource}"
 
 
-def create_resource_arn(group, region, account_id, base_resource_name_hyphenated):
+def create_resource_arn(
+    group: str, region: str, account_id: str, base_resource_name_hyphenated: str
+) -> str:
+
     std_arns = {
         "sns": "arn:aws:sns:{}:{}:{}-*",
         "sqs": "arn:aws:sqs:{}:{}:{}-*",
@@ -243,43 +276,56 @@ def create_resource_arn(group, region, account_id, base_resource_name_hyphenated
         "dynamodb": "arn:aws:dynamodb:{}:{}:table/{}-*",
         "ses": "arn:aws:ses:{}:{}:identity/{}-*",
     }
+
     test_arn = std_arns.get(group, None)
+
     if test_arn is not None:
         return test_arn.format(region, account_id, base_resource_name_hyphenated)
 
     another_arns = {"s3": "arn:aws:s3:::{}-*"}
     test_arn = another_arns.get(group, None)
+
     if test_arn is not None:
         return test_arn.format(base_resource_name_hyphenated)
 
     return format_arn(group, region, account_id, base_resource_name_hyphenated)
 
 
-def filter_ebs_encrypt(render_context, ebs_spec):
+@pass_context
+def filter_ebs_encrypt(render_context: Context, ebs_spec: list[dict]) -> list:
+
     for bdm in ebs_spec:
+
         if "Ebs" in bdm:
             bdm["Ebs"]["Encrypted"] = "true"  # Enforce encryption for ebs volumes.
             # TODO. it seems KmsKey is not supported for BlockDeviceMappings
             # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-blockdev-template.html
             # bdm['Ebs']['KmsKeyId'] = ${KmsKeyArn}
+
     return ebs_spec
 
 
-def filter_image_alias_to_id(render_context, image_alias):
+@pass_context
+def filter_image_alias_to_id(render_context: Context, image_alias: str) -> str | None:
 
-    context = render_context.get(CTX_CONTEXT)
-    if context is None:
+    facts = render_context.get(CTX_CONTEXT)
+
+    if facts is None:
         return None
 
-    if image_alias not in context["ImageAliases"]:
+    if image_alias not in facts["ImageAliases"]:
         raise jinja2.exceptions.UndefinedError("Unknown image '{}'".format(image_alias))
 
-    return context["ImageAliases"][image_alias]
+    return facts["ImageAliases"][image_alias]
 
 
-def filter_image_id(render_context, o):
+@pass_context
+def filter_image_id(render_context: Context, o: dict) -> str | None:
 
-    context = render_context.get(CTX_CONTEXT)
+    facts = render_context.get(CTX_CONTEXT)
+
+    if not facts:
+        return None
 
     if "Fn::Pipeline::ImageId" not in o:
         raise jinja2.exceptions.UndefinedError(
@@ -288,12 +334,14 @@ def filter_image_id(render_context, o):
 
     image_alias = o["Fn::Pipeline::ImageId"]["Name"]
 
-    if image_alias not in context["ImageAliases"]:
+    if image_alias not in facts["ImageAliases"]:
         raise jinja2.exceptions.UndefinedError("Unknown image '{}'".format(image_alias))
-    return context["ImageAliases"][image_alias]
+
+    return facts["ImageAliases"][image_alias]
 
 
-def filter_image_name(render_context, o):
+@pass_context
+def filter_image_name(render_context: Context, o: dict):
 
     if "Fn::Pipeline::ImageId" not in o:
         raise jinja2.exceptions.UndefinedError(
@@ -301,43 +349,57 @@ def filter_image_name(render_context, o):
         )
 
     image_name = o["Fn::Pipeline::ImageId"]["Name"]
+
     return image_name
 
 
-def filter_ip_rules(
-    render_context,
-    resource,
-    rule_type=ST_IP_ADDRESS,
-    source_types=[ST_CIDR, ST_COMPONENT, ST_PREFIX],
-    source_only=False,
-):
+@pass_context
+def filter_ip_rules(  # noqa C901
+    render_context: Context,
+    resource: dict,
+    rule_type: str = ST_IP_ADDRESS,
+    source_types: list[str] = [ST_CIDR, ST_COMPONENT, ST_PREFIX],
+    source_only: bool = False,
+) -> list[dict]:
 
-    context = render_context[CTX_CONTEXT]  # Context is a DeploymentDetails object
+    facts = render_context[CTX_CONTEXT]  # Context is a DeploymentDetails object
 
     app = render_context[CTX_APP]
 
-    security_rules = []
+    security_rules: list[dict] = []
 
-    if context is None or app is None:
+    if facts is None or app is None:
         return security_rules
 
     for security_rule in resource.get("Pipeline::Security", []):
+
         for security_source in filter_ensure_list(security_rule["Source"]):
-            if security_source in context["SecurityAliases"]:
+
+            if not isinstance(security_source, str):
+                continue
+
+            sources: list[dict] = []
+
+            if security_source in facts["SecurityAliases"]:
                 # Source is an alias in facts
-                sources = filter_ensure_list(
-                    context["SecurityAliases"][security_source]
-                )
+                sources = [
+                    o
+                    for o in facts["SecurityAliases"][security_source]
+                    if isinstance(o, dict)
+                ]
             elif security_source in app:
                 # Source is component
                 sources = [
                     {
                         "Type": ST_COMPONENT,
-                        "Value": "{}-{}-{}-{}-security:SecurityGroupId".format(
-                            context[DD_PORTFOLIO],
-                            context[DD_APP],
-                            context[DD_BRANCH_SHORT_NAME],
-                            security_source,
+                        "Value": "-".join(
+                            [
+                                facts[DD_PORTFOLIO],
+                                facts[DD_APP],
+                                facts[DD_BRANCH_SHORT_NAME],
+                                security_source,
+                                "security:SecurityGroupId",
+                            ]
                         ),
                         "Description": "Component {}".format(security_source),
                     }
@@ -345,7 +407,7 @@ def filter_ip_rules(
             else:
                 # Unknown source
                 raise jinja2.exceptions.UndefinedError(
-                    "Invalid security source '{}' - must be a security alias or a component".format(
+                    "Filter_ip_rules: Invalid security source '{}' - must be a security alias or a component".format(
                         security_source
                     )
                 )
@@ -355,7 +417,7 @@ def filter_ip_rules(
                 map(
                     lambda source: (
                         source
-                        if type(source) is dict
+                        if isinstance(source, dict)
                         else {
                             "Type": ST_CIDR,
                             "Value": source,
@@ -376,6 +438,8 @@ def filter_ip_rules(
                 else:
                     # Combine the source with Allow information, for each Allow rule
                     for allow in filter_ensure_list(security_rule["Allow"]):
+                        if not isinstance(allow, str):
+                            continue
                         security_rules.append(
                             {**source, **filter_parse_port_spec(allow)}
                         )
@@ -383,35 +447,39 @@ def filter_ip_rules(
     return security_rules
 
 
-def filter_lookup(render_context, path: str, default="_error_"):
+@pass_context
+def filter_lookup(render_context: Context, path: str, default: str = "_error_") -> str:
 
     if path in render_context:
         value = render_context[path]
     elif default != "_error_":
         value = default
     else:
-        raise jinja2.exceptions.UndefinedError("Lookup failed for '{}'".format(path))
+        raise jinja2.exceptions.UndefinedError(
+            "Filter_lookup: Lookup failed for '{}'".format(path)
+        )
 
     return value
 
 
-def filter_output_name(render_context, o):
+@pass_context
+def filter_output_name(render_context: Context, o: dict) -> str | None:
     """
     Originally written purely for lambda.
     Renamed to be more generic.
     """
-    context = render_context.get(
+    facts = render_context.get(
         CTX_CONTEXT
     )  # This context is a DeploymentDetails object
 
-    if context is None:
+    if facts is None:
         return None
 
-    output_config = o.get("Fn::Pipeline::GetOutput", None)
+    output_config: dict | None = o.get("Fn::Pipeline::GetOutput", None)
 
     if not output_config:
         raise jinja2.exceptions.UndefinedError(
-            "Must specify Fn::Pipeline::GetOutput (Scope, Component, ExportName)."
+            "Filter_output_name: Must specify Fn::Pipeline::GetOutput (Scope, Component, ExportName)."
         )
 
     lifecycle_scope = output_config.get(DD_SCOPE, SCOPE_BUILD)
@@ -421,28 +489,29 @@ def filter_output_name(render_context, o):
     if lifecycle_scope == SCOPE_BUILD:
         return "-".join(
             [
-                context[DD_PORTFOLIO],
-                context[DD_APP],
-                context[DD_BRANCH],
-                context[DD_BUILD],
+                facts[DD_PORTFOLIO],
+                facts[DD_APP],
+                facts[DD_BRANCH],
+                facts[DD_BUILD],
                 component_name,
                 "pointers:{}".format(output_name),
             ]
         )
     else:
         raise NotImplementedError(
-            "Only build scope supported at this time. Add 'release' scope later."
+            "Filter_output_name: Only build scope supported at this time. Add 'release' scope later."
         )
 
 
-def filter_parse_port_spec(port_spec):
+def filter_parse_port_spec(port_spec: str) -> dict:
+
     # Used for AWS::EC2::SecurityGroupIngress configuration. See ip_rules method.
 
     PORT_SPEC_REGEX = r"^((?:TCP)|(?:UDP)|(?:ICMP)|(?:ALL)):((?:[0-9]+)|(?:\*))(?:-((?:[0-9]+)|(?:\*)))?$"
     match = re.match(PORT_SPEC_REGEX, port_spec)
     if match is None:
         raise jinja2.exceptions.UndefinedError(
-            "Invalid port specification '{}'. Must be <protocol>:<from_port>[-<to_port>]".format(
+            "Filter_parse_port_spec: Invalid port specification '{}'. Must be <protocol>:<from_port>[-<to_port>]".format(
                 port_spec
             )
         )
@@ -469,11 +538,12 @@ def filter_parse_port_spec(port_spec):
     return {"Protocol": protocol, "FromPort": from_port, "ToPort": to_port}
 
 
-def filter_process_cfn_init(render_context, cfn_init):
+@pass_context
+def filter_process_cfn_init(render_context: Context, cfn_init: dict) -> dict | None:
 
-    context = render_context[CTX_CONTEXT]  # Context is a DeploymentDetails object
+    facts = render_context[CTX_CONTEXT]  # Context is a DeploymentDetails object
 
-    if context is None:
+    if facts is None:
         return None
 
     cfn_init = copy.deepcopy(cfn_init)
@@ -485,43 +555,51 @@ def filter_process_cfn_init(render_context, cfn_init):
         # Prefix sources with S3 artefact url
         sources = config_block.get("sources", {})
         for key, source_spec in sources.items():
-            sources[key] = __file_url(context, source_spec)
+            sources[key] = __file_url(facts, source_spec)
 
         # Prefix files with S3 artefact url
         files = config_block.get("files", {})
         for key, file_spec in files.items():
             if "source" not in file_spec:
                 continue
-            file_spec["source"] = __file_url(context, file_spec["source"])
+            file_spec["source"] = __file_url(facts, file_spec["source"])
 
     return cfn_init
 
 
-def filter_rstrip(value, chars):
+def filter_rstrip(value: str, chars: str) -> str:
     return value.rstrip(chars)
 
 
-def filter_shorten_unique(str, limit, unique_length=0, charset=None):
+def filter_shorten_unique(
+    value: str, limit: int, unique_length: int = 0, charset: str | None = None
+):
 
-    if len(str) <= limit:
-        return str
+    if len(value) <= limit:
+        return value
 
     if charset is None:
         charset = string.ascii_uppercase + string.digits
 
-    shortened_string = str[0 : (limit - unique_length)]
+    shortened_string = value[0 : (limit - unique_length)]
 
-    random.seed(str)
+    random.seed(value)
     unique_string = "".join(random.choice(charset) for _ in range(unique_length))
 
     return shortened_string + unique_string
 
 
-def filter_snapshot_id(render_context, snapshot_spec, component_type):
+@pass_context
+def filter_snapshot_id(
+    render_context: Context, snapshot_spec: dict, component_type: str
+) -> dict | None:
 
-    context = render_context.get(CTX_CONTEXT)
+    facts: dict | None = render_context.get(CTX_CONTEXT)
 
-    snapshot_id = snapshot_spec.get("Fn::Pipeline::SnapshotId", None)
+    if not facts:
+        return None
+
+    snapshot_id: dict | None = snapshot_spec.get("Fn::Pipeline::SnapshotId", None)
 
     if not snapshot_id:
         raise jinja2.exceptions.UndefinedError(
@@ -530,7 +608,7 @@ def filter_snapshot_id(render_context, snapshot_spec, component_type):
 
     snapshot_alias_name = snapshot_id.get("Name", "unsepcified")
 
-    context_snapshot_aliases = context.get(CTX_SNAPSHOT_ALIASES, None)
+    context_snapshot_aliases = facts.get(CTX_SNAPSHOT_ALIASES, None)
     if not context_snapshot_aliases:
         raise jinja2.exceptions.UndefinedError("No snapshot aliases defined in context")
 
@@ -549,14 +627,15 @@ def filter_snapshot_id(render_context, snapshot_spec, component_type):
     params = {"SnapshotIdentifier": snap_alias["SnapshotIdentifier"]}
 
     if "AccountAlias" in snap_alias:
-        params["OwnerAccount"] = context[CTX_ACCOUNT_ALIASES][
-            snap_alias["AccountAlias"]
-        ]
+        params["OwnerAccount"] = facts[CTX_ACCOUNT_ALIASES][snap_alias["AccountAlias"]]
 
     return params
 
 
-def filter_snapshot_name(render_context, snapshot_spec, component_type):
+@pass_context
+def filter_snapshot_name(
+    render_context: Context, snapshot_spec: dict, component_type: str
+) -> str | None:
 
     context = render_context.get(CTX_CONTEXT)
 
@@ -591,10 +670,12 @@ def filter_snapshot_name(render_context, snapshot_spec, component_type):
     return snap_alias["SnapshotIdentifier"]
 
 
-def filter_split_cidr(cidr, allowed_prefix_lengths=[8, 16, 24, 32]):
-    import netaddr
+def filter_split_cidr(
+    cidr: str, allowed_prefix_lengths: list[int] = [8, 16, 24, 32]
+) -> list[str]:
 
     # Load the CIDR using netaddr
+
     try:
         ip = netaddr.IPNetwork(cidr)
     except Exception as e:
@@ -627,110 +708,140 @@ def filter_split_cidr(cidr, allowed_prefix_lengths=[8, 16, 24, 32]):
     return [str(x) for x in split_cidrs]
 
 
-def filter_subnet_network_zone(object, default="private"):
+def filter_subnet_network_zone(object: Any, default: str = "private") -> str:
+
     if object is None or isinstance(object, jinja2.Undefined):
         return default
+
     if "Fn::Pipeline::SubnetId" not in object:
         raise jinja2.exceptions.UndefinedError(
             "Must specify Fn::Pipeline::SubnetId lookup"
         )
+
     if "NetworkZone" not in object["Fn::Pipeline::SubnetId"]:
         return default
+
     return object["Fn::Pipeline::SubnetId"]["NetworkZone"]
 
 
-def filter_subnet_az_index(object, default=0):
+def filter_subnet_az_index(object: Any, default: int = 0) -> int:
+
     if object is None or isinstance(object, jinja2.Undefined):
         return default
+
     if "Fn::Pipeline::SubnetId" not in object:
         raise jinja2.exceptions.UndefinedError(
             "Must specify Fn::Pipeline::SubnetId lookup"
         )
+
     if "AzIndex" not in object["Fn::Pipeline::SubnetId"]:
         return default
+
     return object["Fn::Pipeline::SubnetId"]["AzIndex"]
 
 
+@pass_context
 def filter_tags(
-    render_context,
-    scope: Optional[str] = SCOPE_BUILD,
-    component_name: Optional[str] = None,
-):
+    render_context: Context, scope: str | None = None, component_name: str | None = None
+) -> dict:
     """Create the standard tags from the context and component name.
     This is a Jija2 filter and the render_context is the variables passed to jinja2
 
-    render_context['context'] is the Deplyment Details object
-
-    :param render_context: The render context of the jinja2 template
+    Args:
+        render_context (Context): The context passed to the jinja2 filter
+        scope (str, optional): The scope of the tags. Defaults to SCOPE_BUILD.
+        component_name (str, optional): The component name. Defaults to None.
 
     """
 
-    context = render_context.get(CTX_CONTEXT)  # Retrieve the Deployment Details object
+    facts: dict | None = render_context.get(CTX_CONTEXT)
 
-    if not CTX_CONTEXT:
+    if not facts:
         return {}
 
     if component_name is None:
         component_name = render_context.get(CTX_COMPONENT_NAME, "")
 
-    tags = {}
+    portfolio = facts.get(DD_PORTFOLIO, "")
+    app = facts.get(DD_APP, "")
+    branch = facts.get(DD_BRANCH, "")
+    branch_short_name = facts.get(DD_BRANCH_SHORT_NAME, "")
+    build = facts.get(DD_BUILD, "")
+    environment = facts.get(DD_ENVIRONMENT, "")
+
+    tags = {TAG_PORTFOLIO: portfolio, TAG_APP: app, **facts.get(DD_TAGS, {})}
+
+    if not scope:
+        scope = facts.get(DD_SCOPE, SCOPE_BUILD)
+
     if scope == SCOPE_ENVIRONMENT:
-        tags[TAG_PORTFOLIO] = context.get(DD_PORTFOLIO, "")
-        tags[TAG_APP] = context.get(DD_APP, "")
-        tags[TAG_ENVIRONMENT] = context.get(DD_ENVIRONMENT, "")
-        tags[TAG_NAME] = "{}-{}-{}-{}".format(
-            tags[TAG_PORTFOLIO], tags[TAG_APP], tags[TAG_ENVIRONMENT], component_name
+        tags.update(
+            {
+                TAG_NAME: f"{portfolio}-{app}-{environment}-{component_name}",
+                TAG_ENVIRONMENT: environment,
+            }
+        )
+    elif scope == SCOPE_PORTFOLIO:
+        tags.update(
+            {
+                TAG_NAME: f"{portfolio}-{component_name}",
+                TAG_ENVIRONMENT: environment,
+                TAG_COMPONENT: component_name,
+            }
+        )
+    elif scope == SCOPE_APP:
+        tags.update(
+            {
+                TAG_NAME: f"{portfolio}-{app}-{component_name}",
+                TAG_ENVIRONMENT: environment,
+                TAG_COMPONENT: component_name,
+            }
         )
     elif scope == SCOPE_BRANCH:
-        tags[TAG_PORTFOLIO] = context.get(DD_PORTFOLIO, "")
-        tags[TAG_APP] = context.get(DD_APP, "")
-        tags[TAG_BRANCH] = context.get(DD_BRANCH, "")
-        tags[TAG_ENVIRONMENT] = context.get(DD_ENVIRONMENT, "")
-        tags[TAG_COMPONENT] = component_name
-        tags[TAG_NAME] = "{}-{}-{}-{}".format(
-            tags[TAG_PORTFOLIO], tags[TAG_APP], tags[TAG_BRANCH], tags[TAG_COMPONENT]
-        )
-    elif scope == SCOPE_BUILD:
-        tags[TAG_PORTFOLIO] = context.get(DD_PORTFOLIO, "")
-        tags[TAG_APP] = context.get(DD_APP, "")
-        tags[TAG_BRANCH] = context.get(DD_BRANCH, "")
-        tags[TAG_BUILD] = context.get(DD_BUILD, "")
-        tags[TAG_COMPONENT] = component_name
-        tags[TAG_NAME] = "{}-{}-{}-{}-{}".format(
-            tags[TAG_PORTFOLIO],
-            tags[TAG_APP],
-            tags[TAG_BRANCH],
-            tags[TAG_BUILD],
-            tags[TAG_COMPONENT],
+        tags.update(
+            {
+                TAG_BRANCH: branch,
+                TAG_ENVIRONMENT: environment,
+                TAG_COMPONENT: component_name,
+                TAG_NAME: f"{portfolio}-{app}-{branch}-{component_name}",
+            }
         )
 
-    if DD_TAGS in context:
-        # If Tags are defined in facts (apps.yaml), add them here.
-        # Ensure that contextual tags cannot overwrite existing tags.
-        tags = {**context[DD_TAGS], **tags}
+    elif scope == SCOPE_BUILD:
+        tags.update(
+            {
+                TAG_BRANCH: branch,
+                TAG_BUILD: build,
+                TAG_ENVIRONMENT: environment,
+                TAG_COMPONENT: component_name,
+                TAG_NAME: f"{portfolio}-{app}-{branch_short_name}-{build}-{component_name}",
+            }
+        )
 
     return tags
 
 
-def filter_to_json(data):
+def filter_to_json(data: Any) -> Any:
 
     if isinstance(data, jinja2.Undefined):
         return data
 
-    return json.dumps(data)
+    return util.to_json(data)
 
 
-def filter_to_yaml(data):
+def filter_to_yaml(data: Any) -> Any:
+
     if isinstance(data, jinja2.Undefined):
         return data
 
     dumped = yaml.safe_dump(data, default_flow_style=False)
 
     dumped = re.sub(r"\n...\n$", "\n", dumped)
+
     return dumped.rstrip("\n")
 
 
-def __file_url(context, pipeline_file_spec):
+def __file_url(facts: dict, pipeline_file_spec: dict) -> Any:
 
     pipeline_file_url = pipeline_file_spec.get("Fn::Pipeline::FileUrl", None)
 
@@ -738,20 +849,18 @@ def __file_url(context, pipeline_file_spec):
 
         name = pipeline_file_url.get("Path", "unspecified")
         scope = pipeline_file_url.get("Scope", SCOPE_BUILD)
-        bucket_url = context.get(CTX_FILES_BUCKET_URL, "")
+        bucket_url = facts.get(CTX_FILES_BUCKET_URL, "")
 
         if scope == SCOPE_SHARED:
-            url = "{}/{}/{}".format(bucket_url, context[CTX_SHARED_FILES_PREFIX], name)
+            url = "{}/{}/{}".format(bucket_url, facts[CTX_SHARED_FILES_PREFIX], name)
         elif scope == SCOPE_PORTFOLIO:
-            url = "{}/{}/{}".format(
-                bucket_url, context[CTX_PORTFOLIO_FILES_PREFIX], name
-            )
+            url = "{}/{}/{}".format(bucket_url, facts[CTX_PORTFOLIO_FILES_PREFIX], name)
         elif scope == SCOPE_APP:
-            url = "{}/{}/{}".format(bucket_url, context[CTX_APP_FILES_PREFIX], name)
+            url = "{}/{}/{}".format(bucket_url, facts[CTX_APP_FILES_PREFIX], name)
         elif scope == SCOPE_BRANCH:
-            url = "{}/{}/{}".format(bucket_url, context[CTX_BRANCH_FILES_PREFIX], name)
+            url = "{}/{}/{}".format(bucket_url, facts[CTX_BRANCH_FILES_PREFIX], name)
         elif scope == SCOPE_BUILD:
-            url = "{}/{}/{}".format(bucket_url, context[CTX_BUILD_FILES_PREFIX], name)
+            url = "{}/{}/{}".format(bucket_url, facts[CTX_BUILD_FILES_PREFIX], name)
         else:
             raise jinja2.exceptions.UndefinedError(
                 "Unknown value '{}' for Fn::Pipeline::FileUrl Scope".format(scope)
@@ -762,10 +871,50 @@ def __file_url(context, pipeline_file_spec):
     return pipeline_file_spec
 
 
-def filter_regex_replace(s, find, replace):
+def filter_regex_replace(s, find, replace) -> str:
     """A non-optimal implementation of a regex filter"""
     return re.sub(find, replace, s)
 
 
-def filter_format_date(f: str = "%d-%b-%y"):
+def filter_format_date(f: str = "%d-%b-%y") -> str:
     return date.today().strftime(f)
+
+
+def load_filters(environment: Environment):
+
+    # Filters
+    environment.filters["aws_tags"] = filter_aws_tags
+    environment.filters["docker_image"] = filter_docker_image
+    environment.filters["ebs_encrypt"] = filter_ebs_encrypt
+    environment.filters["ensure_list"] = filter_ensure_list
+    environment.filters["extract"] = filter_extract
+    environment.filters["format_date"] = filter_format_date
+    environment.filters["iam_rules"] = filter_iam_rules
+    environment.filters["image_alias_to_id"] = filter_image_alias_to_id
+    environment.filters["image_id"] = filter_image_id
+    environment.filters["image_name"] = filter_image_name
+    environment.filters["ip_rules"] = filter_ip_rules
+    environment.filters["lookup"] = filter_lookup
+    environment.filters["min_int"] = filter_min_int
+    environment.filters["output_name"] = filter_output_name
+    environment.filters["parse_port_spec"] = filter_parse_port_spec
+    environment.filters["process_cfn_init"] = filter_process_cfn_init
+    environment.filters["regex_replace"] = filter_regex_replace
+    environment.filters["rstrip"] = filter_rstrip
+    environment.filters["shorten_unique"] = filter_shorten_unique
+    environment.filters["snapshot_id"] = filter_snapshot_id
+    environment.filters["snapshot_name"] = filter_snapshot_name
+    environment.filters["split_cidr"] = filter_split_cidr
+    environment.filters["subnet_az_index"] = filter_subnet_az_index
+    environment.filters["subnet_network_zone"] = filter_subnet_network_zone
+    environment.filters["tags"] = filter_tags
+    environment.filters["to_json"] = filter_to_json
+    environment.filters["to_yaml"] = filter_to_yaml
+    environment.filters["policy_statements"] = filter_policy_statements
+
+    # Globals
+    environment.globals["raise"] = raise_exception
+
+
+def raise_exception(message):
+    raise Exception(message)  # NOSONAR: python:S112
