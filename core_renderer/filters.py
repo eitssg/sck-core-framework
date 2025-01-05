@@ -66,10 +66,9 @@ def filter_aws_tags(
 
     tags_hash = filter_tags(render_context, scope, component_name)
 
-    items: list[dict] = []
-
-    for key, value in tags_hash.items():
-        items.append({"Key": key, "Value": value})
+    items: list[dict] = [
+        {"Key": key, "Value": value} for key, value in tags_hash.items()
+    ]
 
     return items
 
@@ -87,12 +86,14 @@ def filter_docker_image(render_context: Context, object: Any) -> str | None:
             "Must specify Fn::Pipeline::DockerImage lookup"
         )
 
-    ecr_repository_name = "private/{}-{}-{}-{}-{}".format(
-        facts[DD_PORTFOLIO],
-        facts[DD_APP],
-        facts[DD_BRANCH_SHORT_NAME],
-        facts[DD_BUILD],
-        render_context[CTX_COMPONENT_NAME],
+    ecr_repository_name = "-".join(
+        [
+            f"private/{facts[DD_PORTFOLIO]}",
+            facts[DD_APP],
+            facts[DD_BRANCH_SHORT_NAME],
+            facts[DD_BUILD],
+            render_context[CTX_COMPONENT_NAME],
+        ]
     )
 
     image_name = object["Fn::Pipeline::DockerImage"]["Name"]
@@ -100,6 +101,22 @@ def filter_docker_image(render_context: Context, object: Any) -> str | None:
     return "{}/{}:{}".format(
         facts[DD_ECR][ECR_REGISTRY_URI], ecr_repository_name, image_name
     )
+
+
+@pass_context
+def filter_ebs_encrypt(render_context: Context, ebs_spec: list[dict]) -> list:
+
+    for bdm in ebs_spec:
+
+        if "Ebs" in bdm:
+            # Enforce encryption for ebs volumes.
+            bdm["Ebs"]["Encrypted"] = "true"
+
+            # It seems KmsKeyId is not supported for BlockDeviceMappings (which is our use case). So encrypted = true will have to do.
+            # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-blockdev-template.html
+            # bdm['Ebs']['KmsKeyId'] = ${KmsKeyArn}
+
+    return ebs_spec
 
 
 def filter_ensure_list(object: Any) -> list[Any]:
@@ -120,10 +137,11 @@ def filter_ensure_list(object: Any) -> list[Any]:
 
 def filter_extract(object: Any, path: str, default: str = "_error_") -> str:
 
-    if object is None or isinstance(object, jinja2.Undefined):
-        value = None
-    else:
-        value = jmespath.search(path, object)
+    value = (
+        None
+        if object is None or isinstance(object, jinja2.Undefined)
+        else jmespath.search(path, object)
+    )
 
     if value is None:
         if default == "_error_":
@@ -132,177 +150,67 @@ def filter_extract(object: Any, path: str, default: str = "_error_") -> str:
                     path
                 )
             )
-        else:
-            value = default
+        value = default
 
     return value
-
-
-def filter_min_int(*values) -> Any:
-    """
-    Useful for stuff like MinSuccessfulInstancesPercent, where you want to establish a "floor" value.
-    """
-    if len(values) == 0:
-        return None
-    return min(values)
 
 
 @pass_context
 def filter_iam_rules(render_context: Context, resource: dict) -> list:
 
-    facts = render_context.get(CTX_CONTEXT)  # Conteext is a DeploymentDetails object
+    facts = render_context.get(CTX_CONTEXT)
 
     if facts is None:
         return []
 
-    app = render_context[CTX_APP]
+    app = render_context.get(CTX_APP)
+
+    if app is None:
+        return []
 
     security_rules = []
     for security_rule in resource.get("Pipeline::Security", []):
 
         for security_source in filter_ensure_list(security_rule["Source"]):
 
-            if security_source in app:
-
-                # Source is component
-                security_rules.append(
-                    {
-                        "Type": "component",
-                        "Value": "-".join(
-                            [
-                                facts[DD_PORTFOLIO],
-                                facts[DD_APP],
-                                facts[DD_BRANCH_SHORT_NAME],
-                                security_source,
-                                "security:RoleName",
-                            ]
-                        ),
-                        "Description": "Component {}".format(security_source),
-                        "Allow": filter_ensure_list(security_rule.get("Allow")),
-                        "SourceType": app[security_source]["Type"],
-                        "SecurityGroupId": "-".join(
-                            [
-                                facts[DD_PORTFOLIO],
-                                facts[DD_APP],
-                                facts[DD_BRANCH_SHORT_NAME],
-                                security_source,
-                                "security:SecurityGroupId",
-                            ]
-                        ),
-                    }
-                )
-            else:
-                # Unknown source
+            # Checks to see if the "Source" is in the "app"
+            if security_source not in app:
+                # If the Source component is not nin the app, then raise exception
                 raise jinja2.exceptions.UndefinedError(
-                    "Filter_iam_rules: Invalid security source '{}' - must be a component".format(
+                    "Filter_iam_rules: Invalid security source '{}' - must be a label of a component in the app".format(
                         security_source
                     )
                 )
 
-    return security_rules
-
-
-@pass_context
-def filter_policy_statements(render_context: Context, statement: dict) -> dict:
-
-    facts = render_context.get(CTX_CONTEXT)  # Context is a DeploymentDetails object]
-
-    if facts is None:
-        return {}
-
-    base_resource_name_hyphenated = "-".join(
-        [facts[DD_PORTFOLIO], facts[DD_APP], facts[DD_BRANCH_SHORT_NAME]]
-    )
-
-    resources = []
-    added: set[str] = set()
-
-    # AWS Poliction Statement
-    for action in statement["Action"]:
-        group = action.split(":")[0]
-        if group not in added:
-            arn = create_resource_arn(
-                group,
-                facts["AwsRegion"],
-                facts["AwsAccountId"],
-                base_resource_name_hyphenated,
+            # Source is component
+            security_rules.append(
+                {
+                    "Type": "component",
+                    "Value": "-".join(
+                        [
+                            facts[DD_PORTFOLIO],
+                            facts[DD_APP],
+                            facts[DD_BRANCH_SHORT_NAME],
+                            security_source,
+                            "security:RoleName",
+                        ]
+                    ),
+                    "Description": "Component {}".format(security_source),
+                    "Allow": filter_ensure_list(security_rule.get("Allow")),
+                    "SourceType": app[security_source]["Type"],
+                    "SecurityGroupId": "-".join(
+                        [
+                            facts[DD_PORTFOLIO],
+                            facts[DD_APP],
+                            facts[DD_BRANCH_SHORT_NAME],
+                            security_source,
+                            "security:SecurityGroupId",
+                        ]
+                    ),
+                }
             )
-            if arn is not None:
-                resources.append(arn)
-            else:
-                raise jinja2.exceptions.UndefinedError(
-                    f"Filter_policy_statements: Currently free form policy for group {group} not supported"
-                )
 
-    return {
-        "Action": statement["Action"],
-        "Effect": statement["Effect"],
-        "Resource": resources,
-    }
-
-
-def format_arn(
-    service: str,
-    region: str,
-    account_id: str,
-    resource: str,
-    resource_type: str | None = None,
-) -> str:
-    """
-    Format an ARN based on the provided parameters.
-
-    :param service: The AWS service (e.g., 'sns', 'sqs', 'dynamodb', etc.).
-    :param region: The AWS region (e.g., 'us-west-2').
-    :param account_id: The AWS account ID.
-    :param resource: The resource name or ID.
-    :param resource_type: The resource type (optional, e.g., 'table' for DynamoDB).
-    :return: The formatted ARN.
-    """
-    if resource_type:
-        return f"arn:aws:{service}:{region}:{account_id}:{resource_type}/{resource}"
-    else:
-        return f"arn:aws:{service}:{region}:{account_id}:{resource}"
-
-
-def create_resource_arn(
-    group: str, region: str, account_id: str, base_resource_name_hyphenated: str
-) -> str:
-
-    std_arns = {
-        "sns": "arn:aws:sns:{}:{}:{}-*",
-        "sqs": "arn:aws:sqs:{}:{}:{}-*",
-        "secretsmanager": "arn:aws:sns:{}:{}:{}-*",
-        "ssm": "arn:aws:sns:{}:{}:{}-*",
-        "dynamodb": "arn:aws:dynamodb:{}:{}:table/{}-*",
-        "ses": "arn:aws:ses:{}:{}:identity/{}-*",
-    }
-
-    test_arn = std_arns.get(group, None)
-
-    if test_arn is not None:
-        return test_arn.format(region, account_id, base_resource_name_hyphenated)
-
-    another_arns = {"s3": "arn:aws:s3:::{}-*"}
-    test_arn = another_arns.get(group, None)
-
-    if test_arn is not None:
-        return test_arn.format(base_resource_name_hyphenated)
-
-    return format_arn(group, region, account_id, base_resource_name_hyphenated)
-
-
-@pass_context
-def filter_ebs_encrypt(render_context: Context, ebs_spec: list[dict]) -> list:
-
-    for bdm in ebs_spec:
-
-        if "Ebs" in bdm:
-            bdm["Ebs"]["Encrypted"] = "true"  # Enforce encryption for ebs volumes.
-            # TODO. it seems KmsKey is not supported for BlockDeviceMappings
-            # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-blockdev-template.html
-            # bdm['Ebs']['KmsKeyId'] = ${KmsKeyArn}
-
-    return ebs_spec
+    return security_rules
 
 
 @pass_context
@@ -462,6 +370,13 @@ def filter_lookup(render_context: Context, path: str, default: str = "_error_") 
     return value
 
 
+def filter_min_int(*values) -> Any:
+    """
+    Useful for stuff like MinSuccessfulInstancesPercent, where you want to establish a "floor" value.
+    """
+    return None if len(values) == 0 else min(values)
+
+
 @pass_context
 def filter_output_name(render_context: Context, o: dict) -> str | None:
     """
@@ -539,6 +454,45 @@ def filter_parse_port_spec(port_spec: str) -> dict:
 
 
 @pass_context
+def filter_policy_statements(render_context: Context, statement: dict) -> dict:
+
+    facts = render_context.get(CTX_CONTEXT)  # Context is a DeploymentDetails object]
+
+    if facts is None:
+        return {}
+
+    base_resource_name_hyphenated = "-".join(
+        [facts[DD_PORTFOLIO], facts[DD_APP], facts[DD_BRANCH_SHORT_NAME]]
+    )
+
+    resources = []
+    added: set[str] = set()
+
+    # AWS Poliction Statement
+    for action in statement["Action"]:
+        group = action.split(":")[0]
+        if group not in added:
+            arn = __create_resource_arn(
+                group,
+                facts["AwsRegion"],
+                facts["AwsAccountId"],
+                base_resource_name_hyphenated,
+            )
+            if arn is not None:
+                resources.append(arn)
+            else:
+                raise jinja2.exceptions.UndefinedError(
+                    f"Filter_policy_statements: Currently free form policy for group {group} not supported"
+                )
+
+    return {
+        "Action": statement["Action"],
+        "Effect": statement["Effect"],
+        "Resource": resources,
+    }
+
+
+@pass_context
 def filter_process_cfn_init(render_context: Context, cfn_init: dict) -> dict | None:
 
     facts = render_context[CTX_CONTEXT]  # Context is a DeploymentDetails object
@@ -565,6 +519,15 @@ def filter_process_cfn_init(render_context: Context, cfn_init: dict) -> dict | N
             file_spec["source"] = __file_url(facts, file_spec["source"])
 
     return cfn_init
+
+
+def filter_regex_replace(s, find, replace) -> str:
+    """A non-optimal implementation of a regex filter"""
+    return re.sub(find, replace, s)
+
+
+def filter_format_date(f: str = "%d-%b-%y") -> str:
+    return date.today().strftime(f)
 
 
 def filter_rstrip(value: str, chars: str) -> str:
@@ -871,13 +834,54 @@ def __file_url(facts: dict, pipeline_file_spec: dict) -> Any:
     return pipeline_file_spec
 
 
-def filter_regex_replace(s, find, replace) -> str:
-    """A non-optimal implementation of a regex filter"""
-    return re.sub(find, replace, s)
+def __format_arn(
+    service: str,
+    region: str,
+    account_id: str,
+    resource: str,
+    resource_type: str | None = None,
+) -> str:
+    """
+    Format an ARN based on the provided parameters.
+
+    :param service: The AWS service (e.g., 'sns', 'sqs', 'dynamodb', etc.).
+    :param region: The AWS region (e.g., 'us-west-2').
+    :param account_id: The AWS account ID.
+    :param resource: The resource name or ID.
+    :param resource_type: The resource type (optional, e.g., 'table' for DynamoDB).
+    :return: The formatted ARN.
+    """
+    if resource_type:
+        return f"arn:aws:{service}:{region}:{account_id}:{resource_type}/{resource}"
+    else:
+        return f"arn:aws:{service}:{region}:{account_id}:{resource}"
 
 
-def filter_format_date(f: str = "%d-%b-%y") -> str:
-    return date.today().strftime(f)
+def __create_resource_arn(
+    group: str, region: str, account_id: str, base_resource_name_hyphenated: str
+) -> str:
+
+    std_arns = {
+        "sns": "arn:aws:sns:{}:{}:{}-*",
+        "sqs": "arn:aws:sqs:{}:{}:{}-*",
+        "secretsmanager": "arn:aws:sns:{}:{}:{}-*",
+        "ssm": "arn:aws:sns:{}:{}:{}-*",
+        "dynamodb": "arn:aws:dynamodb:{}:{}:table/{}-*",
+        "ses": "arn:aws:ses:{}:{}:identity/{}-*",
+    }
+
+    test_arn = std_arns.get(group, None)
+
+    if test_arn is not None:
+        return test_arn.format(region, account_id, base_resource_name_hyphenated)
+
+    another_arns = {"s3": "arn:aws:s3:::{}-*"}
+    test_arn = another_arns.get(group, None)
+
+    if test_arn is not None:
+        return test_arn.format(base_resource_name_hyphenated)
+
+    return __format_arn(group, region, account_id, base_resource_name_hyphenated)
 
 
 def load_filters(environment: Environment):
