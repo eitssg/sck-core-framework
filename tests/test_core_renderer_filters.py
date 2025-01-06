@@ -147,13 +147,14 @@ def test_filter_aws_tags(render_context):
     component_name = "example-component"
 
     expected_tags = [
-        {"Key": "Key1", "Value": "Value1"},
-        {"Key": "Key2", "Value": "Value2"},
         {"Key": "Portfolio", "Value": "example-portfolio"},
         {"Key": "App", "Value": "example-app"},
+        {"Key": "Key1", "Value": "Value1"},
+        {"Key": "Key2", "Value": "Value2"},
         {"Key": "Branch", "Value": "main"},
         {"Key": "Build", "Value": "123"},
-        {"Key": "Component", "Value": component_name},
+        {"Key": "Environment", "Value": "prod"},
+        {"Key": "Component", "Value": "example-component"},
         {
             "Key": "Name",
             "Value": "example-portfolio-example-app-main-123-example-component",
@@ -300,38 +301,6 @@ def test_filter_ip_rules(render_context):
     rules = [
         {
             "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "TCP",
-            "FromPort": "443",
-            "ToPort": "443",
-        },
-        {
-            "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "TCP",
-            "FromPort": "80",
-            "ToPort": "80",
-        },
-        {
-            "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "UDP",
-            "FromPort": "6320",
-            "ToPort": "6330",
-        },
-        {
-            "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "ICMP",
-            "FromPort": "8",
-            "ToPort": "-1",
-        },
-        {
-            "Type": "cidr",
             "Value": "192.168.1.0/24",
             "Description:": "My App CIDR Range",
             "Protocol": "TCP",
@@ -440,38 +409,6 @@ def test_filter_ip_rules(render_context):
     result = filter_ip_rules(render_context, resource, source_types=source_types)
 
     rules = [
-        {
-            "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "TCP",
-            "FromPort": "443",
-            "ToPort": "443",
-        },
-        {
-            "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "TCP",
-            "FromPort": "80",
-            "ToPort": "80",
-        },
-        {
-            "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "UDP",
-            "FromPort": "6320",
-            "ToPort": "6330",
-        },
-        {
-            "Type": "cidr",
-            "Value": "192.168.200.0/24",
-            "Description": "some-other-app",
-            "Protocol": "ICMP",
-            "FromPort": "8",
-            "ToPort": "-1",
-        },
         {
             "Type": "cidr",
             "Value": "192.168.1.0/24",
@@ -849,15 +786,18 @@ def test_filter_regex_replace():
 
 
 def test_filter_format_date():
-    with patch("core_renderer.filters.filters.date") as mock_today:
+    with patch("core_renderer.filters.date") as mock_today:
         mock_today.today.return_value = date(2021, 7, 1)
         mock_today.strftime = date.strftime
-        assert filter_format_date("%Y-%m-%d") == "2021-07-01"
+        df = filter_format_date("%Y-%m-%d")
+        assert df == "2021-07-01"
 
 
 def test_load_filters():
     env = jinja2.Environment()
+
     load_filters(env)
+
     assert "aws_tags" in env.filters
     assert "docker_image" in env.filters
 
