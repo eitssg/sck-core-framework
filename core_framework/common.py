@@ -485,7 +485,7 @@ def get_client() -> str | None:
     Returns:
         str | None: The client name
     """
-    return os.getenv(ENV_CLIENT, os.getenv(ENV_AWS_PROFILE, "default"))
+    return os.getenv(ENV_CLIENT, os.getenv(ENV_AWS_PROFILE, None))
 
 
 def get_client_name() -> str | None:

@@ -349,7 +349,9 @@ class ActionDefinition(BaseModel):
         default="build",
     )
 
-    Condition: str | None = Field(description="Condition clauses.  In code, the default is 'True'", default=None)
+    Condition: str | None = Field(
+        description="Condition clauses.  In code, the default is 'True'", default=None
+    )
 
     Before: list | None = Field(
         description="Before is a list of actions that should be perfomred before this one",

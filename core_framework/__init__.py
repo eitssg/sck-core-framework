@@ -29,6 +29,8 @@ from .common import (
     get_api_lambda_name,
     get_api_lambda_arn,
     get_invoker_lambda_arn,
+    get_invoker_lambda_name,
+    get_invoker_lambda_region,
     get_execute_lambda_arn,
     get_start_runner_lambda_arn,
     get_deployspec_compiler_lambda_arn,
@@ -53,7 +55,7 @@ from .common import (
     to_yaml,
     from_yaml,
     read_yaml,
-    write_yaml
+    write_yaml,
 )
 
 from ._version import __version__
@@ -117,6 +119,8 @@ __all__ = [
     "get_api_lambda_name",
     "get_api_lambda_arn",
     "get_invoker_lambda_arn",
+    "get_invoker_lambda_name",
+    "get_invoker_lambda_region",
     "get_execute_lambda_arn",
     "get_start_runner_lambda_arn",
     "get_deployspec_compiler_lambda_arn",

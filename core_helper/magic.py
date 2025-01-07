@@ -265,16 +265,9 @@ class MagicBucket(BaseModel):
             MagicObject: A MagicObject that behaves like an S3 Object
         """
         if self.data_path:
-            return MagicObject(
-                Bucket=self.name,
-                Key=key,
-                DataPath=self.data_path
-            )
+            return MagicObject(Bucket=self.name, Key=key, DataPath=self.data_path)
         else:
-            return MagicObject(
-                Bucket=self.name,
-                Key=key
-            )
+            return MagicObject(Bucket=self.name, Key=key)
 
 
 class MagicS3Client(BaseModel):
