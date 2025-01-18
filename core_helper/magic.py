@@ -1,6 +1,6 @@
 """ Magic module for emulating the boto3 S3 client and Buckets so we can elect to store files locally instead of in S3 """
 
-from typing import Any, Self
+from typing import Any, Self, IO
 import os
 import shutil
 import mimetypes
@@ -195,9 +195,18 @@ class MagicObject(BaseModel):
             # get the directory of the file fn
             dirname = os.path.dirname(fn)
             os.makedirs(dirname, exist_ok=True)
-            if isinstance(body, str):
+            if isinstance(body, IO):
+                with open(fn, "wb") as file:
+                    while True:
+                        chunk = body.read(1024)
+                        if not chunk:
+                            break
+                        file.write(chunk)
+            elif isinstance(body, str):
                 body = body.encode("utf-8")
-            if isinstance(body, bytes):
+                with open(fn, "wb") as file:
+                    file.write(body)
+            elif isinstance(body, bytes):
                 with open(fn, "wb") as file:
                     file.write(body)
 
@@ -350,7 +359,8 @@ class MagicS3Client(BaseModel):
 
         Args:
             Region (str): The region of the bucket
-            DataPath (str): The path to the bucket
+            BucketName (str): The name of the bucket
+            DataPath (str): The path to the bucket or let the system use default.
 
         Returns:
             MagicBucket: A MagicBucket object

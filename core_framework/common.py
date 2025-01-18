@@ -45,7 +45,6 @@ from .constants import (
     ENV_BUCKET_NAME,
     ENV_BUCKET_REGION,
     ENV_ARTEFACT_BUCKET_NAME,
-    ENV_ARTEFACT_BUCKET_REGION,
     ENV_MASTER_REGION,
     ENV_ENVIRONMENT,
     ENV_SCOPE,
@@ -334,7 +333,7 @@ def get_artefact_bucket_region() -> str:
     Returns:
         str: Region of the artefact bucket
     """
-    return os.environ.get(ENV_ARTEFACT_BUCKET_REGION, get_bucket_region())
+    return os.environ.get(ENV_BUCKET_REGION, get_bucket_region())
 
 
 def get_prn_alt(
@@ -453,15 +452,18 @@ def get_storage_volume(region: str | None = None) -> str:
         return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
 
 
-def get_temp_dir() -> str:
+def get_temp_dir(path: str | None = None) -> str:
     """
     Get the temporary directory for the application.  This is specified in the environment variable TEMP_DIR.
-    If not specified, the default value is used based on the region and account number.
+
+    Args:
+        path (str | None, optional): The path to append to the temporary directory. Defaults to None.
 
     Returns:
         str: The temporary directory
     """
-    return os.getenv("TEMP_DIR", os.getenv("TEMP", tempfile.gettempdir()))
+    flder = os.getenv("TEMP_DIR", os.getenv("TEMP", tempfile.gettempdir()))
+    return os.path.join(flder, path) if path else flder
 
 
 def get_mode() -> str:
@@ -539,6 +541,23 @@ def get_aws_profile() -> str:
     return profile
 
 
+def get_aws_region() -> str:
+    """
+    Get the AWS region from the environment variable ENV_AWS_REGION or V_DEFAULT_REGION.
+
+    Returns:
+        str: The AWS region
+    """
+    profile = get_aws_profile()
+
+    try:
+        # if the profile is not in the boto3.session credentials, then return "default"
+        session = boto3.session.Session(profile_name=profile)
+        return session.region_name
+    except ProfileNotFound:
+        return V_DEFAULT_REGION
+
+
 def get_client_region() -> str:
     """
     Get the client region from the environment variable ENV_CLIENT_REGION or V_DEFAULT_REGION.
@@ -548,7 +567,7 @@ def get_client_region() -> str:
     Returns:
         str: The AWS region for the client
     """
-    return os.getenv(ENV_CLIENT_REGION, V_DEFAULT_REGION)
+    return os.getenv(ENV_CLIENT_REGION, get_aws_region())
 
 
 def get_master_region() -> str:

@@ -91,7 +91,7 @@ class CoreLogFormatter(logging.Formatter):
 
     def format_datetime(self, t: datetime, date_format: str | None = None) -> str:
         """
-        Formates a datetime object to a string using the specified format.  If no format is specified, the default format is used.
+        Formats a datetime object to a string using the specified format.  If no format is specified, the default format is used.
 
         The default format is "%Y-%m-%d %H:%M:%S" if date_format is None.
 
@@ -122,6 +122,9 @@ class CoreLogFormatter(logging.Formatter):
         """
         t = datetime.fromtimestamp(record.created)
         return self.format_datetime(t, date_format or self.datefmt)
+
+    def formatMessage(self, record) -> str:
+        return super().formatMessage(record)
 
 
 class CoreLogTextFormatter(CoreLogFormatter):
@@ -255,6 +258,15 @@ class CoreLogJsonFormatter(CoreLogFormatter):
     def set_element(
         data: dict, record: logging.LogRecord, key: str, alternate: str | None = None
     ):
+        """
+        Adds an element to the data dictionary if it exists in the record object.
+
+        Args:
+            data (dict): The dictionary to add the element to.
+            record (logging.LogRecord): The log record object to extract the element from.
+            key (str): The key to add to the data dictionary.
+            alternate (str | None, optional): An alternate key to use if the primary key does not exist. Defaults to None.
+        """
         value = None
 
         # If the alternate exists, use it
@@ -548,6 +560,19 @@ class CoreLogger(logging.Logger):
         self.core_log(MSG, message, args, **kwargs)
 
     def status(self, code: str | int, reason: str, *args: Any, **kwargs: Any) -> None:
+        """
+        Outputs a status message to the log in the 'STATUS' level.
+
+        Supplying a code and reason will output a message in the following format:
+
+        message = f"{code} {reason}"
+
+        Code and Reason are added as metadata so that JSON formatters can use them individually.
+
+        Args:
+            code (str | int): The 'code' of the message
+            reason (str): The 'reason' of the message
+        """
         if self.isEnabledFor(STATUS):
             s = str(code)
             r = reason

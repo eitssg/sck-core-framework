@@ -335,8 +335,7 @@ class ActionDefinition(BaseModel):
     )
 
     DependsOn: list[str] = Field(
-        [],
-        description="A list of labels of actions that this action depends on",
+        description="A list of labels of actions that this action depends on", default=[],
     )
 
     Params: ActionParams = Field(

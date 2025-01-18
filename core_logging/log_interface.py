@@ -243,9 +243,10 @@ def __get_handlers(name, **kwargs) -> list[logging.Handler]:
     formatter = __get_formatter()
 
     # Add a console handler
-    console_hdlr = CoreLoggerHandler(name or "core")
-    console_hdlr.setFormatter(formatter)
-    handlers.append(console_hdlr)
+    if os.getenv("CONSOLE_LOG", "true").lower() == "true":
+        console_hdlr = CoreLoggerHandler(name or "core")
+        console_hdlr.setFormatter(formatter)
+        handlers.append(console_hdlr)
 
     # Add a file handler
     log_dir = os.getenv(ENV_LOG_DIR)
