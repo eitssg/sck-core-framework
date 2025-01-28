@@ -127,7 +127,7 @@ class InsecureEnclave:
         self.store(key, data, ttl)
         return key
 
-    def retrieve_data(self, key: str) -> dict | None:
+    def retrieve_data(self, key: str) -> dict[str, Any] | None:
         """
         Retrieve the dictionary from the storage with the key provided.
 

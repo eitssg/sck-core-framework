@@ -64,21 +64,27 @@ def transform_tag_hash(keyvalues: dict[str, str]) -> list[dict[str, str]]:
 
 
 def get_session_key(session: Session) -> str | None:
-    return f"session:{session.profile_name}-{session.region_name}"
+    prefix = util.get_automation_scope() or "ca-"
+    return f"{prefix}{session.profile_name}-{session.region_name}"
 
 
 def get_session(**kwargs) -> Session:
 
     region = kwargs.get("region", util.get_region())
     profile_name = kwargs.get("aws_profile", util.get_aws_profile())
+    session_token = kwargs.get("session_token", kwargs.get("sessionToken", None))
 
     # the store key is generated from the profile and region
-    key = f"session:{profile_name}:{region}"
+    prefix = util.get_automation_scope() or "ca"
+    key = f"{prefix}{profile_name}-{region}"
 
     session = store.retrieve_session(key)
 
     if session is None:
-        session = boto3.session.Session(region_name=region, profile_name=profile_name)
+        session = boto3.session.Session(
+            region_name=region,
+            profile_name=profile_name,
+            aws_session_token=session_token)
         store.store_session(key, session, ttl=300)  # 5 minutes
 
     return session
@@ -136,32 +142,8 @@ def login_to_aws(auth: dict[str, str], **kwargs) -> dict[str, str] | None:
     return result["Credentials"]
 
 
-def check_if_user_authorised(auth: dict[str, str] | None, role: str) -> bool:
-    """
-    Validate the provided AWS credentials and check if they have permissions to assume the specified role.
-
-    Args:
-        auth (Dict[str, Any]): User credentials object containing AccessKeyId, SecretAccessKey, and SessionToken.
-
-    Returns:
-        bool: True if the credentials are valid and can assume the specified role, False otherwise.
-    """
-    try:
-        if auth is None:
-            return True
-
-        auth = get_identity()
-
-        return True  # FIXME Actually authorize the user
-
-        # if 'accountId' not in auth or 'accessKey' not in auth or 'user' not in auth:
-        #     raise ValueError('Missing required credentials')
-
-        # return True
-
-    except ClientError as e:
-        print(f"Authorization failed: {e}")
-        return False
+def get_role_credentials(role: str) -> dict[str, Any]:
+    return store.retrieve_data(role)
 
 
 def assume_role(**kwargs) -> dict[str, str] | None:
@@ -197,7 +179,7 @@ def assume_role(**kwargs) -> dict[str, str] | None:
         session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{key}"
 
         # Assume / re-assume the role to get new credentials
-        log.debug("Assuming role [{}] session namae [{}]", role)
+        log.debug("Assuming role [{}] session namae [{}]", role, session_name)
 
         client = session.client(
             "sts",
@@ -222,22 +204,57 @@ def assume_role(**kwargs) -> dict[str, str] | None:
     return get_session_credentials()
 
 
-def get_identity() -> dict[str, str] | None:
-
+def get_identity(token: str | None = None, role: str | None = None) -> dict[str, str] | None:
+    """ Assume the specified role and return the user information along with the credentials"""
     try:
-        client = sts_client()
+        if role:
+            client = sts_client(session_token=token, role=role)
+            credentials = get_role_credentials(role)
+        else:
+            client = sts_client(session_token=token)
+            response = client.get_session_token()
+            credentials = response.get("Credentials")
 
-        # Call the get_caller_identity method
-        response = client.get_caller_identity()
+        if not credentials:
+            return None
 
-        return {
-            "UserId": response["UserId"],
-            "Account": response["Account"],
-            "Arn": response["Arn"],
+        identity = client.get_caller_identity()
+
+        response = {
+            "UserId": identity["UserId"],
+            "Account": identity["Account"],
+            "Arn": identity["Arn"],
+            "AccessKeyId": credentials["AccessKeyId"],
+            "SecretAccessKey": credentials["SecretAccessKey"],
+            "SessionToken": credentials["SessionToken"],
+            "Expiration": credentials["Expiration"]
         }
+
+        return response
+
     except ClientError as e:
         log.error("Failed to get identity: {}", e)
         return None
+
+
+def get_session_token() -> dict | None:
+    """
+    Get the current session token from the AWS credentials.
+
+    Returns:
+        str: The session token, or None if the token is not available.
+    """
+    credentials = get_session_credentials()
+    if credentials:
+        session_token = credentials.get("SessionToken")
+        if session_token:
+            return credentials
+        client = sts_client()
+        response = client.get_session_token()
+        credentials["SessionToken"] = response.get("Credentials", {}).get("SessionToken")
+        return credentials
+
+    return None
 
 
 def get_client(service, **kwargs) -> Any:
@@ -265,6 +282,33 @@ def get_client(service, **kwargs) -> Any:
             ),
         )
     return client
+
+
+def get_client_credentials(client: Any) -> dict[str, str] | None:
+    """
+    Retrieve the credentials details from a Boto3 client.
+
+    Args:
+        client (Any): The Boto3 client.
+
+    Returns:
+        dict: A dictionary with the following keys:
+            - AccessKeyId
+            - SecretAccessKey
+            - SessionToken
+    """
+    credentials = client._request_signer._credentials
+    if credentials:
+        frozen_credentials = credentials.get_frozen_credentials()
+        if frozen_credentials:
+            creds = {
+                "AccessKeyId": frozen_credentials.access_key,
+                "SecretAccessKey": frozen_credentials.secret_key,
+                "SessionToken": frozen_credentials.token,
+            }
+            return creds
+
+    return None
 
 
 def sts_client(**kwargs) -> Any:

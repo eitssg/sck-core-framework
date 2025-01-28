@@ -176,16 +176,19 @@ def get_default_identity() -> str | None:
 
 
 def get_identity() -> str | None:
-    """
-    Return the default identity for the logger.  This default identity is used to identify the source of the log message and will be used if not specified in the log call
+    """Return the default identity for the logger.
 
-    :return identity(str):  The default identity for the logger.
-    """
+    This default identity is used to identify the source of the log message and will be used
+    if not specified in the log call.
 
+    Returns:
+        str: The default identity for the logger.
+    """
     return getattr(_thread_local, "identity", get_default_identity())
 
 
 def clear_identity():
+    """Clear both current and default thread-local identity values."""
     if hasattr(_thread_local, "identity"):
         del _thread_local.identity
     if hasattr(_thread_local, "default_identity"):
@@ -252,10 +255,10 @@ def __get_handlers(name, **kwargs) -> list[logging.Handler]:
     log_dir = os.getenv(ENV_LOG_DIR)
     if log_dir:
 
-        # TODO - If a LOG GROUP is defined, add it to the folder diretory path
+        # If a LOG GROUP is defined, add it to the folder diretory path
         log_group = kwargs.get("log_group", "")
 
-        # TODO - If a LOG STREAM is defined, set it as the filename
+        # If a LOG STREAM is defined, set it as the filename
         log_stream = kwargs.get("log_stream", "core")
 
         log_file = os.path.join(log_dir, log_group, f"{log_stream}.log")
@@ -306,7 +309,7 @@ def get_caller_info():
     return module_name, function_name, filename, lineno
 
 
-def log(level: int, message: str | dict | None = None, *args, **kwargs):
+def log(level: int, message: str | dict, *args, **kwargs):
     """
     Log a message at the specified level.
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -324,7 +327,7 @@ def log(level: int, message: str | dict | None = None, *args, **kwargs):
     logger.log(level, message, *args, **kwargs)
 
 
-def msg(message: str | dict | None = None, *args, **kwargs):
+def msg(message: str | dict, *args, **kwargs):
     """
     Log a message at the MSG level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -341,7 +344,7 @@ def msg(message: str | dict | None = None, *args, **kwargs):
     logger.msg(message, *args, **kwargs)
 
 
-def trace(message: str | dict | None = None, *args, **kwargs):
+def trace(message: str | dict, *args, **kwargs):
     """
     Log a message at the TRACE level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -358,7 +361,7 @@ def trace(message: str | dict | None = None, *args, **kwargs):
     logger.trace(message, *args, **kwargs)
 
 
-def debug(message: str | dict | None = None, *args, **kwargs):
+def debug(message: str | dict, *args, **kwargs):
     """
     Log a message at the DEBUG level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -375,7 +378,7 @@ def debug(message: str | dict | None = None, *args, **kwargs):
     logger.debug(message, *args, **kwargs)
 
 
-def critical(message: str | dict | None = None, *args, **kwargs):
+def critical(message: str | dict, *args, **kwargs):
     """
     Log a message at the CRITICAL level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -392,7 +395,7 @@ def critical(message: str | dict | None = None, *args, **kwargs):
     logger.critical(message, *args, **kwargs)
 
 
-def fatal(message: str | dict | None = None, *args, **kwargs):
+def fatal(message: str | dict, *args, **kwargs):
     """
     Log a message at the FATAL level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -409,7 +412,7 @@ def fatal(message: str | dict | None = None, *args, **kwargs):
     logger.fatal(message, *args, **kwargs)
 
 
-def error(message: str | dict | None = None, *args, **kwargs):
+def error(message: str | dict, *args, **kwargs):
     """
     Log a message at the ERROR level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -426,7 +429,7 @@ def error(message: str | dict | None = None, *args, **kwargs):
     logger.error(message, *args, **kwargs)
 
 
-def info(message: str | dict | None = None, *args, **kwargs):
+def info(message: str | dict, *args, **kwargs):
     """
     Log a message at the INFO level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -443,7 +446,7 @@ def info(message: str | dict | None = None, *args, **kwargs):
     logger.info(message, *args, **kwargs)
 
 
-def warn(message: str | dict | None = None, *args, **kwargs):
+def warn(message: str | dict, *args, **kwargs):
     """
     Log a message at the WARNING level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -460,7 +463,7 @@ def warn(message: str | dict | None = None, *args, **kwargs):
     logger.warning(message, *args, **kwargs)
 
 
-def warning(message: str | dict | None = None, *args, **kwargs):
+def warning(message: str | dict, *args, **kwargs):
     """
     Log a message at the WARNING level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
@@ -477,7 +480,7 @@ def warning(message: str | dict | None = None, *args, **kwargs):
     logger.warning(message, *args, **kwargs)
 
 
-def status(code: str | int | None = None, reason: str | None = None, *args, **kwargs):
+def status(code: str | int, reason: str, *args, **kwargs):
     """
     Log a message at the STATUS level
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.

@@ -7,6 +7,7 @@ other very commont tasks.
 
 import warnings
 from typing import Any, IO
+import uuid
 import tempfile
 import json
 import datetime
@@ -43,15 +44,26 @@ from .constants import (
     ENV_DYNAMODB_REGION,
     ENV_DYNAMODB_HOST,
     ENV_BUCKET_NAME,
+    ENV_DOCUMENT_BUCKET_NAME,
+    ENV_UI_BUCKET_NAME,
     ENV_BUCKET_REGION,
     ENV_ARTEFACT_BUCKET_NAME,
     ENV_MASTER_REGION,
     ENV_ENVIRONMENT,
+    ENV_ORGANIZATION_EMAIL,
     ENV_SCOPE,
+    ENV_DOMAIN,
     ENV_VOLUME,
     ENV_DELIVERED_BY,
     ENV_LOG_DIR,
     ENV_USE_S3,
+    ENV_CORRELATION_ID,
+    ENV_ORGANIZATION_ID,
+    ENV_ORGANIZATION_NAME,
+    ENV_ORGANIZATION_ACCOUNT,
+    ENV_AUDIT_ACCOUNT,
+    ENV_SECURITY_ACCOUNT,
+    ENV_NETWORK_ACCOUNT,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
@@ -71,6 +83,8 @@ from .constants import (
     SCOPE_BUILD,
     SCOPE_COMPONENT,
     CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE,
+    CORE_AUTOMATION_API_WRITE_ROLE,
+    CORE_AUTOMATION_API_READ_ROLE,
 )
 
 
@@ -296,7 +310,7 @@ def generate_bucket_name(
     return f"{scope_prefix}{client}-{V_CORE_AUTOMATION}-{branch}".lower().strip("-")
 
 
-def get_bucket_name(client: str | None = None) -> str:
+def get_bucket_name(client: str | None = None, region: str | None = None) -> str:
     """
     Return the bucket name specified in the environment variabe BUCKET_NAME.  If not specified, generate a bucket name
     based on the client name, branch name and automation scope prefix.
@@ -307,11 +321,35 @@ def get_bucket_name(client: str | None = None) -> str:
 
     client = client or get_client() or ""
     automation_scope_prefix = get_automation_scope() or ""
+    if not region:
+        region = get_bucket_region()
 
     return os.environ.get(
         ENV_BUCKET_NAME,
-        generate_bucket_name(client, V_DEFAULT_BRANCH, automation_scope_prefix),
+        generate_bucket_name(client, region, automation_scope_prefix),
     )
+
+
+def get_document_bucket_name(client: str | None = None) -> str:
+    """
+    Return the bucket name for the documents.  This is specified in the environment variable DOCUMENT_BUCKET_NAME.
+    If not specified, the bucket name is the same as the core automation bucket name.
+
+    Returns:
+        str: The bucket name for the documents
+    """
+    return os.environ.get(ENV_DOCUMENT_BUCKET_NAME, get_bucket_name(client))
+
+
+def get_ui_bucket_name(client: str | None = None) -> str:
+    """
+    Return the bucket name for the UI.  This is specified in the environment variable UI_BUCKET_NAME.
+    If not specified, the bucket name is the same as the core automation bucket name.
+
+    Returns:
+        str: The bucket name for the UI
+    """
+    return os.environ.get(ENV_UI_BUCKET_NAME, get_bucket_name(client))
 
 
 def get_artefact_bucket_name(client: str | None = None) -> str:
@@ -363,7 +401,7 @@ def get_prn_alt(
     return get_prn(portfolio, app, branch, build, component, scope, delim="-")
 
 
-def get_automation_scope() -> str | None:
+def get_automation_scope() -> str:
     """
     The automation scope is a prefix on all automation objects.  This is typically an empty string or None.
 
@@ -372,9 +410,9 @@ def get_automation_scope() -> str | None:
     This is the "Automation Scope"  Typically ued to differentiate mutiple core automation engines in the same AWS account.
 
     Returns:
-        str | None: The prefix for all automation objects
+        str: The prefix for all automation objects
     """
-    return os.getenv(ENV_SCOPE, None)
+    return os.getenv(ENV_SCOPE, V_EMPTY)
 
 
 def get_provisioning_role_arn(account: str) -> str:
@@ -394,6 +432,110 @@ def get_provisioning_role_arn(account: str) -> str:
     return "arn:aws:iam::{}:role/{}{}".format(
         account, scope_prefix, CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE
     )
+
+
+def get_automation_api_role_arn(account: str, write: bool = False) -> str:
+    """
+    Get the automation API role ARN for the specified account.  This is specified in the environment variable ENV_AUTOMATION_ACCOUNT.
+    If not specified, the default value is used based on the region and account number.
+
+    Args:
+        account (str): The AWS account number
+
+    Returns:
+        str: The ARN for the automation API role
+    """
+
+    scope_prefix = get_automation_scope()
+
+    if write:
+        return "arn:aws:iam::{}:role/{}{}".format(
+            account, scope_prefix, CORE_AUTOMATION_API_WRITE_ROLE
+        )
+
+    return "arn:aws:iam::{}:role/{}{}".format(
+        account, scope_prefix, CORE_AUTOMATION_API_READ_ROLE
+    )
+
+
+def get_organization_id() -> str | None:
+    """
+    Get the organization ID from the environment variable ENV_ORGANIZATION_ID.
+
+    Returns:
+        str | None: The organization ID
+    """
+    return os.getenv(ENV_ORGANIZATION_ID, None)
+
+
+def get_organization_name() -> str | None:
+    """
+    Get the organization name from the environment variable ENV_ORGANIZATION_NAME.
+
+    Returns:
+        str | None: The organization name
+    """
+    return os.getenv(ENV_ORGANIZATION_NAME, None)
+
+
+def get_organization_account() -> str | None:
+    """
+    Get the organization account number from the environment variable ENV_ORGANIZATION_ACCOUNT.
+
+    Returns:
+        str | None: The organization account number
+    """
+    return os.getenv(ENV_ORGANIZATION_ACCOUNT, None)
+
+
+def get_organization_email() -> str | None:
+    """
+    Get the organization email address from the environment variable ENV_ORGANIZATION_EMAIL.
+
+    Returns:
+        str | None: The organization email address
+    """
+    return os.getenv(ENV_ORGANIZATION_EMAIL, None)
+
+
+def get_audit_account() -> str | None:
+    """
+    Get the audit account number from the environment variable ENV_AUDIT_ACCOUNT.
+
+    Returns:
+        str | None: The audit account number
+    """
+    return os.getenv(ENV_AUDIT_ACCOUNT, None)
+
+
+def get_security_account() -> str | None:
+    """
+    Get the security account number from the environment variable ENV_SECURITY_ACCOUNT.
+
+    Returns:
+        str | None: The security account number
+    """
+    return os.getenv(ENV_SECURITY_ACCOUNT, None)
+
+
+def get_domain() -> str:
+    """
+    Get the domain name from the environment variable ENV_DOMAIN.
+
+    Returns:
+        str: The domain name
+    """
+    return os.getenv(ENV_DOMAIN, "example.com")
+
+
+def get_network_account() -> str | None:
+    """
+    Get the network account number from the environment variable ENV_NETWORK_ACCOUNT.
+
+    Returns:
+        str | None: The network account number
+    """
+    return os.getenv(ENV_NETWORK_ACCOUNT, None)
 
 
 def is_use_s3() -> bool:
@@ -785,6 +927,16 @@ def get_component_compiler_lambda_arn() -> str:
         ENV_COMPONENT_COMPILER_LAMBDA_ARN,
         f"arn:aws:lambda:{region}:{account}:function:{V_CORE_AUTOMATION}-component-compiler",
     )
+
+
+def get_correlation_id() -> str:
+    """
+    Get the correlation id from the environment variable CORRELATION_ID.  If not specified, the default value is "00000000-0000-0000-0000-000000000000".
+
+    Returns:
+        str: The correlation id
+    """
+    return os.getenv(ENV_CORRELATION_ID, str(uuid.uuid4()))
 
 
 def get_environment() -> str:
