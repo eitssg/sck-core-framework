@@ -24,6 +24,7 @@ from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 from .constants import (
     # Environment Variables
     ENV_AUTOMATION_ACCOUNT,
+    ENV_AUTOMATION_REGION,
     ENV_API_LAMBDA_NAME,
     ENV_API_LAMBDA_ARN,
     ENV_COMPONENT_COMPILER_LAMBDA_ARN,
@@ -49,6 +50,8 @@ from .constants import (
     ENV_BUCKET_REGION,
     ENV_ARTEFACT_BUCKET_NAME,
     ENV_MASTER_REGION,
+    ENV_CDK_DEFAULT_ACCOUNT,
+    ENV_CDK_DEFAULT_REGION,
     ENV_ENVIRONMENT,
     ENV_ORGANIZATION_EMAIL,
     ENV_SCOPE,
@@ -538,6 +541,26 @@ def get_network_account() -> str | None:
     return os.getenv(ENV_NETWORK_ACCOUNT, None)
 
 
+def get_cdk_default_account() -> str | None:
+    """
+    Get the CDK default account from the environment variable ENV_CDK_DEFAULT_ACCOUNT.
+
+    Returns:
+        str: The CDK default account
+    """
+    return os.getenv(ENV_CDK_DEFAULT_ACCOUNT, None)
+
+
+def get_cdk_default_region() -> str | None:
+    """
+    Get the CDK default region from the environment variable ENV_CDK_DEFAULT_REGION.
+
+    Returns:
+        str: The CDK default region
+    """
+    return os.getenv(ENV_CDK_DEFAULT_REGION, None)
+
+
 def is_use_s3() -> bool:
     """
     Check if the deployment is using S3 for storage.  This is specified in the environment variable LOCAL_MODE.
@@ -732,6 +755,16 @@ def get_region() -> str:
         str: THe AWS region for the deployment
     """
     return os.getenv(ENV_AWS_REGION, get_master_region())
+
+
+def get_automation_region() -> str:
+    """
+    Get the automation region from the environment variable ENV_AWS_REGION or the master region.
+
+    Returns:
+        str: The AWS region for the automation engine
+    """
+    return os.getenv(ENV_AUTOMATION_REGION, get_region())
 
 
 def get_bucket_region() -> str:

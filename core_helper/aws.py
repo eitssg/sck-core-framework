@@ -1,8 +1,7 @@
 """ AWS Helper functions that provide Automation Role switching for all deployment functions and Lambda's """
 
 from typing import Any
-
-import json
+import os
 import boto3
 
 from boto3.session import Session
@@ -84,7 +83,8 @@ def get_session(**kwargs) -> Session:
         session = boto3.session.Session(
             region_name=region,
             profile_name=profile_name,
-            aws_session_token=session_token)
+            aws_session_token=session_token,
+        )
         store.store_session(key, session, ttl=300)  # 5 minutes
 
     return session
@@ -127,6 +127,7 @@ def login_to_aws(auth: dict[str, str], **kwargs) -> dict[str, str] | None:
         aws_access_key_id=auth["AccessKeyId"],
         aws_secret_access_key=auth["SecretAccessKey"],
         aws_session_token=auth["SessionToken"],
+        config=__get_client_config(),
     )
 
     try:
@@ -143,7 +144,29 @@ def login_to_aws(auth: dict[str, str], **kwargs) -> dict[str, str] | None:
 
 
 def get_role_credentials(role: str) -> dict[str, Any]:
-    return store.retrieve_data(role)
+    return store.retrieve_data(role) or {}
+
+
+def __get_client_config() -> Config:
+
+    http_proxy = os.getenv("HTTP_PROXY", os.getenv("http_proxy", None))
+    https_proxy = os.getenv("HTTPS_PROXY", os.getenv("https_proxy", None))
+    if http_proxy and not https_proxy:
+        https_proxy = http_proxy
+    elif https_proxy and not http_proxy:
+        http_proxy = https_proxy
+
+    if http_proxy and https_proxy:
+        proxy_definition = {"http": http_proxy, "https": https_proxy}
+    else:
+        proxy_definition = None
+
+    return Config(
+        proxies=proxy_definition,
+        connect_timeout=15,
+        read_timeout=15,
+        retries=dict(max_attempts=10),
+    )
 
 
 def assume_role(**kwargs) -> dict[str, str] | None:
@@ -181,12 +204,7 @@ def assume_role(**kwargs) -> dict[str, str] | None:
         # Assume / re-assume the role to get new credentials
         log.debug("Assuming role [{}] session namae [{}]", role, session_name)
 
-        client = session.client(
-            "sts",
-            config=Config(
-                connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
-            ),
-        )
+        client = session.client("sts", config=__get_client_config())
 
         sts_response = client.assume_role(RoleArn=role, RoleSessionName=session_name)
         if (
@@ -204,8 +222,10 @@ def assume_role(**kwargs) -> dict[str, str] | None:
     return get_session_credentials()
 
 
-def get_identity(token: str | None = None, role: str | None = None) -> dict[str, str] | None:
-    """ Assume the specified role and return the user information along with the credentials"""
+def get_identity(
+    token: str | None = None, role: str | None = None
+) -> dict[str, str] | None:
+    """Assume the specified role and return the user information along with the credentials"""
     try:
         if role:
             client = sts_client(session_token=token, role=role)
@@ -227,7 +247,7 @@ def get_identity(token: str | None = None, role: str | None = None) -> dict[str,
             "AccessKeyId": credentials["AccessKeyId"],
             "SecretAccessKey": credentials["SecretAccessKey"],
             "SessionToken": credentials["SessionToken"],
-            "Expiration": credentials["Expiration"]
+            "Expiration": credentials["Expiration"],
         }
 
         return response
@@ -251,7 +271,9 @@ def get_session_token() -> dict | None:
             return credentials
         client = sts_client()
         response = client.get_session_token()
-        credentials["SessionToken"] = response.get("Credentials", {}).get("SessionToken")
+        credentials["SessionToken"] = response.get("Credentials", {}).get(
+            "SessionToken"
+        )
         return credentials
 
     return None
@@ -265,21 +287,14 @@ def get_client(service, **kwargs) -> Any:
     credentials = assume_role(**kwargs)
 
     if credentials is None:
-        client = session.client(
-            service,
-            config=Config(
-                connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
-            ),
-        )
+        client = session.client(service, config=__get_client_config())
     else:
         client = session.client(
             service,
             aws_access_key_id=credentials["AccessKeyId"],
             aws_secret_access_key=credentials["SecretAccessKey"],
             aws_session_token=credentials["SessionToken"],
-            config=Config(
-                connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
-            ),
+            config=__get_client_config(),
         )
     return client
 
@@ -371,6 +386,10 @@ def step_functions_client(**kwargs) -> Any:
     return get_client("stepfunctions", **kwargs)
 
 
+def r53_client(**kwargs) -> Any:
+    return get_client("route53", **kwargs)
+
+
 def get_resource(service, **kwargs) -> Any:
 
     session = get_session(**kwargs)
@@ -421,7 +440,7 @@ def invoke_lambda(
 
     try:
 
-        request = json.dumps(request_payload)
+        request = util.to_json(request_payload)
         response = client.invoke(FunctionName=arn, Payload=request)
 
     except Exception as e:
