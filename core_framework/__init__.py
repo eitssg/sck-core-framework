@@ -198,5 +198,4 @@ __all__ = [
     "extract_branch_prn",
     "extract_build_prn",
     "extract_component_prn",
-    "get_version",
 ]
