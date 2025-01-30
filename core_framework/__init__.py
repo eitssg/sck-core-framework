@@ -200,7 +200,3 @@ __all__ = [
     "extract_component_prn",
     "get_version",
 ]
-
-
-def get_version():
-    return __version__
