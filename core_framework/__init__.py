@@ -72,7 +72,8 @@ from .common import (
     write_yaml,
 )
 
-from ._version import __version__
+# retrieve the version of the package dynamically
+__version__ = "0.0.4"
 
 # import everything from prn_utils
 from .prn_utils import (

@@ -66,13 +66,13 @@ def test_get_configuration_bucket_name():
 
     bucket_name = util.get_bucket_name("baskets")
 
-    assert bucket_name == "baskets-core-automation-master"
+    assert bucket_name == "baskets-core-automation-ap-southeast-1"
 
     bucket_name = util.get_bucket_name()
 
     client = util.get_client()
     if client:
-        assert bucket_name == f"{client}-core-automation-master"
+        assert bucket_name == f"{client}-core-automation-ap-southeast-1"
     else:
         assert bucket_name == "core-automation-master"
 

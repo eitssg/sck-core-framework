@@ -27,7 +27,7 @@ def test_status(capsys, mock_format_time):
     )
 
     log.status(
-        status_label="200",
+        200,
         reason="OK",
         scope="build",
         details={"item": "a"},

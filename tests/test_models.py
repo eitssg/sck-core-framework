@@ -88,7 +88,10 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload.Identity == "prn:my-portfolio:my-app:my-branch:my-build"
 
-        assert task_payload.Actions.BucketName == "my-client-core-automation-master"
+        assert (
+            task_payload.Actions.BucketName
+            == "my-client-core-automation-ap-southeast-1"
+        )
 
         assert task_payload.Actions.BucketRegion == "specified_region"
 
@@ -97,7 +100,10 @@ def test_task_payload_model(runtime_arguments):
             == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.actions"
         )
 
-        assert task_payload.Package.BucketName == "my-client-core-automation-master"
+        assert (
+            task_payload.Package.BucketName
+            == "my-client-core-automation-ap-southeast-1"
+        )
 
         assert task_payload.Package.BucketRegion == "specified_region"
 
@@ -116,7 +122,9 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload.Package.BucketRegion == "specified_region"
 
-        assert task_payload.State.BucketName == "my-client-core-automation-master"
+        assert (
+            task_payload.State.BucketName == "my-client-core-automation-ap-southeast-1"
+        )
 
         assert task_payload.State.BucketRegion == "specified_region"
 
@@ -160,7 +168,7 @@ def test_package_details_model(runtime_arguments):
 
         assert package_details is not None
 
-        assert package_details.BucketName == "my-client-core-automation-master"
+        assert package_details.BucketName == "my-client-core-automation-ap-southeast-1"
 
         assert package_details.BucketRegion == "specified_region"
 
