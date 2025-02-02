@@ -18,6 +18,9 @@ from .log_classes import (
     ENV_LOG_JSON,
     ENV_LOG_LEVEL,
     ENV_LOG_DIR,
+    ENV_LOG_CONSOLE,
+    ENV_LOG_GROUP,
+    ENV_LOG_STREAM,
     INFO,
 )
 
@@ -246,7 +249,8 @@ def __get_handlers(name, **kwargs) -> list[logging.Handler]:
     formatter = __get_formatter()
 
     # Add a console handler
-    if os.getenv("CONSOLE_LOG", "true").lower() == "true":
+    log_console = os.getenv(ENV_LOG_CONSOLE, "true").lower() == "true"
+    if log_console:
         console_hdlr = CoreLoggerHandler(name or "core")
         console_hdlr.setFormatter(formatter)
         handlers.append(console_hdlr)
@@ -256,17 +260,19 @@ def __get_handlers(name, **kwargs) -> list[logging.Handler]:
     if log_dir:
 
         # If a LOG GROUP is defined, add it to the folder diretory path
-        log_group = kwargs.get("log_group", "")
+        log_group = kwargs.get("log_group", os.getenv(ENV_LOG_GROUP, ""))
 
         # If a LOG STREAM is defined, set it as the filename
-        log_stream = kwargs.get("log_stream", "core")
+        log_stream = kwargs.get("log_stream", os.getenv(ENV_LOG_STREAM, "core"))
 
+        # Set teh filename to the log_dir/log_group/log_stream.log file
         log_file = os.path.join(log_dir, log_group, f"{log_stream}.log")
 
         os.makedirs(log_dir, exist_ok=True)
-        hdlr = logging.FileHandler(log_file)
-        hdlr.setFormatter(formatter)
-        handlers.append(hdlr)
+
+        file_hdlr = logging.FileHandler(log_file)
+        file_hdlr.setFormatter(formatter)
+        handlers.append(file_hdlr)
 
     return handlers
 
@@ -278,8 +284,8 @@ def getLogger(name: str | None, **kwargs) -> CoreLogger:
     Args:
         name (str | None): The name/identity of the logger
         kwargs (dict): experimental parameters "log_stream" and "log_group".
-            * log_stream: The name of the log stream filename.
-            * log_group: The name of the log group folder.
+            * log_stream: The name of the log stream filename. defaults to "core".
+            * log_group: The name of the log group folder. Defaults to "".
 
     Returns:
         CoreLogger: The logger object

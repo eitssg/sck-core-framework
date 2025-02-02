@@ -73,7 +73,7 @@ from .common import (
 )
 
 # retrieve the version of the package dynamically
-__version__ = "0.0.4"
+__version__ = "0.0.5-pre.1+e968881"
 
 # import everything from prn_utils
 from .prn_utils import (

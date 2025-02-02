@@ -54,6 +54,12 @@ ENV_LOG_LEVEL = "LOG_LEVEL"
 """ \\- "LOG_LEVEL" """
 ENV_LOG_DIR = "LOG_DIR"
 """ \\- "LOG_DIR" """
+ENV_LOG_CONSOLE = "LOG_CONSOLE"
+""" \\- "LOG_CONSOLE" """
+ENV_LOG_GROUP = "LOG_GROUP"
+""" \\- "LOG_GROUP" """
+ENV_LOG_STREAM = "LOG_STREAM"
+""" \\- "LOG_STREAM" """
 
 # Attributes for the extra: Mapping[str, object] parameter when calling the log methods
 L_STATUS_LABEL = "status_label"
@@ -126,6 +132,54 @@ class CoreLogFormatter(logging.Formatter):
     def formatMessage(self, record) -> str:
         return super().formatMessage(record)
 
+    @staticmethod
+    def replace_holders(message: str, args) -> tuple[str, tuple]:
+        """
+        Replace the %s place holders in the message with the values in the args tuple.  If there are more values in the args tuple
+        than there are %s place holders in the message, then the remaining values are returned in a list.
+
+        Args:
+            message (str): The message to replace the place holders in.
+            args (tuple): The values to replace the place holders with.
+
+        Returns:
+            tuple: A tuple of the message and a list of unused values.
+        """
+
+        # Count the number of "{}" strings in the message
+        if args:
+            count = message.count("{}")
+            # If there are more "{}" strings than there are values in the args tuple, then we need to add empty strings to args
+            if count > len(args):
+                args = args + tuple([""] * (count - len(args)))
+            # Replace the "{}" strings with the values in the args tuple
+            message = message.format(*args)
+            # Return the message and any unused values in the args tuple
+            unused_values = args[count:]
+        else:
+            unused_values = ()
+        return message, unused_values
+
+    @staticmethod
+    def add_details(record: logging.LogRecord, data: dict) -> None:
+        """
+        Add the "Details" property to the fields.  This is called by the emit() method.
+
+        Args:
+            record (logging.LogRecord): The log record object.
+            data (dict): The dictionary of data to add to the record object.
+
+        """
+        if hasattr(record, L_DETAILS):
+            details = getattr(record, L_DETAILS)
+        else:
+            details = {}
+        if isinstance(data, dict):
+            details.update(data)
+        else:
+            details = data
+        setattr(record, L_DETAILS, details)
+
 
 class CoreLogTextFormatter(CoreLogFormatter):
     """Text Formatter for the CoreLogger class that outputs a log message as standard text."""
@@ -167,6 +221,27 @@ class CoreLogTextFormatter(CoreLogFormatter):
         Returns:
             str: A string to output to the log.
         """
+
+        # If for some reason record.args is not a tuple, make it one.  This happens if the original
+        # tuple had only one element that is also a list (or dictionary)
+        if not isinstance(record.args, tuple):
+            record.args = (record.args,)
+
+        if (
+            record.levelno == STATUS
+            and hasattr(record, "status")
+            and hasattr(record, "reason")
+        ):
+            record.msg = f"{record.status} {record.reason}"
+
+        # The user can send an list of replacement values if the "msg" contains "%s"
+        # place_holders.
+        record.msg, record.args = self.replace_holders(record.msg, record.args)
+
+        if len(record.args) > 0 and isinstance(record.args[0], dict):
+            self.add_details(record, record.args[0])
+            record.args = record.args[1:]
+
         if hasattr(record, L_SCOPE):
             scope = getattr(record, L_SCOPE)
             if scope:
@@ -308,6 +383,30 @@ class CoreLogJsonFormatter(CoreLogFormatter):
             record (logging.LogRecord): The log record object.
 
         """
+        # If for some reason record.args is not a tuple, make it one.  This happens if the original
+        # tuple had only one element that is also a list (or dictionary)
+        if not isinstance(record.args, tuple):
+            record.args = (record.args,)
+
+        if (
+            record.levelno == STATUS
+            and hasattr(record, "status")
+            and hasattr(record, "reason")
+        ):
+            record.msg = f"{record.status} {record.reason}"
+
+        # The user can send an list of replacement values if the "msg" contains "%s"
+        # place_holders.
+        record.msg, record.args = self.replace_holders(record.msg, record.args)
+
+        if len(record.args) > 0 and isinstance(record.args[0], dict):
+            self.add_details(record, record.args[0])
+            record.args = record.args[1:]
+
+        if hasattr(record, L_SCOPE):
+            scope = getattr(record, L_SCOPE)
+            if scope:
+                record.msg = f"{record.msg} ({scope})"
 
         timestamp = datetime.fromtimestamp(record.created)
         json_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
@@ -371,81 +470,10 @@ class CoreLoggerHandler(logging.Handler):
         Args:
             record (dict): The log record object.
         """
-        try:
-            # If for some reason record.args is not a tuple, make it one.  This happens if the original
-            # tuple had only one element that is also a list (or dictionary)
-            if not isinstance(record.args, tuple):
-                record.args = (record.args,)
-
-            if record.levelno == STATUS:
-                record.msg = f"{record.status} {record.reason}"
-
-            # The user can send an list of replacement values if the "msg" contains "%s"
-            # place_holders.
-            record.msg, record.args = self.replace_holders(record.msg, record.args)
-
-            # The FIRST argument after the replacement values goes into "details".  But ONLY
-            # if it's a dictionary.  Else skip it.
-            if len(record.args) > 0 and isinstance(record.args[0], dict):
-                self.add_details(record, record.args[0])
-                record.args = record.args[1:]
-
-            # fix the message if it exists.  The "msg" was modified if it had replacement %s characters.
-            if self.formatter:
-                print(self.formatter.format(record))
-            else:
-                print(record.getMessage())
-
-        except Exception as e:
-            print(f"Error writing to log file: {str(e)}")
-
-    @staticmethod
-    def replace_holders(message: str, args: tuple[Any]) -> tuple[str, tuple]:
-        """
-        Replace the %s place holders in the message with the values in the args tuple.  If there are more values in the args tuple
-        than there are %s place holders in the message, then the remaining values are returned in a list.
-
-        Args:
-            message (str): The message to replace the place holders in.
-            args (tuple): The values to replace the place holders with.
-
-        Returns:
-            tuple: A tuple of the message and a list of unused values.
-        """
-
-        # Count the number of "{}" strings in the message
-        if args:
-            count = message.count("{}")
-            # If there are more "{}" strings than there are values in the args tuple, then we need to add empty strings to args
-            if count > len(args):
-                args = args + tuple([""] * (count - len(args)))
-            # Replace the "{}" strings with the values in the args tuple
-            message = message.format(*args)
-            # Return the message and any unused values in the args tuple
-            unused_values = args[count:]
+        if self.formatter:
+            print(self.formatter.format(record))
         else:
-            unused_values = ()
-        return message, unused_values
-
-    @staticmethod
-    def add_details(record: logging.LogRecord, data: dict) -> None:
-        """
-        Add the "Details" property to the fields.  This is called by the emit() method.
-
-        Args:
-            record (logging.LogRecord): The log record object.
-            data (dict): The dictionary of data to add to the record object.
-
-        """
-        if hasattr(record, L_DETAILS):
-            details = getattr(record, L_DETAILS)
-        else:
-            details = {}
-        if isinstance(data, dict):
-            details.update(data)
-        else:
-            details = data
-        setattr(record, L_DETAILS, details)
+            print(record.getMessage())
 
 
 class CoreLogger(logging.Logger):
