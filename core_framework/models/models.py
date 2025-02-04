@@ -1,4 +1,4 @@
-""" Module to define some common helper functions that assis in the generation of the model class instances. """
+"""Module to define some common helper functions that assis in the generation of the model class instances."""
 
 from ..constants import (
     OBJ_ARTEFACTS,

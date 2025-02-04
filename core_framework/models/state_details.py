@@ -1,4 +1,4 @@
-""" This module contains the StateDetails class which provides information about the current state of the deployment."""
+"""This module contains the StateDetails class which provides information about the current state of the deployment."""
 
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator

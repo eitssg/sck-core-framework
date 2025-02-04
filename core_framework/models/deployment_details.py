@@ -1,4 +1,4 @@
-""" module contains the DeploymentDetails class which provides a model for how deployment details are to be provided to the core-execute library. """
+"""module contains the DeploymentDetails class which provides a model for how deployment details are to be provided to the core-execute library."""
 
 from typing import Self
 import os

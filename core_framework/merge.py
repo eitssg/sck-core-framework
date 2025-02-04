@@ -1,4 +1,4 @@
-""" Methods to perform deep merging of dictionaries with options of excluding keys, copy, or in-place modifications. """
+"""Methods to perform deep merging of dictionaries with options of excluding keys, copy, or in-place modifications."""
 
 from typing import Any
 

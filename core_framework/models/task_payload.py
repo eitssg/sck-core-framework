@@ -1,4 +1,4 @@
-""" This module provides the TaskPaylaod class that is used throughout Core-Automation to identify the operating Task to perform. """
+"""This module provides the TaskPaylaod class that is used throughout Core-Automation to identify the operating Task to perform."""
 
 from typing import Self
 from pydantic import BaseModel, Field, ConfigDict, model_validator

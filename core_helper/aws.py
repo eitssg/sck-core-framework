@@ -1,4 +1,4 @@
-""" AWS Helper functions that provide Automation Role switching for all deployment functions and Lambda's """
+"""AWS Helper functions that provide Automation Role switching for all deployment functions and Lambda's"""
 
 from typing import Any
 import os

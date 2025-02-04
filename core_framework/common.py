@@ -1,4 +1,4 @@
-""" The common module provides a suite of function that are used throughout the Core Automation framework.
+"""The common module provides a suite of function that are used throughout the Core Automation framework.
 
 These functions assist wtih generating and using model instances as well as environment variables and
 other very commont tasks.
@@ -60,6 +60,7 @@ from .constants import (
     ENV_DELIVERED_BY,
     ENV_LOG_DIR,
     ENV_USE_S3,
+    ENV_LOG_AS_JSON,
     ENV_CORRELATION_ID,
     ENV_ORGANIZATION_ID,
     ENV_ORGANIZATION_NAME,
@@ -67,6 +68,7 @@ from .constants import (
     ENV_AUDIT_ACCOUNT,
     ENV_SECURITY_ACCOUNT,
     ENV_NETWORK_ACCOUNT,
+    ENV_AUTOMATION_TYPE,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
@@ -79,6 +81,8 @@ from .constants import (
     V_LOCAL,
     V_SERVICE,
     V_EMPTY,
+    V_DEPLOYSPEC,
+    V_PIPELINE,
     # Dpeloyment Scopes (NOT Automation SCOPE.  That's different!  ENV_SCOPE is a "prefix" to all automation objects)
     SCOPE_PORTFOLIO,
     SCOPE_APP,
@@ -418,6 +422,16 @@ def get_automation_scope() -> str:
     return os.getenv(ENV_SCOPE, V_EMPTY)
 
 
+def get_automation_type() -> str:
+    f"""
+    The type of automation engine to execute for the project.  Values will be {V_DEPLOYSPEC} or {V_PIPELINE}
+
+    Returns:
+        str: The type of automation engine to use.
+    """
+    return os.getenv(ENV_AUTOMATION_TYPE, V_PIPELINE)
+
+
 def get_provisioning_role_arn(account: str) -> str:
     """
     Get the provisioning role ARN for the specified account.  This is specified in the environment variable ENV_AUTOMATION_ACCOUNT.
@@ -570,6 +584,16 @@ def is_use_s3() -> bool:
         bool: True if the deployment is using S3 for storage
     """
     return os.getenv(ENV_USE_S3, str(not is_local_mode())).lower() == V_TRUE
+
+
+def is_json_log() -> bool:
+    """
+    Check if the log output is in JSON format.  This is specified in the environment variable JSON_LOG.
+
+    Returns:
+        bool: True if the log output is in JSON format
+    """
+    return os.getenv(ENV_LOG_AS_JSON, V_FALSE).lower() == V_TRUE
 
 
 def is_local_mode() -> bool:

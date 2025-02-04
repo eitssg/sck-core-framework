@@ -1,4 +1,4 @@
-""" Magic module for emulating the boto3 S3 client and Buckets so we can elect to store files locally instead of in S3 """
+"""Magic module for emulating the boto3 S3 client and Buckets so we can elect to store files locally instead of in S3"""
 
 from typing import Any, Self, IO
 import os

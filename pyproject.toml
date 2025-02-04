@@ -4,7 +4,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
 name = "sck-core-framework"
-version = "0.0.5"
+version = "0.0.6"
 description = "Core-Framework for Core-Automation"
 authors = ["James Barwick <jbarwic@me.com>"]
 license = "GPL-3.0-only"
@@ -51,6 +51,7 @@ files = ["core_framework/__init__.py"]
 poetry = ">=1.8.5"
 boto3-stubs = ">=1.35.93"
 types-pyyaml = "^6.0.12.20240917"
+types-tabulate = "^0.9.0.20240106"
 flake8 = "^7.1.1"
 cfn-lint = "^1.22.3"
 black = "^24.10.0"

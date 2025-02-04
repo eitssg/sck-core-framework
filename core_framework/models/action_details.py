@@ -1,4 +1,4 @@
-""" Defines the class ActionDetails that provide information about where ActionDefinition files are stored in S3 (or local filesystem). """
+"""Defines the class ActionDetails that provide information about where ActionDefinition files are stored in S3 (or local filesystem)."""
 
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator

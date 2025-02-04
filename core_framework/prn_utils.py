@@ -1,4 +1,4 @@
-""" Utilities to validate or generate PRN Identifiers"""
+"""Utilities to validate or generate PRN Identifiers"""
 
 from typing import Any
 

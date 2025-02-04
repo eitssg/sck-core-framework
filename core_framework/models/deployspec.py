@@ -1,4 +1,4 @@
-""" This module contains the DeploySpec class which provides a model for how CloudFormation templates are to be deployed by core-automation. """
+"""This module contains the DeploySpec class which provides a model for how CloudFormation templates are to be deployed by core-automation."""
 
 from typing import Self
 from pydantic import BaseModel, Field, model_validator, field_validator, ConfigDict
