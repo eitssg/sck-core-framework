@@ -27,9 +27,9 @@ from .constants import (
     ENV_AUTOMATION_REGION,
     ENV_API_LAMBDA_NAME,
     ENV_API_LAMBDA_ARN,
+    ENV_API_HOST_URL,
     ENV_COMPONENT_COMPILER_LAMBDA_ARN,
     ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN,
-    ENV_RUNNER_STEP_FUNCTION_ARN,
     ENV_START_RUNNER_LAMBDA_ARN,
     ENV_EXECUTE_LAMBDA_ARN,
     ENV_INVOKER_LAMBDA_ARN,
@@ -61,6 +61,7 @@ from .constants import (
     ENV_LOG_DIR,
     ENV_USE_S3,
     ENV_LOG_AS_JSON,
+    ENV_LOG_LEVEL,
     ENV_CORRELATION_ID,
     ENV_ORGANIZATION_ID,
     ENV_ORGANIZATION_NAME,
@@ -69,6 +70,15 @@ from .constants import (
     ENV_SECURITY_ACCOUNT,
     ENV_NETWORK_ACCOUNT,
     ENV_AUTOMATION_TYPE,
+    ENV_IAM_ACCOUNT,
+    ENV_PORTFOLIO,
+    ENV_APP,
+    ENV_BRANCH,
+    ENV_BUILD,
+    ENV_PROJECT,
+    ENV_BIZAPP,
+    ENV_CONSOLE_LOG,
+    ENV_CONSOLE,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
@@ -83,6 +93,7 @@ from .constants import (
     V_EMPTY,
     V_DEPLOYSPEC,
     V_PIPELINE,
+    V_INTERACTIVE,
     # Dpeloyment Scopes (NOT Automation SCOPE.  That's different!  ENV_SCOPE is a "prefix" to all automation objects)
     SCOPE_PORTFOLIO,
     SCOPE_APP,
@@ -432,6 +443,46 @@ def get_automation_type() -> str:
     return os.getenv(ENV_AUTOMATION_TYPE, V_PIPELINE)
 
 
+def get_portfolio() -> str | None:
+    """
+    Get the portfolio name from the environment variable ENV_PORTFOLIO.
+
+    Returns:
+        str | None: The portfolio name
+    """
+    return os.getenv(ENV_PORTFOLIO, None)
+
+
+def get_app() -> str | None:
+    """
+    Get the app name from the environment variable ENV_APP.
+
+    Returns:
+        str | None: The app name
+    """
+    return os.getenv(ENV_APP, None)
+
+
+def get_branch() -> str | None:
+    """
+    Get the branch name from the environment variable ENV_BRANCH.
+
+    Returns:
+        str | None: The branch name
+    """
+    return os.getenv(ENV_BRANCH, None)
+
+
+def get_build() -> str | None:
+    """
+    Get the build name from the environment variable ENV_BUILD.
+
+    Returns:
+        str | None: The build name
+    """
+    return os.getenv(ENV_BUILD, None)
+
+
 def get_provisioning_role_arn(account: str) -> str:
     """
     Get the provisioning role ARN for the specified account.  This is specified in the environment variable ENV_AUTOMATION_ACCOUNT.
@@ -515,6 +566,16 @@ def get_organization_email() -> str | None:
     return os.getenv(ENV_ORGANIZATION_EMAIL, None)
 
 
+def get_iam_account() -> str | None:
+    """
+    Get the IAM account number from the environment variable ENV_IAM_ACCOUNT.
+
+    Returns:
+        str | None: The IAM account number
+    """
+    return os.getenv(ENV_IAM_ACCOUNT, None)
+
+
 def get_audit_account() -> str | None:
     """
     Get the audit account number from the environment variable ENV_AUDIT_ACCOUNT.
@@ -575,6 +636,16 @@ def get_cdk_default_region() -> str | None:
     return os.getenv(ENV_CDK_DEFAULT_REGION, None)
 
 
+def get_console_mode() -> str:
+    """
+    Get the console mode from the environment variable ENV_CONSOLE_MODE.
+
+    Returns:
+        str: The console mode
+    """
+    return os.getenv(ENV_CONSOLE, V_INTERACTIVE)
+
+
 def is_use_s3() -> bool:
     """
     Check if the deployment is using S3 for storage.  This is specified in the environment variable LOCAL_MODE.
@@ -594,6 +665,26 @@ def is_json_log() -> bool:
         bool: True if the log output is in JSON format
     """
     return os.getenv(ENV_LOG_AS_JSON, V_FALSE).lower() == V_TRUE
+
+
+def is_console_log() -> bool:
+    """
+    Check if the log output is to the console.  This is specified in the environment variable LOG_TO_CONSOLE.
+
+    Returns:
+        bool: True if the log output is to the console
+    """
+    return os.getenv(ENV_CONSOLE_LOG, V_FALSE).lower() == V_TRUE
+
+
+def get_log_level() -> str:
+    """
+    Get the log level from the environment variable LOG_LEVEL.
+
+    Returns:
+        str: The log level
+    """
+    return os.getenv(ENV_LOG_LEVEL, "INFO")
 
 
 def is_local_mode() -> bool:
@@ -846,7 +937,7 @@ def get_dynamodb_host() -> str:
 
 def get_step_function_arn() -> str:
     """
-    Core Automation Step Function ARN.  This is specified in the environment variable RUNNER_STEP_FUNCTION_ARN.
+    Core Automation Step Function ARN.  This is specified in the environment variable START_RUNNER_LAMBDA_ARN.
     If not specified, the default value is used based on the region and account number.
 
     Returns:
@@ -859,7 +950,7 @@ def get_step_function_arn() -> str:
 
     account = get_automation_account()
     return os.environ.get(
-        ENV_RUNNER_STEP_FUNCTION_ARN,
+        ENV_START_RUNNER_LAMBDA_ARN,
         f"arn:aws:states:{region}:{account}:stateMachine:CoreAutomationRunner",
     )
 
@@ -903,6 +994,17 @@ def get_api_lambda_arn() -> str:
         ENV_API_LAMBDA_ARN,
         f"arn:aws:lambda:{region}:{account}:function:{name}",
     )
+
+
+def get_api_host_url() -> str | None:
+    """
+    The URL for the API Gateway.  This is specified in the environment variable ENV_API_HOST_URL.
+    If not specified, the default value is used based on the region and account number.
+
+    Returns:
+        str: The URL for the API Gateway
+    """
+    return os.getenv(ENV_API_HOST_URL, None)
 
 
 def get_invoker_lambda_arn() -> str:
@@ -952,6 +1054,26 @@ def get_start_runner_lambda_arn() -> str:
         ENV_START_RUNNER_LAMBDA_ARN,
         f"arn:aws:lambda:{region}:{account}:function:{V_CORE_AUTOMATION}-runner",
     )
+
+
+def get_project() -> str | None:
+    """
+    Get the project name from the environment variable ENV_PROJECT.
+
+    Returns:
+        str: The project name
+    """
+    return os.getenv(ENV_PROJECT, None)
+
+
+def get_bizapp() -> str | None:
+    """
+    Get the business application name from the environment variable ENV_BIZAPP.
+
+    Returns:
+        str: The business application name
+    """
+    return os.getenv(ENV_BIZAPP, None)
 
 
 def get_deployspec_compiler_lambda_arn() -> str:

@@ -128,6 +128,7 @@ V_FALSE = "false"
 """ \\- "false" """
 V_EMPTY = ""
 """ \\- "" """
+V_INTERACTIVE = "interactive"
 
 # Authorization Context Object
 AUTH_CREDENTIALS = "Credentials"
@@ -455,8 +456,6 @@ ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN = "DEPLOYSPEC_COMPILER_LAMBDA_ARN"
 """ \\- "DEPLOYSPEC_COMPILER_LAMBDA_ARN".  The ARN of the Deployspec Compiler Lambda """
 ENV_COMPONENT_COMPILER_LAMBDA_ARN = "COMPONENT_COMPILER_LAMBDA_ARN"
 """ \\- "COMPONENT_COMPILER_LAMBDA_ARN". The ARN of the Component Compiler Lambda """
-ENV_RUNNER_STEP_FUNCTION_ARN = "RUNNER_STEP_FUNCTION_ARN"
-""" \\- "RUNNER_STEP_FUNCTION_ARN". The ARN of the Step Function Runner """
 ENV_MASTER_REGION = "MASTER_REGION"
 """ \\- "MASTER_REGION". The master region for the Core automation services. """
 ENV_CDK_DEFAULT_ACCOUNT = "CDK_DEFAULT_ACCOUNT"
@@ -479,6 +478,8 @@ ENV_ARTEFACT_BUCKET_NAME = "ARTEFACT_BUCKET_NAME"
 """ \\- "ARTEFACT_BUCKET_NAME".  The name of the artefact bucket if different than the BUCKET_NAME """
 ENV_LOG_AS_JSON = "LOG_AS_JSON"
 """ \\- "LOG_AS_JSON". If set to True, the log output will be in JSON format """
+ENV_LOG_LEVEL = "LOG_LEVEL"
+""" \\- "LOG_LEVEL". The log level for the automation.  Default is "INFO" see core_logging module for more information """
 ENV_VOLUME = "VOLUME"
 """ \\- "VOLUME". If LOCAL_MODE=true, the VOLUME is where artefacts are stored.  Defaults to f"{os.getcwd()}/local" """
 ENV_DELIVERED_BY = "DELIVERED_BY"
@@ -509,6 +510,14 @@ ENV_CDK_DEFAULT_ACCOUNT = "CDK_DEFAULT_ACCOUNT"
 """ \\- "CDK_DEFAULT_ACCOUNT". The default AWS Account ID for the CDK """
 ENV_CDK_DEFAULT_REGION = "CDK_DEFAULT_REGION"
 """ \\- "CDK_DEFAULT_REGION". The default AWS Region for the CDK """
+ENV_PROJECT = "PROJECT"
+""" \\- "PROJECT". The name of the project associated with the Bizapp/Portfolio """
+ENV_BIZAPP = "BIZAPP"
+""" \\- "BIZAPP". The name of the business application (portfolio) in a deployment """
+ENV_CONSOLE_LOG = "CONSOLE_LOG"
+""" \\- "CONSOLE_LOG". If set to True, the log output will be sent to the console """
+ENV_CONSOLE = "CONSOLE"
+""" \\- "CONSOLE". If set to 'interactive', the console will prompt for input.  If set to 'non-interactive', the console will not prompt for input. """
 
 # Jina2 Context Fitler Constants
 CTX_TAGS = "tags"
@@ -586,7 +595,7 @@ CORE_AUTOMATION_SESSION_ID_PREFIX = "Pipeline"
 CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE = "PipelineProvisioning"
 """ \\- "PipelineProvisioning" """
 
-# Properties in snake-case. Also used in argparse "dest" parameter.
+# Properties in snake-case. Also used in argparse "dest" parameter in the CLI and "RESTful JSON".
 # Used as snake_case function paramter names (especially in **kwargs)
 P_AWS_PROFILE = "aws_profile"
 """ \\- "aws_profile" """
@@ -710,7 +719,7 @@ P_DEPLOYSPEC_COMPILER_LAMBDA_ARN = "deployspec_compiler_lambda_arn"
 """ \\- "deployspec_compiler_lambda_arn" """
 P_COMPONENT_COMPILER_LAMBDA_ARN = "component_compiler_lambda_arn"
 """ \\- "component_compiler_lambda_arn" """
-P_RUNNER_STEP_FUNCTION_ARN = "runner_step_function_arn"
+P_START_RUNNER_STEP_FUNCTION_ARN = "runner_step_function_arn"
 """ \\- "runner_step_function_arn" """
 P_TAGS = "tags"
 """ \\- "tags" """
@@ -722,36 +731,21 @@ P_BIZAPP = "bizapp"
 """ \\- "bizapp" """
 P_PRN = "prn"
 """ \\- "prn" """
-
-# I've created some constants just to help pass data.  Table names CANNOT be overridden.
-# They are hardcoded to f"{scope}{client}-core-automation-{name}"
+P_CONSOLE_LOG = "console_log"
+""" \\- "console_log" """
+P_CONSOLE = "console"
+""" \\- "console" .  Values are "interactive" or "non-interactive" """
+P_LOG_LEVEL = "log_level"
+""" \\- "log_level" . See core_logging module for more information """
 P_CLIENT_TABLE_NAME = "clients_table_name"
-""" \\- "clients_table_name" == f"{scope}core-automation-clients"
-
-You cannot override this value.  See the SCOPE environment variable.
-"""
+""" \\- "clients_table_name" == f"{scope}core-automation-clients" """
 P_PORTFOLIOS_TABLE_NAME = "portfolios_table_name"
-""" \\- "portfolios_table_name" == f"{scope}core-automation-portfolios"
-
-You cannot override this value.  See the SCOPE environment variable.
-"""
+""" \\- "portfolios_table_name" == f"{scope}core-automation-portfolios" """
 P_APPS_TABLE_NAME = "apps_table_name"
-""" \\- "apps_table_name" == f"{scope}core-automation-apps"
-
-You cannot override this value.  See the SCOPE environment variable.
-"""
+""" \\- "apps_table_name" == f"{scope}core-automation-apps" """
 P_ZONES_TABLE_NAME = "zones_table_name"
-""" \\- "zones_table_name" == f"{scope}core-automation-zones"
-
-You cannot override this value.  See the SCOPE environment variable.
-"""
+""" \\- "zones_table_name" == f"{scope}core-automation-zones" """
 P_ITEMS_TABLE_NAME = "items_table_name"
-""" \\- "items_table_name" == f"{scope}{client}-core-automation-items"
-
-You cannot override this value.  See the SCOPE and CLIENT environment variable.
-"""
+""" \\- "items_table_name" == f"{scope}{client}-core-automation-items" """
 P_EVENTS_TABLE_NAME = "events_table_name"
-""" \\- "events_table_name" == f"{scope}{client}-core-automation-events"
-
-You cannot override this value.  See the SCOPE and CLIENT environment variable.
-"""
+""" \\- "events_table_name" == f"{scope}{client}-core-automation-events" """

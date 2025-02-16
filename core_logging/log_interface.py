@@ -5,6 +5,7 @@ from threading import local
 import os
 
 import logging
+from core_framework.constants import ENV_LOG_LEVEL, ENV_LOG_AS_JSON, ENV_LOG_DIR, ENV_CONSOLE_LOG
 
 from .log_classes import (
     CoreLogger,
@@ -14,10 +15,6 @@ from .log_classes import (
     L_IDENTITY,
     DEFAULT_DATE_FORMAT,
     DEFAULT_LOG_FORMAT,
-    ENV_LOG_JSON,
-    ENV_LOG_LEVEL,
-    ENV_LOG_DIR,
-    ENV_LOG_CONSOLE,
     ENV_LOG_GROUP,
     ENV_LOG_STREAM,
     INFO,
@@ -235,7 +232,7 @@ def __get_formatter() -> logging.Formatter:
     msg_fmt = DEFAULT_LOG_FORMAT
 
     # default logging to text formatter unless LOG_AS_JSON is set to true
-    if os.environ.get(ENV_LOG_JSON, "false").lower() == "true":
+    if os.environ.get(ENV_LOG_AS_JSON, "false").lower() == "true":
         return CoreLogJsonFormatter(msg_fmt, date_fmt)
     else:
         return CoreLogTextFormatter(msg_fmt, date_fmt)
@@ -248,7 +245,7 @@ def __get_handlers(name, **kwargs) -> list[logging.Handler]:
     formatter = __get_formatter()
 
     # Add a console handler
-    log_console = os.getenv(ENV_LOG_CONSOLE, "true").lower() == "true"
+    log_console = os.getenv(ENV_CONSOLE_LOG, "true").lower() == "true"
     if log_console:
         console_hdlr = CoreLoggerHandler(name or "core")
         console_hdlr.setFormatter(formatter)

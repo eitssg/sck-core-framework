@@ -14,6 +14,8 @@ from ruamel import yaml
 
 from logging import NOTSET, FATAL, WARN, CRITICAL, DEBUG, INFO, WARNING, ERROR
 
+
+# Default formats for the log messages
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_LOG_FORMAT = "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
 
@@ -47,15 +49,7 @@ LOG_TYPE = "Type"
 LOG_SCOPE = "Scope"
 """ \\- "Scope" """
 
-# environment variable to set the log output to JSON
-ENV_LOG_JSON = "LOG_AS_JSON"
-""" \\- "LOG_AS_JSON" """
-ENV_LOG_LEVEL = "LOG_LEVEL"
-""" \\- "LOG_LEVEL" """
-ENV_LOG_DIR = "LOG_DIR"
-""" \\- "LOG_DIR" """
-ENV_LOG_CONSOLE = "LOG_CONSOLE"
-""" \\- "LOG_CONSOLE" """
+# Future - Not in use yet
 ENV_LOG_GROUP = "LOG_GROUP"
 """ \\- "LOG_GROUP" """
 ENV_LOG_STREAM = "LOG_STREAM"
