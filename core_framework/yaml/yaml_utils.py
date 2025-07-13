@@ -9,22 +9,25 @@ from decimal import Decimal
 
 # A list of all the CloudFormation intrinsic function tags
 aws_tags = [
+    "!And",
     "!Base64",
     "!Cidr",
+    "!Equals",
     "!FindInMap",
+    "!ForEach",
     "!GetAtt",
     "!GetAZs",
+    "!If",
     "!ImportValue",
     "!Join",
+    "!Length",
+    "!Not",
+    "!Or",
+    "!Ref",
     "!Select",
     "!Split",
     "!Sub",
-    "!Ref",
-    "!And",
-    "!Equals",
-    "!If",
-    "!Not",
-    "!Or",
+    "!ToJsonString",
 ]
 
 
