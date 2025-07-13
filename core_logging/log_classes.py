@@ -250,7 +250,7 @@ class CoreLogTextFormatter(CoreLogFormatter):
         return data
 
     def _indent_yaml(self, data: dict, indent=4) -> str:
-        yaml_str = util.to_yaml(data)
+        yaml_str = util.to_yaml(data).rstrip("\n")
         return textwrap.indent(yaml_str, " " * indent)
 
     def details(self, record: logging.LogRecord, content: str) -> str:

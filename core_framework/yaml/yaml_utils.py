@@ -173,12 +173,15 @@ def create_yaml_parser() -> YAML:
     return yaml
 
 
-def load_yaml_file(file_path: Path, yaml_parser: YAML = None) -> any:
+def load_yaml_file(file_path: str, yaml_parser: YAML = None) -> any:
     """
     Helper function to load a YAML file and set the root path for !Include.
     """
     if not yaml_parser:
         yaml_parser = create_yaml_parser()
+
+    # Convert the file path to a Path object
+    file_path = Path(file_path)
 
     # Set the root path to the directory of the file being loaded
     # This allows !Include to resolve relative paths correctly.

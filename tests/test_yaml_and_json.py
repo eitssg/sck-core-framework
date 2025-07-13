@@ -31,9 +31,9 @@ def test_to_from_yaml(data_for_testing: dict):
 
     assert (
         yaml_string
-        == 'client: "my-client"\ntask: "compile"\nportfolio: "my-portfolio"\napp: "my-app"\nbranch: "my-branch"\n'
-        'build: "dp-build"\nautomation_type: "deployspec"\ndate1: "2021-01-01"\ndate2: "2021-01-02T01:30:20Z"\n'
-        'now: "2025-01-04T13:30:57.921837"\nthen: "2025-01-04T13:30:57.921837"\n'
+        == 'client: my-client\ntask: compile\nportfolio: my-portfolio\napp: my-app\nbranch: my-branch\n'
+        'build: dp-build\nautomation_type: deployspec\ndate1: \'2021-01-01\'\ndate2: \'2021-01-02T01:30:20Z\'\n'
+        'now: \'2025-01-04T13:30:57.921837\'\nthen: \'2025-01-04T13:30:57.921837\'\n'
     )
 
     data = util.from_yaml(yaml_string)
@@ -59,9 +59,9 @@ def test_read_write_yaml(data_for_testing: dict):
 
     assert (
         yaml_string
-        == 'client: "my-client"\ntask: "compile"\nportfolio: "my-portfolio"\napp: "my-app"\nbranch: "my-branch"\n'
-        'build: "dp-build"\nautomation_type: "deployspec"\ndate1: "2021-01-01"\ndate2: "2021-01-02T01:30:20Z"\n'
-        'now: "2025-01-04T13:30:57.921837"\nthen: "2025-01-04T13:30:57.921837"\n'
+        == 'client: my-client\ntask: compile\nportfolio: my-portfolio\napp: my-app\nbranch: my-branch\n'
+        'build: dp-build\nautomation_type: deployspec\ndate1: \'2021-01-01\'\ndate2: \'2021-01-02T01:30:20Z\'\n'
+        'now: \'2025-01-04T13:30:57.921837\'\nthen: \'2025-01-04T13:30:57.921837\'\n'
     )
 
     stream = io.StringIO(yaml_string)
