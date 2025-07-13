@@ -19,7 +19,6 @@ import boto3
 from botocore.exceptions import ProfileNotFound
 
 from ruamel.yaml import YAML
-from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from .constants import (
     # Environment Variables
@@ -141,12 +140,15 @@ def split_prn(
         prn (str): The PRN to split (ex: prn:portfolio:app:branch:build)
 
     Returns:
-        tuple[str, str | None, str | None, str | None, str | None, str | None]: portfolio, app, branch, build, component
+        (portfolio, app, branch, build, component): A tuple of the parts of the PRN.
 
     """
+    if not prn or not prn.startswith("prn"):
+        raise ValueError("PRN must start with 'prn:'")
+
     parts = prn.split(":")
 
-    if len(parts) == 1:
+    if len(parts) < 2:
         return None, None, None, None, None
     if len(parts) < 3:
         return parts[1], None, None, None, None
@@ -176,8 +178,9 @@ def split_portfolio(
 
     Args:
         portfolio (str): Name of the portfolio to parse
-    Return:
-        tuple: Company, Group, Owner, Application
+
+    Returns:
+        (Company, Group, Owner, Application): A tuple of the parts of the portfolio.
     """
     warnings.warn(
         "The split_portfolio function is deprecated and will be removed in a future version.",
@@ -186,7 +189,7 @@ def split_portfolio(
     )
 
     if not portfolio:
-        raise IOError("Portfolio name must be specified.")
+        raise ValueError("Portfolio name must be specified.")
 
     parts = portfolio.split("-")
     if len(parts) == 1:
@@ -198,7 +201,7 @@ def split_portfolio(
     if len(parts) == 4:
         return parts[0], parts[1], parts[2], parts[3]
 
-    raise IOError('Portfolio should have 1 to 4 segments separated by a dash "-"')
+    raise ValueError('Portfolio should have 1 to 4 segments separated by a dash "-"')
 
 
 def split_branch(
@@ -213,53 +216,15 @@ def split_branch(
         default_region_alias: The default region alias to use if the data center (region) is not specified.
 
     Returns:
-        tuple: The environment and data center parts
+        (branch, region_alias): A tuple of environment and data center (region alias) parts
 
     """
+    if not branch:
+        return (V_DEFAULT_BRANCH, default_region_alias or V_DEFAULT_REGION_ALIAS)
     parts = branch.split("-")
     if len(parts) < 2:
         return (branch, default_region_alias or V_DEFAULT_REGION_ALIAS)
     return (parts[0], default_region_alias) if len(parts) < 2 else (parts[0], parts[1])
-
-
-def load_deployspec(app_dir: str | None = None) -> Any:
-    """
-    Load the Deployspec with YAML/JSON validation from the current directory.
-
-    Filenames are:
-        * deployspec.yaml
-        * deployspec.json
-
-    Return:
-        Any: return Any so I don't get a type error on Pydantic DeplySpec Model parser
-    """
-    try:
-
-        if not app_dir:
-            app_dir = os.getcwd()  # We assume we are running in the project folder
-
-        data: dict | list | None = None
-
-        fn = os.path.join(app_dir, V_DEPLOYSPEC_FILE_YAML)
-        if os.path.exists(fn):
-            with open(fn, "r") as f:
-                data = YAML(typ="safe").load(f)
-        else:
-            fn = os.path.join(app_dir, V_DEPLOYSPEC_FILE_JSON)
-            if os.path.exists(fn):
-                with open(fn, "r") as f:
-                    data = json.load(f)
-
-        if isinstance(data, dict):
-            return [data]
-
-        if isinstance(data, list):
-            return data
-
-        return None
-
-    except Exception:
-        return None
 
 
 def get_prn(
@@ -283,7 +248,7 @@ def get_prn(
         build (str | None, optional): Build Number or Commit ID of the deployment. Defaults to None.
         component (str | None, optional): Component Part of the deployment. Defaults to None.
         scope (str, optional): Socpe of the PRN. Defaults to SCOPE_BUILD.
-        delim (_type_, optional): _description_. Defaults to ":".
+        delim (string, optional): Delimiter of the parts of the PRN. Defaults to ":".
 
     Returns:
         str: The Pipeline Reference Number (PRN)
@@ -311,7 +276,7 @@ def get_prn(
 
 
 def generate_bucket_name(
-    client: str = "", branch: str = V_DEFAULT_BRANCH, scope_prefix: str = ""
+    client: str | None = None, region: str = None, scope_prefix: str | None = None
 ) -> str:
     """
     Get the configuration bucket name from the environment variables
@@ -325,7 +290,16 @@ def generate_bucket_name(
         str: The bucket name
     """
 
-    return f"{scope_prefix}{client}-{V_CORE_AUTOMATION}-{branch}".lower().strip("-")
+    if not client:
+        client = get_client() or V_EMPTY
+
+    if not region:
+        region = get_bucket_region()
+
+    if scope_prefix is None:
+        scope_prefix = get_automation_scope() or V_EMPTY
+
+    return f"{scope_prefix}{client}-{V_CORE_AUTOMATION}-{region}".lower().strip("-")
 
 
 def get_bucket_name(client: str | None = None, region: str | None = None) -> str:
@@ -337,10 +311,13 @@ def get_bucket_name(client: str | None = None, region: str | None = None) -> str
         str: The bucket name for the core automation objects
     """
 
-    client = client or get_client() or ""
-    automation_scope_prefix = get_automation_scope() or ""
+    if not client:
+        client = get_client() or V_EMPTY
+
     if not region:
         region = get_bucket_region()
+
+    automation_scope_prefix = get_automation_scope() or V_EMPTY
 
     return os.environ.get(
         ENV_BUCKET_NAME,
@@ -356,7 +333,7 @@ def get_document_bucket_name(client: str | None = None) -> str:
     Returns:
         str: The bucket name for the documents
     """
-    return os.environ.get(ENV_DOCUMENT_BUCKET_NAME, get_bucket_name(client))
+    return os.environ.get(ENV_DOCUMENT_BUCKET_NAME, V_EMPTY) or get_bucket_name(client)
 
 
 def get_ui_bucket_name(client: str | None = None) -> str:
@@ -367,10 +344,12 @@ def get_ui_bucket_name(client: str | None = None) -> str:
     Returns:
         str: The bucket name for the UI
     """
-    return os.environ.get(ENV_UI_BUCKET_NAME, get_bucket_name(client))
+    return os.environ.get(ENV_UI_BUCKET_NAME, V_EMPTY) or get_bucket_name(client)
 
 
-def get_artefact_bucket_name(client: str | None = None) -> str:
+def get_artefact_bucket_name(
+    client: str | None = None, region: str | None = None
+) -> str:
     """
     Return the bucket nmame for the artefacts.  This is specified in the environment variable ARTEFACT_BUCKET_NAME.
     If not specified, the bucket name is the same as the core automation bucket name.
@@ -378,7 +357,9 @@ def get_artefact_bucket_name(client: str | None = None) -> str:
     Returns:
         str: The bucket name for the artefacts
     """
-    return os.environ.get(ENV_ARTEFACT_BUCKET_NAME, get_bucket_name(client))
+    return os.environ.get(ENV_ARTEFACT_BUCKET_NAME, V_EMPTY) or get_bucket_name(
+        client, region
+    )
 
 
 def get_artefact_bucket_region() -> str:
@@ -389,7 +370,7 @@ def get_artefact_bucket_region() -> str:
     Returns:
         str: Region of the artefact bucket
     """
-    return os.environ.get(ENV_BUCKET_REGION, get_bucket_region())
+    return os.environ.get(ENV_BUCKET_REGION, V_EMPTY) or get_bucket_region()
 
 
 def get_prn_alt(
@@ -440,7 +421,7 @@ def get_automation_type() -> str:
     Returns:
         str: The type of automation engine to use.
     """
-    return os.getenv(ENV_AUTOMATION_TYPE, V_PIPELINE)
+    return os.getenv(ENV_AUTOMATION_TYPE, V_EMPTY) or V_PIPELINE
 
 
 def get_portfolio() -> str | None:
@@ -483,7 +464,7 @@ def get_build() -> str | None:
     return os.getenv(ENV_BUILD, None)
 
 
-def get_provisioning_role_arn(account: str) -> str:
+def get_provisioning_role_arn(account: str | None = None) -> str:
     """
     Get the provisioning role ARN for the specified account.  This is specified in the environment variable ENV_AUTOMATION_ACCOUNT.
     If not specified, the default value is used based on the region and account number.
@@ -497,12 +478,15 @@ def get_provisioning_role_arn(account: str) -> str:
 
     scope_prefix = get_automation_scope()
 
+    if account is None:
+        account = get_automation_account() or V_EMPTY
+
     return "arn:aws:iam::{}:role/{}{}".format(
         account, scope_prefix, CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE
     )
 
 
-def get_automation_api_role_arn(account: str, write: bool = False) -> str:
+def get_automation_api_role_arn(account: str | None = None, write: bool = False) -> str:
     """
     Get the automation API role ARN for the specified account.  This is specified in the environment variable ENV_AUTOMATION_ACCOUNT.
     If not specified, the default value is used based on the region and account number.
@@ -515,6 +499,12 @@ def get_automation_api_role_arn(account: str, write: bool = False) -> str:
     """
 
     scope_prefix = get_automation_scope()
+
+    if account is None:
+        account = get_automation_account() or V_EMPTY
+
+    if not account:
+        return None
 
     if write:
         return "arn:aws:iam::{}:role/{}{}".format(
@@ -643,7 +633,8 @@ def get_console_mode() -> str:
     Returns:
         str: The console mode
     """
-    return os.getenv(ENV_CONSOLE, V_INTERACTIVE)
+    mode = os.getenv(ENV_CONSOLE, "")
+    return mode if mode == V_INTERACTIVE else None
 
 
 def is_use_s3() -> bool:
@@ -654,7 +645,10 @@ def is_use_s3() -> bool:
     Returns:
         bool: True if the deployment is using S3 for storage
     """
-    return os.getenv(ENV_USE_S3, str(not is_local_mode())).lower() == V_TRUE
+    if not is_local_mode():
+        return True
+
+    return os.getenv(ENV_USE_S3, V_FALSE).lower() == V_TRUE
 
 
 def is_json_log() -> bool:
@@ -726,10 +720,10 @@ def get_storage_volume(region: str | None = None) -> str:
     """
     if is_use_s3():
         if not region:
-            region = get_region()
+            region = get_bucket_region()
         return f"https://s3-{region}.amazonaws.com"
-    else:
-        return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
+
+    return os.getenv(ENV_VOLUME, os.path.join(os.getcwd(), V_LOCAL))
 
 
 def get_temp_dir(path: str | None = None) -> str:
@@ -757,7 +751,7 @@ def get_mode() -> str:
 
 
 def is_enforce_validation() -> bool:
-    return os.environ.get(ENV_ENFORCE_VALIDATION, "true").lower() == "true"
+    return os.environ.get(ENV_ENFORCE_VALIDATION, V_TRUE).lower() == V_TRUE
 
 
 def get_client() -> str | None:
@@ -810,7 +804,7 @@ def get_aws_profile() -> str:
     Returns:
         str: Value of the environment variable or client name or default
     """
-    profile = os.getenv(ENV_AWS_PROFILE, get_client() or "default")
+    profile = os.getenv(ENV_AWS_PROFILE, "") or get_client()
 
     try:
         # if the profile is not in the boto3.session credentials, then return "default"
@@ -821,9 +815,9 @@ def get_aws_profile() -> str:
     return profile
 
 
-def get_aws_region() -> str:
+def get_aws_profile_region() -> str:
     """
-    Get the AWS region from the environment variable ENV_AWS_REGION or V_DEFAULT_REGION.
+    Get the AWS region from the aws CLI configuration for the current profile.
 
     Returns:
         str: The AWS region
@@ -838,6 +832,18 @@ def get_aws_region() -> str:
         return V_DEFAULT_REGION
 
 
+def get_aws_region() -> str:
+    """
+    Get the AWS region from the environment variable ENV_AWS_REGION or V_DEFAULT_REGION.
+
+    This is the region where the core automation engine is running.
+
+    Returns:
+        str: The AWS region
+    """
+    return os.getenv(ENV_AWS_REGION) or get_aws_profile_region() or V_DEFAULT_REGION
+
+
 def get_client_region() -> str:
     """
     Get the client region from the environment variable ENV_CLIENT_REGION or V_DEFAULT_REGION.
@@ -847,7 +853,7 @@ def get_client_region() -> str:
     Returns:
         str: The AWS region for the client
     """
-    return os.getenv(ENV_CLIENT_REGION, get_aws_region())
+    return os.getenv(ENV_CLIENT_REGION, "") or get_aws_region()
 
 
 def get_master_region() -> str:
@@ -858,7 +864,7 @@ def get_master_region() -> str:
     Returns:
         str: The AWS region for the Core Automation Engine
     """
-    return os.getenv(ENV_MASTER_REGION, get_client_region())
+    return os.getenv(ENV_MASTER_REGION, "") or get_client_region()
 
 
 def get_region() -> str:
@@ -889,7 +895,7 @@ def get_bucket_region() -> str:
     Returns:
         str: The AWS region for the bucket where core automation objects are stored.
     """
-    return os.environ.get(ENV_BUCKET_REGION, get_master_region())
+    return os.environ.get(ENV_BUCKET_REGION, "") or get_master_region()
 
 
 def get_dynamodb_region() -> str:
@@ -1241,122 +1247,3 @@ def read_json(input_stream: IO) -> Any:
 
     """
     return json.load(input_stream, object_hook=__iso8601_parser)
-
-
-def __quote_strings(data: Any):
-    """Recursively quote all strings in the data."""
-    if isinstance(data, dict):
-        return {k: v if k == "Label" else __quote_strings(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [__quote_strings(v) for v in data]
-    elif isinstance(data, str):
-        return DoubleQuotedScalarString(data)
-    elif isinstance(data, datetime.datetime):
-        return DoubleQuotedScalarString(data.isoformat())
-    elif isinstance(data, datetime.date):
-        return DoubleQuotedScalarString(data.isoformat())
-    elif isinstance(data, datetime.time):
-        return DoubleQuotedScalarString(data.isoformat())
-    else:
-        return data
-
-
-def to_yaml(data: Any) -> str:
-    """Convert data dict or list to a YAML string.
-
-    Strings are "Quoted" so you won't run into issues with string "000001" being converted to an integer "1".
-
-    """
-    quoted_data = __quote_strings(data)
-
-    y = YAML(typ="rt")
-    y.default_flow_style = False
-    y.preserve_quotes = True
-    y.indent(mapping=2, sequence=4, offset=2)
-
-    s = io.StringIO()
-    y.dump(quoted_data, s)
-    return s.getvalue()
-
-
-def write_yaml(data: Any, stream: IO) -> None:
-    """Write the dictionary (or list) data to the proided output stream as YAML.
-
-    !!! NOTICE !!!
-
-    datetime object will be converted to strings in the ISO8601 format.
-
-    Args:
-        data (Any): The data to write to the output stream
-        stream (Any): The output stream to write the data to.
-
-    """
-
-    quoted_data = __quote_strings(data)
-
-    y = YAML(typ="rt")
-    y.default_flow_style = False
-    y.preserve_quotes = True
-    y.indent(mapping=2, sequence=4, offset=2)
-
-    y.dump(quoted_data, stream)
-
-
-def __iso8601_constructor(loader, node):
-    value = loader.construct_scalar(node)
-    try:
-        return datetime.datetime.fromisoformat(value)
-    except ValueError:
-        return value
-
-
-def from_yaml(data: str) -> Any:
-    """Convert yaml str to a dict or list.
-
-    # TODO - compare this to the from_yaml in the yamlmerge object and
-    # let's do a lot of testing and see if they can be combined into
-    # a single function.  The yamlmerge object is a bit more complex
-
-    !!! WARNING !!!
-
-    This is not entirely a RoundTrip parser.  If you have dates in your data
-    this function will convert them to datetime objects.
-
-    If you are expecing dates to be a string.  Sorry, you will need to convert
-    them back to a string yourself.
-
-    Args:
-        data (str): The yaml string to convert to a dict or list
-
-    Returns:
-        Any: The yaml data as a dict or list object
-
-    """
-    y = YAML(typ="rt")
-    y.Constructor.add_constructor("tag:yaml.org,2002:str", __iso8601_constructor)
-    return y.load(data)
-
-
-def read_yaml(input_stream: IO) -> Any:
-    """Load the yaml data from the input stream.
-
-    This uses the "rount-trip" yaml parser. so you will get an OrderedDict
-    as a response.  But it is not entirely "round Trip"
-
-    !!! WARNING !!!
-
-    This is not entirely a RoundTrip parser.  If you have dates in your data
-    this function will convert them to datetime objects.
-
-    If you are expecing dates to be a string.  Sorry, you will need to convert
-    them back to a string yourself.
-
-    Args:
-        input_stream (Any): The input stream to read the yaml data from
-
-    Returns:
-        Any: The yaml data is a dict or list object
-    """
-    y = YAML(typ="rt")
-    y.Constructor.add_constructor("tag:yaml.org,2002:str", __iso8601_constructor)
-    return y.load(input_stream)

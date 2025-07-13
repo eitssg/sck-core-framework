@@ -37,9 +37,6 @@ This module consists of the following packages:
 * core_renderer \
     * Jinja2 Renderer
       Jinja2 functions and filters to compile Core-Automation templates
-    * monkeypatch \
-      PyYAML must recognize CloudFormation or other YAML tags.  !Sub, !Ref, etc.  Especially
-      when processing JinJa2 compiles
 * core_framework \
   common functions and tools used throughout the Core-Automation framework
 

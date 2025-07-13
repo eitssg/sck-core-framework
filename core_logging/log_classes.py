@@ -6,14 +6,14 @@ JSON objects, status messages, and trace messages.
 from typing import Any
 
 from datetime import datetime
-import io
 import json
 import logging
 from collections import OrderedDict
-from ruamel import yaml
+import textwrap
 
 from logging import NOTSET, FATAL, WARN, CRITICAL, DEBUG, INFO, WARNING, ERROR
 
+import core_framework as util
 
 # Default formats for the log messages
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -194,11 +194,6 @@ class CoreLogTextFormatter(CoreLogFormatter):
 
         super().__init__(text_format, datefmt)
 
-        self.yaml = yaml.YAML(typ="rt")
-        self.yaml.default_flow_style = False
-        self.yaml.indent(mapping=2, sequence=4, offset=2)
-        self.yaml.representer.add_representer(OrderedDict, self.represent_ordereddict)
-
     @staticmethod
     def represent_ordereddict(dumper: Any, ordered: OrderedDict) -> Any:
         items = dict(ordered)  # translate the OrderedDict into a dict
@@ -250,16 +245,13 @@ class CoreLogTextFormatter(CoreLogFormatter):
                 or isinstance(details, OrderedDict)
                 or isinstance(details, list)
             ):
-                data = data + "\n" + self._dump_ordered_yaml(details)
+                data = data + "\n" + self._indent_yaml(details)
 
         return data
 
-    def _dump_ordered_yaml(self, data: dict) -> str:
-        s = io.StringIO()
-        self.yaml.dump(data, s)
-        # Add additional indentation
-        indented_yaml = "\n".join("    " + line for line in s.getvalue().splitlines())
-        return indented_yaml
+    def _indent_yaml(self, data: dict, indent=4) -> str:
+        yaml_str = util.to_yaml(data)
+        return textwrap.indent(yaml_str, " " * indent)
 
     def details(self, record: logging.LogRecord, content: str) -> str:
         """
@@ -297,7 +289,7 @@ class CoreLogTextFormatter(CoreLogFormatter):
         while lines and (lines[-1] == "" or lines[-1] is None):
             lines.pop()
         data = ""
-        # Format each line and print it on the console
+        # Format each line and print it to the console
         for line in lines:
             record.msg = line
             data = data + "\n" + super().format(record)

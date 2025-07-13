@@ -1,56 +1,72 @@
 ---
 Kms:
-    AwsAccountId: {{ Kms.AwsAccountId }}
-    KmsKeyArn: {{ Kms.KmsKeyArn }}
-    KmsKey: {{ Kms.KmsKey }}
-ResourceNamespace: {{ ResourceNamespace }}
+    AwsAccountId: {{ context.Kms.AwsAccountId }}
+    KmsKeyArn: {{ context.Kms.KmsKeyArn }}
+    KmsKey: {{ context.Kms.KmsKey }}
+ResourceNamespace: {{ context.ResourceNamespace }}
 VpcAliases:
-    {%- for alias, vpc in VpcAliases.items() %}
-    {{ alias }}: {{ vpc }}
-    {%- endfor %}
+{%- for alias, vpc in context.VpcAliases.items() %}
+  {{ alias }}: {{ vpc }}
+{%- endfor %}
 SubnetAliases:
-    {%- for alias, subnet in SubnetAliases.items() %}
-    {{ alias }}: {{ subnet }}
-    {%- endfor %}
-AwsAccountId: {{ AwsAccountId }}
-Client: {{ Client }}
+{%- for alias, subnet in context.SubnetAliases.items() %}
+  {{ alias }}: {{ subnet }}
+{%- endfor %}
+AwsAccountId: {{ context.AwsAccountId }}
+Client: {{ context.Client }}
 Tags:
-    {%- for tag, value in Tags.items() %}
-    {{ tag }}: {{ value }}
-    {%- endfor %}
-AccountName: {{ AccountName }}
+{%- for tag, value in context.Tags.items() %}
+  {{ tag }}: {{ value }}
+{%- endfor %}
+AccountName: {{ context.AccountName }}
 ImageAliases:
-    {%- for alias, image in ImageAliases.items() %}
-    {{ alias }}: {{ image }}
-    {%- endfor %}
+{%- for alias, image in context.ImageAliases.items() %}
+  {{ alias }}: {{ image }}
+{%- endfor %}
 SecurityAliases:
-    {%- for alias, details in SecurityAliases.items() %}
-    {{ alias }}:
-        {%- for detail in details %}
-        - {%- for key, value in detail.items() %}
-          {{ key }}: {{ value }}
-          {%- endfor %}
-        {%- endfor %}
-    {%- endfor %}
-AwsRegion: {{ AwsRegion }}
+{%- for alias, details in context.SecurityAliases.items() %}
+  {{ alias }}:
+  {%- for detail in details %}
+  {%- for key, value in detail.items() %}
+  {%- if loop.first %}
+  - {{ key }}: {{ value }}
+  {%- else %}
+    {{ key }}: {{ value }}
+  {%- endif %}
+  {%- endfor %}
+  {%- endfor %}
+{%- endfor %}
+AwsRegion: {{ context.AwsRegion }}
 SecurityGroupAliases:
-    {%- for alias_item in SecurityGroupAliases %}
-    - {%- for key, value in alias_item.items() %}
-      {{ key }}: {{ value }}
-      {%- endfor %}
-    {%- endfor %}
-Repository: {{ Repository }}
-Region: {{ Region }}
+{%- for alias_item in context.SecurityGroupAliases %}
+{%- for key, value in alias_item.items() %}
+{%- if loop.first %}
+- {{ key }}: {{ value }}
+{%- else %}
+  {{ key }}: {{ value }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+Repository: {{ context.Repository }}
+Region: {{ context.Region }}
 Approvers:
-    {%- for approver in Approvers %}
-    - {%- for key, value in approver.items() %}
-      {{ key }}: {{ value }}
-      {%- endfor %}
-    {%- endfor %}
+{%- for approver in context.Approvers %}
+{%- for key, value in approver.items() %}
+{%- if loop.first %}
+- {{ key }}: {{ value }}
+{%- else %}
+  {{ key }}: {{ value }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
 Contacts:
-    {%- for contact in Contacts %}
-    - {%- for key, value in contact.items() %}
-      {{ key }}: {{ value}}
-      {%- endfor %}
-    {%- endfor %}
-Owner: {{ Owner }}
+{%- for contact in context.Contacts %}
+{%- for key, value in contact.items() %}
+{%- if loop.first %}
+- {{ key }}: {{ value }}
+{%- else %}
+  {{ key }}: {{ value }}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+Owner: {{ context.Owner }}

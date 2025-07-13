@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 import json
 import pytest
 from unittest.mock import patch, MagicMock
+from botocore.exceptions import ClientError
 import core_helper.aws as aws
 import os
 import io
@@ -19,40 +20,38 @@ def mock_identity():
 
 
 @pytest.fixture
-def mock_boto_session(real_aws):
+def mock_client():
+    mock_client = MagicMock()
+    mock_client.get_caller_identity.return_value = {
+        "Arn": "arn:aws:iam::123456789012:user/jbarwick",
+        "UserId": "AIDAJDPLRKLG7UEXAMPLE",
+        "Account": "123456789012",
+    }
+    return mock_client
 
-    # if real_aws is true, then do not mock boto3.session.Session
 
-    if real_aws:
-        yield MagicMock(), MagicMock()
+@pytest.fixture
+def mock_boto_session(mock_client):
 
-    else:
-        with patch("boto3.session.Session") as mock_boto_session:
+    with patch("boto3.session.Session") as mock_boto_session:
 
-            mock_frozen_credentials = MagicMock()
-            mock_frozen_credentials.access_key = "mock_access_key"
-            mock_frozen_credentials.secret_key = "mock_secret_key"
-            mock_frozen_credentials.token = "mock_session_token"
+        mock_frozen_credentials = MagicMock()
+        mock_frozen_credentials.access_key = "mock_access_key"
+        mock_frozen_credentials.secret_key = "mock_secret_key"
+        mock_frozen_credentials.token = "mock_session_token"
 
-            mock_session_credentials = MagicMock()
-            mock_session_credentials.get_frozen_credentials.return_value = (
-                mock_frozen_credentials
-            )
+        mock_session_credentials = MagicMock()
+        mock_session_credentials.get_frozen_credentials.return_value = (
+            mock_frozen_credentials
+        )
 
-            mock_client = MagicMock()
-            mock_client.get_caller_identity.return_value = {
-                "Arn": "arn:aws:iam::123456789012:user/jbarwick",
-                "Account": "123456789012",
-                "UserId": "jbarwick",
-            }
+        mock_session = MagicMock()
+        mock_session.get_credentials.return_value = mock_session_credentials
+        mock_session.client.return_value = mock_client
 
-            mock_session = MagicMock()
-            mock_session.get_credentials.return_value = mock_session_credentials
-            mock_session.client.return_value = mock_client
+        mock_boto_session.return_value = mock_session
 
-            mock_boto_session.return_value = mock_session
-
-            yield mock_boto_session, mock_client
+        yield mock_boto_session
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -61,32 +60,12 @@ def mock_stdout():
         yield mock
 
 
-@pytest.fixture(autouse=True, scope="function")
-def reset_awshelper_state():
-    # Reset the state of aws between tests
-    aws.__session = None
-    aws.__credentials = {}
-
-
 @pytest.fixture
 def prn():
     return "prn:example"
 
 
-@pytest.fixture
-def real_aws(pytestconfig):
-    return pytestconfig.getoption("--real-aws")
-
-
-def test_get_identity(mock_boto_session, real_aws):
-
-    if not real_aws:
-        mock_client = mock_boto_session[1]
-        mock_client.get_caller_identity.return_value = {
-            "Arn": "arn:aws:iam::123456789012:user/jbarwick",
-            "UserId": "mock_access_key",
-            "Account": "123456789012",
-        }
+def test_get_identity(mock_client):
 
     identity = aws.get_identity()
 
@@ -95,30 +74,42 @@ def test_get_identity(mock_boto_session, real_aws):
     assert identity["Arn"].endswith(":user/jbarwick")
 
 
-def __get_access_key():
+def test_get_identity_client_error():
 
-    credentials = aws.get_session_credentials()
-    return credentials["AccessKeyId"]
+    with patch("core_helper.aws.sts_client") as mock_sts:
+        mock_sts.side_effect = ClientError(
+            error_response={"Error": {"Code": "Test", "Message": "fail"}},
+            operation_name="GetCallerIdentity",
+        )
+        assert aws.get_identity() is None
 
 
-def test_get_session(mock_boto_session, real_aws):
+def test_get_session(mock_boto_session):
 
-    aws.__session = None
+    creds = aws.get_session_credentials()
+    if not creds:
+        assert False, "Credentials are None"
 
-    check_value = __get_access_key()
+    assert creds["AccessKeyId"] == "mock_access_key"
+    assert creds["SecretAccessKey"] == "mock_secret_key"
+    assert creds["SessionToken"] == "mock_session_token"
 
     session = aws.get_session()
+
     assert session is not None
+    assert mock_boto_session.called
 
-    credentials = session.get_credentials()
-
-    assert credentials is not None
-    creds = credentials.get_frozen_credentials()
-
-    assert creds is not None
-    assert creds.access_key == check_value
-
-    assert creds.token is not None
+    assert (
+        session.get_credentials().get_frozen_credentials().access_key
+        == "mock_access_key"
+    )
+    assert (
+        session.get_credentials().get_frozen_credentials().secret_key
+        == "mock_secret_key"
+    )
+    assert (
+        session.get_credentials().get_frozen_credentials().token == "mock_session_token"
+    )
 
 
 def get_invoke_response():
@@ -134,9 +125,7 @@ def get_invoke_response():
     return io.BytesIO(data.encode("utf-8"))
 
 
-def test_invoke_lambda(mock_boto_session, real_aws):
-
-    aws.__session = None
+def test_invoke_lambda(mock_boto_session, mock_client):
 
     arn = os.getenv(
         "API_LAMBDA_ARN",
@@ -144,12 +133,10 @@ def test_invoke_lambda(mock_boto_session, real_aws):
     )
     payload = {"action": "example:action", "data": {"key": "value"}}
 
-    if not real_aws:
-        mock_client = mock_boto_session[1]
-        mock_client.invoke.return_value = {
-            "StatusCode": 200,
-            "Payload": get_invoke_response(),
-        }
+    mock_client.invoke.return_value = {
+        "StatusCode": 200,
+        "Payload": get_invoke_response(),
+    }
 
     result = aws.invoke_lambda(arn, payload)
 
@@ -165,56 +152,165 @@ def test_invoke_lambda(mock_boto_session, real_aws):
     assert result[TR_RESPONSE]["code"] == 200
 
 
-def test_get_session_credentials(mock_boto_session, real_aws):
+def test_get_session_credentials(mock_boto_session):
 
     credentials = aws.get_session_credentials()
 
-    if real_aws:
-        assert "AccessKeyId" in credentials
-        assert "SecretAccessKey" in credentials
-        assert "SessionToken" in credentials
-    else:
-        assert credentials["AccessKeyId"] == "mock_access_key"
-        assert credentials["SecretAccessKey"] == "mock_secret_key"
-        assert credentials["SessionToken"] == "mock_session_token"
-
-
-def test_assume_role(mock_boto_session, real_aws):
-    if real_aws:
-        role = os.getenv("AWS_ROLE_ARN")
-        credentials = aws.assume_role(role)
-        assert "AccessKeyId" in credentials
-        assert "SecretAccessKey" in credentials
-        assert "SessionToken" in credentials
-    else:
-
-        mock_client = mock_boto_session[1]
-
-        mock_response = {
-            "Credentials": {
-                "AccessKeyId": "mock_access_key",
-                "SecretAccessKey": "mock_secret_key",
-                "SessionToken": "mock_session_token",
-            },
-            "ResponseMetadata": {"HTTPStatusCode": 200},
-        }
-        mock_client.assume_role.return_value = mock_response
-
-    role = "arn:aws:iam::123456789012:role/mock-role"
-    credentials = aws.assume_role(role=role)
+    if not credentials:
+        assert False, "Credentials are None"
 
     assert credentials["AccessKeyId"] == "mock_access_key"
     assert credentials["SecretAccessKey"] == "mock_secret_key"
     assert credentials["SessionToken"] == "mock_session_token"
 
 
-def test_get_client(mock_boto_session, real_aws):
+def test_get_session_credentials_client_error(mock_boto_session):
+
+    session = aws.get_session()
+    # Change the value of the MagicMock mock_boto_session get_credentials to return None
+    session.get_credentials.return_value = None
+
+    assert aws.get_session_credentials() is None
+
+
+def test_assume_role(mock_boto_session, mock_client):
+
+    mock_response = {
+        "Credentials": {
+            "AccessKeyId": "mock_access_key",
+            "SecretAccessKey": "mock_secret_key",
+            "SessionToken": "mock_session_token",
+        },
+        "ResponseMetadata": {"HTTPStatusCode": 200},
+    }
+    mock_client.assume_role.return_value = mock_response
+
+    role = "arn:aws:iam::123456789012:role/mock-role"
+    credentials = aws.assume_role(role=role)
+
+    if not credentials:
+        assert False, "Credentials are None"
+
+    credentials = aws.assume_role()
+
+    if not credentials:
+        assert False, "Credentials are None.  Should have come from store"
+
+    assert credentials["AccessKeyId"] == "mock_access_key"
+    assert credentials["SecretAccessKey"] == "mock_secret_key"
+    assert credentials["SessionToken"] == "mock_session_token"
+
+    creds = aws.get_role_credentials(role)
+
+    assert creds is not None
+    assert creds["AccessKeyId"] == "mock_access_key"
+    assert creds["SecretAccessKey"] == "mock_secret_key"
+    assert creds["SessionToken"] == "mock_session_token"
+
+
+def test_get_client__config():
+    from core_helper.aws import __get_client_config, RETRY_CONFIG
+
+    one = "http://proxy.example.com:8080"
+    two = "https://proxy.example.com:8080"
+
+    os.environ["HTTP_PROXY"] = one
+    os.environ["HTTPS_PROXY"] = two
+
+    # Clear any existing environment variables to ensure test isolation
+
+    def do_the_test(p1, p2):
+        config = aws.__get_client_config()
+
+        assert config is not None
+
+        # Check default values
+        assert config.proxies == {"http": p1, "https": p2}
+        assert config.read_timeout == 15
+        assert config.connect_timeout == 15
+        assert config.retries == RETRY_CONFIG
+
+    do_the_test(one, two)
+
+    del os.environ["HTTPS_PROXY"]
+
+    do_the_test(one, one)
+
+    del os.environ["HTTP_PROXY"]
+
+    os.environ["HTTPS_PROXY"] = two
+
+    do_the_test(two, two)
+
+    del os.environ["HTTPS_PROXY"]
+
+    config = aws.__get_client_config()
+
+    assert config is not None
+    assert config.proxies == None
+    assert config.read_timeout == 15
+    assert config.connect_timeout == 15
+    assert config.retries == RETRY_CONFIG
+
+
+def test_login_to_aws(mock_boto_session, mock_client):
+
+    session = aws.get_session()
+
+    assume_role = MagicMock()
+    assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "role_mock_access_key",
+            "SecretAccessKey": "role_mock_secret_key",
+            "SessionToken": "role_mock_session_token",
+        },
+    }
+    mock_client.assume_role = assume_role
+    session.return_value.client.return_value = mock_client
+
+    auth = {
+        "AccessKeyId": "mock_access_key",
+        "SecretAccessKey": "mock_secret_key",
+        "SessionToken": "mock_session_token",
+    }
+    result = aws.login_to_aws(auth)
+
+    assert result is not None
+
+    assert "AccessKeyId" in result and result["AccessKeyId"] == "role_mock_access_key"
+    assert (
+        "SecretAccessKey" in result
+        and result["SecretAccessKey"] == "role_mock_secret_key"
+    )
+    assert (
+        "SessionToken" in result and result["SessionToken"] == "role_mock_session_token"
+    )
+
+
+def test_login_to_aws_client_error(mock_boto_session, mock_client):
+
+    session = aws.get_session()
+    mock_client.assume_role.side_effect = ClientError(
+        error_response={"Error": {"Code": "Test", "Message": "fail"}},
+        operation_name="AssumeRole",
+    )
+    session.return_value.client.return_value = mock_client
+
+    auth = {
+        "AccessKeyId": "mock_access_key",
+        "SecretAccessKey": "mock_secret_key",
+        "SessionToken": "mock_session_token",
+    }
+    result = aws.login_to_aws(auth, role="abc")
+    assert result is None
+
+
+def test_get_client(mock_boto_session):
 
     client = aws.get_client("s3", region="us-west-2")
-    assert client is not None
 
-    if not real_aws:
-        assert mock_boto_session[0].called
+    assert client is not None
+    assert mock_boto_session.called
 
 
 def test_transform_stack_parameter_hash():
@@ -232,6 +328,12 @@ def test_transform_tag_hash():
     result = aws.transform_tag_hash(keyvalues)
     expected = [{"Key": "Key1", "Value": "Value1"}, {"Key": "Key2", "Value": "Value2"}]
     assert result == expected
+
+
+def test_transform_stack_parameter_dict():
+
+    assert aws.transform_stack_parameter_dict({}) == {}
+    assert aws.transform_stack_parameter_dict({"A": "B"}) == {"A": "B"}
 
 
 if __name__ == "__main__":

@@ -5,7 +5,12 @@ from threading import local
 import os
 
 import logging
-from core_framework.constants import ENV_LOG_LEVEL, ENV_LOG_AS_JSON, ENV_LOG_DIR, ENV_CONSOLE_LOG
+from core_framework.constants import (
+    ENV_LOG_LEVEL,
+    ENV_LOG_AS_JSON,
+    ENV_LOG_DIR,
+    ENV_CONSOLE_LOG,
+)
 
 from .log_classes import (
     CoreLogger,

@@ -1,6 +1,6 @@
 """This module contains the StateDetails class which provides information about the current state of the deployment."""
 
-from typing import Any
+from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import core_framework as util
@@ -24,87 +24,110 @@ class StateDetails(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    Client: str = Field(
+    client: str = Field(
+        alias="Client",  # Alias for PascalCase compatibility
         description="The client to use for the action.  Defaults to the current client.",
         default=V_EMPTY,
     )
-    BucketName: str = Field(
+    bucket_name: str = Field(
+        alias="BucketName",  # Alias for PascalCase compatibility
         description="The name of the S3 bucket where the state file is stored.",
         default=V_EMPTY,
     )
-    BucketRegion: str = Field(
+    bucket_region: str = Field(
+        alias="BucketRegion",  # Alias for PascalCase compatibility
         description="The region of the S3 bucket where the state file is stored.",
         default=V_EMPTY,
     )
-    Key: str = Field(
+    key: str = Field(
+        alias="Key",  # Alias for PascalCase compatibility
         description="The key prefix where the ation file is stored in s3.  Usually in the artefacts folder",
         default=V_EMPTY,
     )
-    VersionId: str | None = Field(
-        description="The version of the state file", default=None
+    version_id: str | None = Field(
+        alias="VersionId",  # Alias for PascalCase compatibility
+        description="The version of the state file",
+        default=None,
     )
-    ContentType: str = Field(
+    content_type: str = Field(
+        alias="ContentType",  # Alias for PascalCase compatibility
         description="The content type of the state file. Usually 'application/json' or 'application/x-yaml'",
         default="application/x-yaml",
     )
 
     @property
-    def Mode(self) -> str:
+    def mode(self) -> str:
         """The mode of the application.  Either local or service"""
         return V_LOCAL if util.is_local_mode() else V_SERVICE
 
     @property
-    def DataPath(self) -> str:
+    def data_path(self) -> str:
         """The storage volume for the application. Used for local mode only else Blank  Defaults to the current directory."""
         return util.get_storage_volume()
 
     @property
-    def TempDir(self) -> str:
+    def temp_dir(self) -> str:
         """The temporary directory to use for local mode.  Defaults to the system temp directory."""
         return util.get_temp_dir()
 
     @model_validator(mode="before")
     def validate_artefacts_before(cls, values: Any) -> Any:
         if isinstance(values, dict):
-            if not values.get("Client"):
-                values["Client"] = util.get_client()
-            if not values.get("BucketName"):
-                values["BucketName"] = util.get_artefact_bucket_name(values["Client"])
-            if not values.get("BucketRegion"):
-                values["BucketRegion"] = util.get_artefact_bucket_region()
+
+            client = values.get("Client", values.get("client", V_EMPTY))
+            if not client:
+                client = util.get_client()
+                values["client"] = client
+
+            region = values.get("BucketRegion", values.get("bucket_region", V_EMPTY))
+            if not region:
+                region = util.get_artefact_bucket_region()
+                values["bucket_region"] = region
+
+            if not (values.get("BucketName") or values.get("bucket_name")):
+                values["bucket_name"] = util.get_artefact_bucket_name(client, region)
+
         return values
 
     def set_key(self, dd: DeploymentDetailsClass, filename: str):
-        self.Key = dd.get_object_key(OBJ_ARTEFACTS, filename)
+        self.key = dd.get_object_key(OBJ_ARTEFACTS, filename)
 
     @staticmethod
     def from_arguments(**kwargs) -> "StateDetails":
 
-        key = kwargs.get("key", V_EMPTY)
+        key = kwargs.get("key", kwargs.get("Key", V_EMPTY))
         if not key:
-            state_file = kwargs.get("state_file", None)
-            task = kwargs.get("task", None)
+            state_file = kwargs.get("state_file", kwargs.get("StateFile", None))
+            task = kwargs.get("task", kwargs.get("Task", None))
             if task and state_file is None:
                 state_file = f"{task}.state"
-            dd = kwargs.get("deployment_details", kwargs)
+            dd = kwargs.get("deployment_details", kwargs.get("DeploymentDetails", None))
             if not isinstance(dd, DeploymentDetailsClass):
                 dd = DeploymentDetailsClass.from_arguments(**kwargs)
             if dd:
                 key = dd.get_object_key(OBJ_ARTEFACTS, state_file)
 
-        client = kwargs.get("client", util.get_client())
-        bucket_name = kwargs.get("bucket_name", util.get_artefact_bucket_name(client))
-        bucket_region = kwargs.get("bucket_region", util.get_artefact_bucket_region())
-        content_type = kwargs.get("content_type", "application/x-yaml")
-        version_id = kwargs.get("version_id", None)
+        client = kwargs.get("client", kwargs.get("Client", util.get_client()))
+        bucket_name = kwargs.get(
+            "bucket_name",
+            kwargs.get("BucketName", util.get_artefact_bucket_name(client)),
+        )
+        bucket_region = kwargs.get(
+            "bucket_region",
+            kwargs.get("BucketRegion", util.get_artefact_bucket_region()),
+        )
+        content_type = kwargs.get(
+            "content_type", kwargs.get("ContentType", "application/x-yaml")
+        )
+        version_id = kwargs.get("version_id", kwargs.get("VersionId", None))
 
         return StateDetails(
-            Client=client,
-            BucketName=bucket_name,
-            BucketRegion=bucket_region,
-            Key=key,
-            VersionId=version_id,
-            ContentType=content_type,
+            client=client,
+            bucket_name=bucket_name,
+            bucket_region=bucket_region,
+            key=key,
+            version_id=version_id,
+            content_type=content_type,
         )
 
     # Override

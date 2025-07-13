@@ -1,10 +1,12 @@
 """This module provides the TaskPaylaod class that is used throughout Core-Automation to identify the operating Task to perform."""
 
 from typing import Self
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, ValidationError
 
-
+import core_framework as util
 from core_framework.constants import (
+    OBJ_PACKAGES,
+    OBJ_ARTEFACTS,
     V_DEPLOYSPEC,
     V_PIPELINE,
     V_EMPTY,
@@ -42,44 +44,58 @@ class TaskPayload(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    Client: str = Field(
+    client: str = Field(
+        alias="Client",  # Alias for PascalCase compatibility
         description="The client to perform the task for.  Usually stored in client-vars.yaml",
         default=V_EMPTY,
     )
-    Task: str = Field(
-        ..., description="The task to perform.  See the ACT_ constants in constants.py"
+    task: str = Field(
+        ...,
+        alias="Task",  # Alias for PascalCase compatibility
+        description="The task to perform.  See the ACT_ constants in constants.py",
     )
-    Force: bool = Field(
+    force: bool = Field(
+        alias="Force",  # Alias for PascalCase compatibility
         description=" Force the task to be performed regardless of the state of the deployment",
         default=False,
     )
-    DryRun: bool = Field(
+    dry_run: bool = Field(
+        alias="DryRun",  # Alias for PascalCase compatibility
         description="Perform a dry run of the task.  Don't actually do anything.",
         default=False,
     )
-    Identity: str = Field(
+    identity: str = Field(
+        alias="Identity",  # Alias for PascalCase compatibility
         description="The identity of the user performing the task.  Derrived from DeploymentDetails",
         default=V_EMPTY,
     )
-    DeploymentDetails: DeploymentDetailsClass = Field(
-        ..., description="The deployment details such as Portfolio, App, Branch, Build"
+    deployment_details: DeploymentDetailsClass = Field(
+        ...,
+        alias="DeploymentDetails",  # Alias for PascalCase compatibility
+        description="The deployment details such as Portfolio, App, Branch, Build",
     )
-    Package: PackageDetailsClass = Field(
+    package: PackageDetailsClass = Field(
+        alias="Package",  # Alias for PascalCase compatibility
         description="The package details.  Usually stored in packages/**/package.zip",
         default_factory=lambda: PackageDetailsClass(),
     )
-    Actions: ActionDetailsClass = Field(
+    actions: ActionDetailsClass = Field(
+        alias="Actions",  # Alias for PascalCase compatibility
         description="The actions to perform.  Usually stored in artefacts/**/{task}.actions",
         default_factory=lambda: ActionDetailsClass(),
     )
-    State: StateDetailsClass = Field(
+    state: StateDetailsClass = Field(
+        alias="State",  # Alias for PascalCase compatibility
         description="The state of the task.  Usually stored in artefacts/**/{task}.state",
         default_factory=lambda: StateDetailsClass(),
     )
-    FlowControl: str | None = Field(
-        description="The flow control of the task", default=None
+    flow_control: str | None = Field(
+        alias="FlowControl",  # Alias for PascalCase compatibility
+        description="The flow control of the task",
+        default=None,
     )
-    Type: str = Field(
+    type: str = Field(
+        alias="Type",  # Alias for PascalCase compatibility
         description="The type of templates to use (pipeline/deployspec)",
         default=V_PIPELINE,
     )
@@ -88,65 +104,94 @@ class TaskPayload(BaseModel):
     @classmethod
     def validate_model_before(cls, values):
         if isinstance(values, dict):
-            if not values.get("DeploymentDetails"):
-                values["DeploymentDetails"] = (
-                    DeploymentDetailsClass(Client=values["Client"])
-                    if values.get("Client")
-                    else DeploymentDetailsClass()
-                )
-            dd = values.get("DeploymentDetails")
-            client = dd.Client if isinstance(dd, DeploymentDetailsClass) else None
-            if not values.get("Package"):
-                values["Package"] = PackageDetailsClass(Client=client)
-            if not values.get("Actions"):
-                values["Actions"] = ActionDetailsClass(Client=client)
-            if not values.get("State"):
-                values["State"] = StateDetailsClass(Client=client)
-            fc = values.get("FlowControl")
+
+            client = values.get("Client", values.get("client", V_EMPTY))
+            dd = values.get("DeploymentDetails", values.get("deployment_details", None))
+            if not client:
+                if dd:
+                    client = dd.get("client", dd.get("Client", V_EMPTY))
+                if not client:
+                    client = util.get_client()
+                values["client"] = client
+
+            if not dd:
+                values["deployment_details"] = DeploymentDetailsClass(client=client)
+
+            if not (values.get("Package") or values.get("package")):
+                values["package"] = PackageDetailsClass(client=client)
+            if not (values.get("Actions") or values.get("actions")):
+                values["actions"] = ActionDetailsClass(client=client)
+            if not (values.get("State") or values.get("state")):
+                values["state"] = StateDetailsClass(client=client)
+
+            fc = values.get("FlowControl", values.get("flow_control"))
             if fc and fc not in FLOW_CONTROLS:
                 raise ValueError(
                     f"FlowControl must be one of {",".join(FLOW_CONTROLS)}"
                 )
-            typ = values.get("Type")
+
+            typ = values.get("Type", values.get("type", V_PIPELINE))
             if typ and typ not in [V_PIPELINE, V_DEPLOYSPEC]:
                 raise ValueError(f"Type must be one of {V_PIPELINE},{V_DEPLOYSPEC}")
+
         return values
 
     @model_validator(mode="after")
     def validate_task(self) -> Self:
-        if not self.Client:
-            self.Client = self.DeploymentDetails.Client
-        if not self.Identity:
-            self.Identity = self.DeploymentDetails.get_identity()
-        if self.Package:
-            self.Package.set_key(self.DeploymentDetails, "package.zip")
-        if self.Actions:
-            self.Actions.set_key(self.DeploymentDetails, self.Task + ".actions")
-        if self.State:
-            self.State.set_key(self.DeploymentDetails, self.Task + ".state")
+
+        if not self.client:
+            self.client = self.deployment_details.client
+        if not self.identity:
+            self.identity = self.deployment_details.get_identity()
+
+        # Force keys to be set based on the deployment details
+        if self.package:
+            self.package.set_key(self.deployment_details, "package.zip")
+        if self.actions:
+            self.actions.set_key(self.deployment_details, self.task + ".actions")
+        if self.state:
+            self.state.set_key(self.deployment_details, self.task + ".state")
+
         return self
+
+    def _generate_deployment_details(self) -> DeploymentDetailsClass:
+        """Generate a DeploymentDetails object based on the client and task."""
+        return DeploymentDetailsClass(**{"Client": self.client})
 
     @staticmethod
     def from_arguments(**kwargs) -> "TaskPayload":
+        """
+        Create a TaskPayload object from the given keyword arguments. This method is used to create a TaskPayload
 
-        dd = kwargs.get("deployment_details", kwargs)
-        if not isinstance(dd, DeploymentDetailsClass):
-            dd = DeploymentDetailsClass.from_arguments(**dd)
+        Areguments are typically from the command line.  "from_arguments" is "from command line arguments"
 
-            # DeplymentDetailsClass is needed for Package/ActionDefinition/StateDetailsClass
+        Command line arguments are the lowercase 'snake_case' version of the TaskPayload, DeploymentDetails,
+        PackageDetails, ActionDetails, and StateDetails attributes.
+
+        Since there is no object hierarchy in the command line arguments, this method attempt to make sense of that.
+
+        """
+        dd = kwargs.get("deployment_details", kwargs.get("DeploymentDetails", None))
+        if dd is None:
+            dd = DeploymentDetailsClass.from_arguments(**kwargs)
             kwargs["deployment_details"] = dd
-
+        if not isinstance(dd, DeploymentDetailsClass):
+            raise ValidationError(
+                "DeploymentDetails must be an instance of DeploymentDetails"
+            )
         return TaskPayload(
-            Client=dd.Client,
-            Task=kwargs.get("task", V_EMPTY),
-            Force=kwargs.get("force", False),
-            DryRun=kwargs.get("dry_run", False),
-            Identity=kwargs.get("identity", dd.get_identity()),
-            Type=kwargs.get("automation_type", V_PIPELINE),
-            DeploymentDetails=dd,
-            Package=PackageDetailsClass.from_arguments(**kwargs),
-            Actions=ActionDetailsClass.from_arguments(**kwargs),
-            State=StateDetailsClass.from_arguments(**kwargs),
+            client=dd.client,
+            task=kwargs.get("task", kwargs.get("Task", V_EMPTY)),
+            force=kwargs.get("force", kwargs.get("Force", False)),
+            dry_run=kwargs.get("dry_run", kwargs.get("DryRun", False)),
+            identity=kwargs.get("identity", kwargs.get("Identity", V_EMPTY)),
+            type=kwargs.get(
+                "automation_type", kwargs.get("type", kwargs.get("Type", V_PIPELINE))
+            ),
+            deployment_details=dd,
+            package=PackageDetailsClass.from_arguments(**kwargs),
+            actions=ActionDetailsClass.from_arguments(**kwargs),
+            state=StateDetailsClass.from_arguments(**kwargs),
         )
 
     # Override

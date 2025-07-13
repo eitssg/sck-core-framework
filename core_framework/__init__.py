@@ -13,6 +13,9 @@ from .common import (
     split_prn,
     split_branch,
     split_portfolio,
+    get_automation_region,
+    get_cdk_default_account,
+    get_cdk_default_region,
     get_prn,
     get_prn_alt,
     get_region,
@@ -25,6 +28,7 @@ from .common import (
     get_temp_dir,
     get_delivered_by,
     get_aws_profile,
+    get_aws_region,
     get_automation_scope,
     get_automation_account,
     get_iam_account,
@@ -68,6 +72,7 @@ from .common import (
     get_project,
     get_bizapp,
     get_console_mode,
+    get_master_region,
     generate_branch_short_name,
     generate_bucket_name,
     is_local_mode,
@@ -79,10 +84,14 @@ from .common import (
     from_json,
     read_json,
     write_json,
+)
+from .yaml.yaml_utils import (
     to_yaml,
     from_yaml,
     read_yaml,
     write_yaml,
+    create_yaml_parser,
+    load_yaml_file,
 )
 
 # retrieve the version of the package dynamically
@@ -201,6 +210,8 @@ __all__ = [
     "from_yaml",
     "read_yaml",
     "write_yaml",
+    "create_yaml_parser",
+    "load_yaml_file",
     "get_prn_scope",
     "validate_item_prn",
     "validate_portfolio_prn",

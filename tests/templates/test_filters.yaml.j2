@@ -1,0 +1,53 @@
+# This template exercises every custom Jinja2 filter.
+
+# --- Simple Value Filters ---
+filter_format_date_default: {{ "now" | format_date }}
+filter_format_date_custom: {{ "now" | format_date("%Y-%m-%d") }}
+filter_min_int: {{ [10, 5, 20] | min_int }}
+filter_regex_replace: {{ "hello world" | regex_replace("world", "Jinja") }}
+filter_rstrip: {{ "test.yaml." | rstrip(".") }}
+filter_shorten_unique: {{ "a_very_long_value_that_needs_to_be_shortened" | shorten_unique(20, 4) }}
+
+# --- List/Dict Manipulation Filters ---
+filter_ensure_list_from_scalar: {{ "scalar" | ensure_list }}
+filter_ensure_list_from_list: {{ ["item1", "item2"] | ensure_list }}
+filter_extract: {{ context.Ecr | extract("RegistryUri") }}
+filter_to_json: {{ {"key": "value"} | to_json }}
+filter_to_yaml: |
+  {{ {"key": "value"} | to_yaml | indent(2) }}
+
+# --- Context-Aware Filters (Tags) ---
+filter_tags:
+  {{ "build" | tags(component_name="web-server") | to_yaml | indent(2) }}
+filter_aws_tags:
+  {{ "build" | aws_tags(component_name="web-server") | to_yaml | indent(2) }}
+
+# --- Context-Aware Filters (CloudFormation & AWS Specific) ---
+filter_docker_image: {{ {"Fn::Pipeline::DockerImage": {"Name": "latest"} } | docker_image }}
+filter_ebs_encrypt:
+  {{ ebs_spec_data | ebs_encrypt | to_yaml | indent(2) }}
+filter_iam_rules:
+  {{ resource_security_data | iam_rules | to_yaml | indent(2) }}
+filter_image_alias_to_id: {{ "ubuntu-latest" | image_alias_to_id }}
+filter_image_id: {{ {"Fn::Pipeline::ImageId": {"Name": "ubuntu-latest"} } | image_id }}
+filter_image_name: {{ {"Fn::Pipeline::ImageId": {"Name": "ubuntu-latest"} } | image_name }}
+filter_ip_rules:
+  {{ resource_security_data | ip_rules | to_yaml | indent(2) }}
+filter_ip_rules_source_only:
+  {{ resource_security_data | ip_rules(source_only=True) | to_yaml | indent(2) }}
+filter_lookup: {{ "component_name" | lookup }}
+filter_output_name: {{ {"Fn::Pipeline::GetOutput": {"Component": "auth-api", "OutputName": "ApiUrl"} } | output_name }}
+filter_parse_port_spec:
+  {{ "TCP:8080-8090" | parse_port_spec | to_yaml | indent(2) }}
+filter_policy_statements:
+  {{ policy_statement_data | policy_statements | to_yaml | indent(2) }}
+filter_process_cfn_init:
+  {{ cfn_init_data | process_cfn_init | to_yaml | indent(2) }}
+filter_snapshot_id:
+ {{ snapshot_spec_data | snapshot_id("aws-rds-instance") | to_yaml | indent(2) }}
+filter_snapshot_name: {{ snapshot_spec_data | snapshot_name("aws-rds-instance") }}
+
+# --- Network Filters ---
+filter_split_cidr: {{ "10.0.0.0/22" | split_cidr([24]) }}
+filter_subnet_az_index: {{ {"Fn::Pipeline::SubnetId": {"AzIndex": 2} } | subnet_az_index }}
+filter_subnet_network_zone: {{ {"Fn::Pipeline::SubnetId": {"NetworkZone": "public"} } | subnet_network_zone }}

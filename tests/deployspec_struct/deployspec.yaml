@@ -1,0 +1,7 @@
+label: test1-create-user
+type: aws.create_user
+params:
+  user_name: bob
+  account: 123456789012
+  region: us-east-1
+depends_on:

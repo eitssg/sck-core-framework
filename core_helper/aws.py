@@ -5,7 +5,6 @@ import os
 import boto3
 
 from boto3.session import Session
-
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
@@ -21,6 +20,8 @@ import core_logging as log
 from .cache import InsecureEnclave
 
 store = InsecureEnclave()
+
+RETRY_CONFIG: Any = {"max_attempts": 10}
 
 
 def transform_stack_parameter_dict(keyvalues: dict[str, str]) -> dict[str, str]:
@@ -165,7 +166,7 @@ def __get_client_config() -> Config:
         proxies=proxy_definition,
         connect_timeout=15,
         read_timeout=15,
-        retries=dict(max_attempts=10),
+        retries=RETRY_CONFIG,
     )
 
 
@@ -399,9 +400,7 @@ def get_resource(service, **kwargs) -> Any:
     if credentials is None:
         resource = session.resource(
             service,
-            config=Config(
-                connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
-            ),
+            config=Config(connect_timeout=15, read_timeout=15, retries=RETRY_CONFIG),
         )
     else:
         resource = session.resource(
@@ -409,9 +408,7 @@ def get_resource(service, **kwargs) -> Any:
             aws_access_key_id=credentials["AccessKeyId"],
             aws_secret_access_key=credentials["SecretAccessKey"],
             aws_session_token=credentials["SessionToken"],
-            config=Config(
-                connect_timeout=15, read_timeout=15, retries=dict(max_attempts=10)
-            ),
+            config=Config(connect_timeout=15, read_timeout=15, retries=RETRY_CONFIG),
         )
     return resource
 

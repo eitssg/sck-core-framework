@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from core_renderer import patch_the_monkeys
 
 
 @pytest.fixture
@@ -13,10 +12,3 @@ def mock_boto_session():
         mock_frozen_credentials.token = "mock_session_token"
 
         yield mock_boto_session
-
-
-def test_patch_the_monkeys(mock_boto_session):
-
-    patch_the_monkeys()
-
-    assert True

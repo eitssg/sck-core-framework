@@ -66,127 +66,142 @@ class DeploymentDetails(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    Client: str = Field(
+    client: str = Field(
+        alias="Client",  # Alias for PascalCase compatibility
         description="Client is the name of the client or customer (installation or AWS Organizatoion)",
         default="",
     )
 
-    Portfolio: str = Field(description="Portfolio name is the BizApp name")
+    portfolio: str = Field(
+        alias="Portfolio",  # Alias for PascalCase compatibility
+        description="Portfolio name is the BizApp name",
+    )
 
-    App: str | None = Field(
+    app: str | None = Field(
+        alias="App",  # Alias for PascalCase compatibility
         description="App is the name of the part of the BizApp.  The deployment unit.",
         default=None,
     )
 
-    Branch: str | None = Field(
+    branch: str | None = Field(
+        alias="Branch",  # Alias for PascalCase compatibility
         description="Branch is the name of the branch of the deployment unit being deployed",
         default=None,
     )
 
-    BranchShortName: str | None = Field(
+    branch_short_name: str | None = Field(
+        alias="BranchShortName",  # Alias for PascalCase compatibility
         description="BranchShortName is the short name of the branch of the deployment unit being deployed.  "
         "Done because of special characters that cannot be used as AWS resource names",
         default=None,
     )
 
-    Build: str | None = Field(
+    build: str | None = Field(
+        alias="Build",  # Alias for PascalCase compatibility
         description="Build is the build number, version number.  Or repo tag.  May even have the repository "
         "commit ID in the name.  (Ex. 0.0.6-pre.204+f9908cc6)",
         default=None,
     )
 
-    Component: str | None = Field(
+    component: str | None = Field(
+        alias="Component",  # Alias for PascalCase compatibility
         description="Component is the item deployed (EC2, Volumne, ResourceGrooup, etc).  "
         "These are parts of the deploment unit.",
         default=None,
     )
 
-    Environment: str | None = Field(
+    environment: str | None = Field(
+        alias="Environment",  # Alias for PascalCase compatibility
         description="Environment is related to the Zone.  Examples are Prod, Dev, Non-Prod, UAT, PEN, PERF, PT, etc",
         default=None,
     )
 
-    DataCenter: str | None = Field(
+    data_center: str | None = Field(
+        alias="DataCenter",  # Alias for PascalCase compatibility
         description="DataCenter is the physical location.  This is almost identical to an AWS region, but different.  "
         "Examples are us-east-1, us-west-2, etc",
         default=None,
     )
 
-    Scope: str | None = Field(
+    scope: str | None = Field(
+        alias="Scope",  # Alias for PascalCase compatibility
         description="Scope is the deployment scope from the values: portfolio, app, branch, build.  It does not "
         "include the component or environment. It's primarily used to determine the location in S3 folder hierarchy "
         "to store packages, artefacts, and files for the deployment.",
         default=None,
     )
 
-    Tags: dict[str, str] | None = Field(
+    tags: dict[str, str] | None = Field(
+        alias="Tags",  # Alias for PascalCase compatibility
         description="Tags are key value pairs that can be applied to resources.  These values can come from the "
         "FACTS database from Apps or Zone defaults.  Your deployment may specify additional tags.",
         default=None,
     )
 
-    StackFile: str | None = Field(
+    stack_file: str | None = Field(
+        alias="StackFile",  # Alias for PascalCase compatibility
         description="StackFile is the name of the CloudFormation stack file that was used in the deployment.",
         default=None,
     )
 
-    DeliveredBy: str | None = Field(
+    delivered_by: str | None = Field(
+        alias="DeliveredBy",  # Alias for PascalCase compatibility
         description="DeliveredBy is the name of the person or system that delivered the deployment.",
         default=None,
     )
 
     def get_portfolio_prn(self) -> str:
-        return f"prn:{self.Portfolio}".lower()
+        return f"prn:{self.portfolio}".lower()
 
     def get_app_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App or ""}".lower()
+        return f"prn:{self.portfolio}:{self.app or ""}".lower()
 
     def get_branch_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App or ""}:{self.BranchShortName or ""}".lower()
+        return f"prn:{self.portfolio}:{self.app or ""}:{self.branch_short_name or ""}".lower()
 
     def get_build_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App or ""}:{self.BranchShortName or ""}:{self.Build or ""}".lower()
+        return f"prn:{self.portfolio}:{self.app or ""}:{self.branch_short_name or ""}:{self.build or ""}".lower()
 
     def get_component_prn(self) -> str:
-        return f"prn:{self.Portfolio}:{self.App or ""}:{self.BranchShortName or ""}:{self.Build or ""}:{self.Component or ""}".lower()
+        return f"prn:{self.portfolio}:{self.app or ""}:{self.branch_short_name or ""}:{self.build or ""}:{self.component or ""}".lower()
 
     @model_validator(mode="before")
     @classmethod
     def validate_incoming(cls, values):
         if isinstance(values, dict):
-            if not values.get("Client"):
-                values["Client"] = os.getenv(
+            if not values.get("Client") and not values.get("client"):
+                values["client"] = os.getenv(
                     ENV_CLIENT, os.getenv(ENV_AWS_PROFILE, "default")
                 )
-            branch = values.get("Branch")
+            branch = values.get("Branch", values.get("branch", None))
             if branch:
-                values["BranchShortName"] = util.branch_short_name(branch)
+                values["branch_short_name"] = util.branch_short_name(branch)
             else:
-                values["BranchShortName"] = branch  # branch might by V_EMPTY
-            if not values.get("DeliveredBy"):
-                values["DeliveredBy"] = util.get_delivered_by()
+                values["branch_short_name"] = branch  # branch might by V_EMPTY
+            if not values.get("DeliveredBy") and not values.get("delivered_by"):
+                values["delivered_by"] = util.get_delivered_by()
         return values
 
     @model_validator(mode="after")
     def check_conditional_fields(self) -> Self:
 
-        if self.Component and not self.Build:
+        if self.component and not self.build:
             raise ValueError("Build is required when Component is provided")
 
-        if self.Build and not self.Branch:
+        if self.build and not self.branch:
             raise ValueError("Branch is required when Build is provided")
 
-        if self.Branch and not self.App:
+        if self.branch and not self.app:
             raise ValueError("App is required when Branch is provided")
 
-        if not self.Scope:
-            self.Scope = self.get_scope()
+        if not self.scope:
+            self.scope = self.get_scope()
 
         return self
 
     def get_scope(self) -> str:
         return DeploymentDetails._get_standard_scope(
-            self.Portfolio, self.App, self.Branch, self.Build
+            self.portfolio, self.app, self.branch, self.build
         )
 
     @staticmethod
@@ -207,17 +222,17 @@ class DeploymentDetails(BaseModel):
 
     def get_identity(self) -> str:
 
-        portfolio = self.Portfolio or "*"
-        app = self.App or "*"
-        branch_short_name = self.BranchShortName or "*"
-        build = self.Build or "*"
+        portfolio = self.portfolio or "*"
+        app = self.app or "*"
+        branch_short_name = self.branch_short_name or "*"
+        build = self.build or "*"
 
         return f"prn:{portfolio}:{app}:{branch_short_name}:{build}".lower()
 
     @staticmethod
     def from_arguments(**kwargs):
 
-        client = kwargs.get("client", util.get_client())
+        client = kwargs.get("client", kwargs.get("Client", util.get_client()))
         if not client:
             raise ValueError("Client is required")
 
@@ -225,37 +240,43 @@ class DeploymentDetails(BaseModel):
         if prn is not None:
             portfolio, app, branch, build, component = util.split_prn(prn)
         else:
-            portfolio = kwargs.get("portfolio", os.getenv(ENV_PORTFOLIO, None))
-            app = kwargs.get("app", os.getenv(ENV_APP, None))
-            branch = kwargs.get("branch", os.getenv(ENV_BRANCH, None))
+            portfolio = kwargs.get(
+                "portfolio", kwargs.get("Portfolio", util.get_portfolio())
+            )
+            app = kwargs.get("app", kwargs.get("App", util.get_app()))
+            branch = kwargs.get("branch", kwargs.get("Branch", util.get_branch()))
             if branch:
                 branch_short_name = kwargs.get(
-                    "branch_short_name", util.branch_short_name(branch)
+                    "branch_short_name",
+                    kwargs.get("BranchShortName", util.branch_short_name(branch)),
                 )
             else:
                 branch_short_name = None
-            build = kwargs.get("build", os.getenv(ENV_BUILD, None))
-            component = kwargs.get("component", None)
+            build = kwargs.get("build", kwargs.get("Build", util.get_build()))
+            component = kwargs.get("component", kwargs.get("Component", None))
 
         scope = kwargs.get(
             "scope",
-            DeploymentDetails._get_standard_scope(portfolio, app, branch, build),
+            kwargs.get(
+                "Scope",
+                DeploymentDetails._get_standard_scope(portfolio, app, branch, build),
+            ),
         )
 
         return DeploymentDetails(
-            Client=client,
-            Portfolio=portfolio,
-            App=app,
-            Branch=branch,
-            BranchShortName=branch_short_name,
-            Build=build,
-            Component=component,
-            Scope=scope,
-            Environment=kwargs.get("environment", None),
-            DataCenter=kwargs.get("data_center", None),
-            Tags=kwargs.get("tags", None),
-            StackFile=kwargs.get("stack_file", None),
-            DeliveredBy=kwargs.get("delivered_by", None),
+            client=client,
+            portfolio=portfolio,
+            app=app,
+            branch=branch,
+            branchShortName=branch_short_name,
+            build=build,
+            component=component,
+            scope=scope,
+            environment=kwargs.get("environment", kwargs.get("Environment", None)),
+            data_center=kwargs.get("data_center", kwargs.get("DataCenter", None)),
+            tags=kwargs.get("tags", kwargs.get("Tags", None)),
+            stack_file=kwargs.get("stack_file", kwargs.get("StackFile", None)),
+            delivered_by=kwargs.get("delivered_by", kwargs.get("DeliveredBy", None)),
         )
 
     # Override
@@ -286,16 +307,16 @@ class DeploymentDetails(BaseModel):
         Return:
             str: The path to the object in the core automation s3 bucket
         """
-        portfolio = self.Portfolio or V_EMPTY
+        portfolio = self.portfolio or V_EMPTY
         portfolio = portfolio.lower()
 
-        app = self.App or V_EMPTY
+        app = self.app or V_EMPTY
         app = app.lower()
 
-        branch = self.BranchShortName or V_EMPTY
+        branch = self.branch_short_name or V_EMPTY
         branch = branch.lower()
 
-        build = self.Build or V_EMPTY
+        build = self.build or V_EMPTY
         build = build.lower()
 
         if s3 is None:
@@ -304,7 +325,7 @@ class DeploymentDetails(BaseModel):
         separator = "/" if s3 else os.path.sep
 
         if not scope:
-            scope = self.Scope or SCOPE_BUILD
+            scope = self.scope or SCOPE_BUILD
 
         if scope == SCOPE_PORTFOLIO and portfolio:
             key = separator.join([object_type, portfolio])
@@ -378,4 +399,4 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: The key for AppFacts retrieval
         """
-        return f"{self.Client}:{self.Portfolio}"
+        return f"{self.client}:{self.portfolio}"

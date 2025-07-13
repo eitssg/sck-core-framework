@@ -2,13 +2,13 @@
 This module provides all of the data models that are used throughout Core-Automation.
 """
 
-from .actions import ActionDefinition, ActionParams
 from .task_payload import TaskPayload
 from .deployment_details import DeploymentDetails
 from .package_details import PackageDetails
 from .action_details import ActionDetails
 from .state_details import StateDetails
-from .deployspec import DeploySpec, ActionSpec, ActionSpecParams
+from .deploy_spec import DeploySpec
+from .action_spec import ActionSpec
 
 from .models import (
     get_artefacts_path,
@@ -30,9 +30,6 @@ __all__ = [
     "StateDetails",
     "DeploySpec",
     "ActionSpec",
-    "ActionSpecParams",
-    "ActionDefinition",
-    "ActionParams",
     "get_artefacts_path",
     "get_packages_path",
     "get_files_path",
