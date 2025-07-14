@@ -375,7 +375,7 @@ def generate_package_details(
     Create with custom package type::
 
         >>> pkg = generate_package_details(
-        ...     dd, 
+        ...     dd,
         ...     package_name="app-bundle.tar.gz",
         ...     package_type="tar.gz"
         ... )
@@ -455,12 +455,12 @@ def generate_deployment_details_from_stack(**kwargs) -> list[DeploymentDetails]:
     stacks = kwargs.get("stacks")
     if not stacks:
         return [DeploymentDetails.from_arguments(**kwargs)]
-    
+
     for stack in stacks:
         regions = stack.get("regions", [])
         if not regions:
             continue
-        
+
         for region in regions:
             # Create a copy of kwargs to avoid modifying the original
             stack_kwargs = kwargs.copy()
@@ -468,7 +468,7 @@ def generate_deployment_details_from_stack(**kwargs) -> list[DeploymentDetails]:
             stack_kwargs["branch"] = region
             stack_kwargs["stack_file"] = stack.get("stack_file")
             result.append(DeploymentDetails.from_arguments(**stack_kwargs))
-    
+
     return result
 
 
@@ -537,7 +537,9 @@ def generate_deployment_details(**kwargs) -> DeploymentDetails:
     return DeploymentDetails.from_arguments(**kwargs)
 
 
-def generate_action_details(deployment_details: DeploymentDetails, **kwargs) -> ActionDetails:
+def generate_action_details(
+    deployment_details: DeploymentDetails, **kwargs
+) -> ActionDetails:
     """
     Create an ActionDetails object from deployment details and additional arguments.
 
@@ -591,7 +593,9 @@ def generate_action_details(deployment_details: DeploymentDetails, **kwargs) -> 
     return ActionDetails.from_arguments(**kwargs)
 
 
-def generate_state_details(deployment_details: DeploymentDetails, **kwargs) -> StateDetails:
+def generate_state_details(
+    deployment_details: DeploymentDetails, **kwargs
+) -> StateDetails:
     """
     Create a StateDetails object from deployment details and additional arguments.
 

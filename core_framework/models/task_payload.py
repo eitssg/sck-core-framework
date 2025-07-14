@@ -1,7 +1,14 @@
 """This module provides the TaskPayload class that is used throughout Core-Automation to identify the operating Task to perform."""
 
 from typing import Self, Any, Optional, List
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator, ValidationError
+from pydantic import (
+    BaseModel,
+    Field,
+    ConfigDict,
+    model_validator,
+    field_validator,
+    ValidationError,
+)
 
 import core_framework as util
 from core_framework.constants import (
@@ -21,24 +28,33 @@ FLOW_CONTROLS = ["execute", "wait", "success", "failure"]
 def get_valid_tasks() -> List[str]:
     """
     Get the list of valid task values.
-    
+
     Returns
     -------
     List[str]
         List of valid task names that can be used in TaskPayload.
-        
+
     Examples
     --------
     >>> valid_tasks = get_valid_tasks()
     >>> print(valid_tasks)  # ['package', 'upload', 'compile', 'plan', 'deploy', 'apply', 'release', 'teardown']
     """
-    return ["package", "upload", "compile", "plan", "deploy", "apply", "release", "teardown"]
+    return [
+        "package",
+        "upload",
+        "compile",
+        "plan",
+        "deploy",
+        "apply",
+        "release",
+        "teardown",
+    ]
 
 
 class TaskPayload(BaseModel):
     """
     The TaskPayload is the primary artefact that is passed between the various components of Core Automation.
-    
+
     You may consider this the "Top Level" object that contains all of the information needed to perform a task.
     This object contains all of the information necessary to perform operations on the cloud and is the artefact
     that is passed to all core "Lambda Functions" in the event method (except DB and API).
@@ -81,7 +97,7 @@ class TaskPayload(BaseModel):
         ...     deployment_details=dd
         ... )
         >>> print(payload.task)  # deploy
-        
+
     Create from command line arguments::
 
         >>> payload = TaskPayload.from_arguments(
@@ -157,17 +173,17 @@ class TaskPayload(BaseModel):
     def validate_task_value(cls, value: str) -> str:
         """
         Validate that the task is one of the allowed values.
-        
+
         Parameters
         ----------
         value : str
             The task value to validate
-            
+
         Returns
         -------
         str
             The validated task value
-            
+
         Raises
         ------
         ValueError
@@ -185,17 +201,17 @@ class TaskPayload(BaseModel):
     def validate_model_before(cls, values: Any) -> Any:
         """
         Validate and normalize values before model creation.
-        
+
         Parameters
         ----------
         values : Any
             The input values to validate
-            
+
         Returns
         -------
         Any
             The validated and normalized values
-            
+
         Raises
         ------
         ValueError
@@ -203,24 +219,21 @@ class TaskPayload(BaseModel):
         """
         if isinstance(values, dict):
             client = values.get("Client", values.get("client", V_EMPTY))
-            
+
             dd = values.get("DeploymentDetails", values.get("deployment_details", None))
-            
+
             if isinstance(dd, dict):
                 dd = DeploymentDetails(**dd)
                 # If we supplied a client, then push it to deployment details
             elif not isinstance(dd, DeploymentDetails):
                 dd = DeploymentDetails()
 
-            del values["DeploymentDetails"]
-            values["deployment_details"] = dd
-
             # If we supplied a client, then push it to deployment details
             if client:
                 dd.client = client
             else:
                 client = dd.client
-            
+
             # These lines are ESSENTIAL - they ensure client is passed to nested objects
             if not (values.get("Package") or values.get("package")):
                 values["package"] = PackageDetails(client=client)
@@ -237,7 +250,9 @@ class TaskPayload(BaseModel):
 
             typ = values.get("Type", values.get("type", V_PIPELINE))
             if typ and typ not in [V_PIPELINE, V_DEPLOYSPEC]:
-                raise ValueError(f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'")
+                raise ValueError(
+                    f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'"
+                )
 
         return values
 
@@ -245,10 +260,10 @@ class TaskPayload(BaseModel):
     def validate_task(self) -> Self:
         """
         Validate and finalize the task after model creation.
-        
+
         This method ensures that all required fields are properly set and
         that keys are generated based on deployment details.
-        
+
         Returns
         -------
         Self
@@ -283,7 +298,7 @@ class TaskPayload(BaseModel):
     def from_arguments(**kwargs: Any) -> "TaskPayload":
         """
         Create a TaskPayload object from the given keyword arguments.
-        
+
         This method is used to create a TaskPayload from command line arguments.
         Arguments are typically from the command line. "from_arguments" means
         "from command line arguments".
@@ -300,7 +315,7 @@ class TaskPayload(BaseModel):
         ----------
         **kwargs : Any
             Keyword arguments that can include:
-            
+
             Core Parameters:
                 task/Task (str): The task to perform (required). Must be one of:
                                package, upload, compile, plan, deploy, apply, release, teardown
@@ -310,14 +325,14 @@ class TaskPayload(BaseModel):
                 identity/Identity (str): User identity
                 type/Type/automation_type (str): Automation type (pipeline/deployspec)
                 flow_control/FlowControl (str): Flow control setting
-                
+
             DeploymentDetails Parameters:
                 deployment_details/DeploymentDetails (DeploymentDetails): Deployment context
                 portfolio/Portfolio (str): Portfolio name
                 app/App (str): Application name
                 build/Build (str): Build version
                 branch/Branch (str): Branch name
-                
+
             Package/Action/State Parameters:
                 Any parameters accepted by PackageDetails.from_arguments(),
                 ActionDetails.from_arguments(), or StateDetails.from_arguments()
@@ -339,61 +354,36 @@ class TaskPayload(BaseModel):
         --------
         Create from minimal arguments::
 
-            >>> payload = TaskPayload.from_arguments(
-            ...     task="deploy",
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     build="1.0.0"
-            ... )
+            >>> payload = TaskPayload.from_arguments(**command_line_args)
             >>> print(payload.task)  # deploy
-            
-        Create with explicit deployment details::
 
-            >>> from core_framework.models.deployment_details import DeploymentDetails
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-            >>> payload = TaskPayload.from_arguments(
-            ...     task="deploy",
-            ...     deployment_details=dd,
-            ...     force=True
-            ... )
-            >>> print(payload.force)  # True
-            
-        Create with all parameters::
-
-            >>> payload = TaskPayload.from_arguments(
-            ...     task="deploy",
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     build="1.0.0",
-            ...     force=True,
-            ...     dry_run=False,
-            ...     client="my-client",
-            ...     type="pipeline"
-            ... )
-            >>> print(payload.deployment_details.portfolio)  # ecommerce
-            
         Notes
         -----
         Parameter Aliases:
             This method accepts both CamelCase and snake_case parameter names for
             compatibility (e.g., both 'dry_run' and 'DryRun' are accepted).
-            
+
         Nested Object Creation:
             If deployment_details is not provided, it will be created from the
             provided kwargs. Similarly, PackageDetails, ActionDetails, and
             StateDetails objects are created with their respective from_arguments
             methods.
-            
+
         Valid Tasks:
-            The task parameter must be one of: package, upload, compile, plan, 
-            deploy, apply, release, teardown. Use get_valid_tasks() to get the 
+            The task parameter must be one of: package, upload, compile, plan,
+            deploy, apply, release, teardown. Use get_valid_tasks() to get the
             current list of valid task values.
         """
+
+        def _get(key1: str, key2: str, defualt: Any, can_be_empty: bool = False) -> Any:
+            value = kwargs.get(key1, None) or kwargs.get(key2, None)
+            return value if value or can_be_empty else defualt
+
         # Validate required task parameter
-        task = kwargs.get("task", kwargs.get("Task", V_EMPTY))
-        if not task or task == V_EMPTY:
+        task = _get("task", "Task", None)
+        if not task:
             raise ValueError("Task parameter is required")
-        
+
         # Validate task value early
         valid_tasks = get_valid_tasks()
         if task not in valid_tasks:
@@ -402,44 +392,70 @@ class TaskPayload(BaseModel):
             )
 
         # Handle deployment details
-        dd = kwargs.get("deployment_details", kwargs.get("DeploymentDetails", None))
-        if dd is None:
-            dd = DeploymentDetails.from_arguments(**kwargs)
-            kwargs["deployment_details"] = dd
+        dd = _get("deployment_details", "DeploymentDetails", None)
+        if isinstance(dd, dict):
+            dd = DeploymentDetails(**dd)
         elif not isinstance(dd, DeploymentDetails):
-            raise ValidationError(
-                "DeploymentDetails must be an instance of DeploymentDetails"
-            )
+            dd = DeploymentDetails.from_arguments(**kwargs)
 
-        try:
-            return TaskPayload(
-                client=dd.client,
-                task=task,
-                force=kwargs.get("force", kwargs.get("Force", False)),
-                dry_run=kwargs.get("dry_run", kwargs.get("DryRun", False)),
-                identity=kwargs.get("identity", kwargs.get("Identity", V_EMPTY)),
-                type=kwargs.get(
-                    "automation_type", kwargs.get("type", kwargs.get("Type", V_PIPELINE))
-                ),
-                flow_control=kwargs.get("flow_control", kwargs.get("FlowControl", None)),
-                deployment_details=dd,
-                package=PackageDetails.from_arguments(**kwargs),
-                actions=ActionDetails.from_arguments(**kwargs),
-                state=StateDetails.from_arguments(**kwargs),
-            )
-        except Exception as e:
-            raise ValidationError(f"Failed to create TaskPayload: {str(e)}") from e
+        if "DeploymentDetails" in kwargs:
+            del kwargs["DeploymentDetails"]
+        kwargs["deployment_details"] = dd
+
+        pkg = _get("package", "Package", None)
+        if isinstance(pkg, dict):
+            pkg = PackageDetails(**pkg)
+        elif not isinstance(pkg, PackageDetails):
+            pkg = PackageDetails.from_arguments(**kwargs)
+
+        act = _get("actions", "Actions", None)
+        if isinstance(act, dict):
+            act = ActionDetails(**act)
+        elif not isinstance(act, ActionDetails):
+            act = ActionDetails.from_arguments(**kwargs)
+
+        st = _get("state", "State", None)
+        if isinstance(st, dict):
+            st = StateDetails(**st)
+        elif not isinstance(st, StateDetails):
+            st = StateDetails.from_arguments(**kwargs)
+
+        typ = _get(
+            "type", "Type", _get("automation_type", "AutomationType", V_PIPELINE)
+        )
+
+        force = _get("force", "Force", False)
+
+        dry_run = _get("dry_run", "DryRun", False)
+
+        identity = _get("identity", "Identity", V_EMPTY)
+
+        flow_control = _get("flow_control", "FlowControl", None)
+
+        return TaskPayload(
+            client=dd.client,
+            task=task,
+            force=force,
+            dry_run=dry_run,
+            identity=identity,
+            type=typ,
+            flow_control=flow_control,
+            deployment_details=dd,
+            package=pkg,
+            actions=act,
+            state=st,
+        )
 
     def model_dump(self, **kwargs: Any) -> dict:
         """
         Override to exclude None values by default.
-        
+
         Parameters
         ----------
         **kwargs : Any
             Keyword arguments passed to the parent model_dump method.
             All standard Pydantic model_dump parameters are supported.
-            
+
         Returns
         -------
         dict

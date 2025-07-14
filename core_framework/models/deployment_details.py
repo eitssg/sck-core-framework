@@ -140,6 +140,7 @@ class DeploymentDetails(BaseModel):
         >>> key = dd.get_artefacts_key("deploy.yaml")
         >>> print(key)  # artefacts/ecommerce/web-frontend/main/v1.2.3/deploy.yaml
     """
+
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     client: str = Field(
@@ -229,12 +230,12 @@ class DeploymentDetails(BaseModel):
     def get_portfolio_prn(self) -> str:
         """
         Get the Portfolio Resource Name (PRN) for the deployment.
-        
+
         Returns
         -------
         str
             The portfolio PRN in format 'prn:portfolio'.
-            
+
         Examples
         --------
         ::
@@ -248,12 +249,12 @@ class DeploymentDetails(BaseModel):
     def get_app_prn(self) -> str:
         """
         Get the App Resource Name (PRN) for the deployment.
-        
+
         Returns
         -------
         str
             The app PRN in format 'prn:portfolio:app'.
-            
+
         Examples
         --------
         ::
@@ -267,12 +268,12 @@ class DeploymentDetails(BaseModel):
     def get_branch_prn(self) -> str:
         """
         Get the Branch Resource Name (PRN) for the deployment.
-        
+
         Returns
         -------
         str
             The branch PRN in format 'prn:portfolio:app:branch'.
-            
+
         Examples
         --------
         ::
@@ -286,17 +287,17 @@ class DeploymentDetails(BaseModel):
     def get_build_prn(self) -> str:
         """
         Get the Build Resource Name (PRN) for the deployment.
-        
+
         Returns
         -------
         str
             The build PRN in format 'prn:portfolio:app:branch:build'.
-            
+
         Examples
         --------
         ::
 
-            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app", 
+            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app",
             ...                       branch_short_name="main", build="1.0.0")
             >>> print(dd.get_build_prn())
             prn:my-portfolio:my-app:main:1.0.0
@@ -306,17 +307,17 @@ class DeploymentDetails(BaseModel):
     def get_component_prn(self) -> str:
         """
         Get the Component Resource Name (PRN) for the deployment.
-        
+
         Returns
         -------
         str
             The component PRN in format 'prn:portfolio:app:branch:build:component'.
-            
+
         Examples
         --------
         ::
 
-            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app", 
+            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app",
             ...                       branch_short_name="main", build="1.0.0", component="web")
             >>> print(dd.get_component_prn())
             prn:my-portfolio:my-app:main:1.0.0:web
@@ -328,20 +329,20 @@ class DeploymentDetails(BaseModel):
     def validate_incoming(cls, values: dict) -> dict:
         """
         Validate and populate missing fields before model creation.
-        
+
         This validator ensures that required fields are properly populated by applying
         intelligent defaults when values are missing.
-        
+
         Parameters
         ----------
         values : dict
             The input values for model creation.
-            
+
         Returns
         -------
         dict
             The validated and potentially modified values.
-            
+
         Notes
         -----
         Side Effects:
@@ -353,46 +354,46 @@ class DeploymentDetails(BaseModel):
             # Set client if not provided
             if not values.get("Client") and not values.get("client"):
                 values["client"] = util.get_client()
-            
+
             # Generate branch_short_name from branch
             branch = values.get("Branch", values.get("branch", None))
             if branch:
                 values["branch_short_name"] = util.branch_short_name(branch)
             else:
                 values["branch_short_name"] = branch  # branch might be V_EMPTY
-            
+
             # Set delivered_by if not provided
             if not values.get("DeliveredBy") and not values.get("delivered_by"):
                 values["delivered_by"] = util.get_delivered_by()
-        
+
         return values
 
     @model_validator(mode="after")
     def check_conditional_fields(self) -> Self:
         """
         Validate hierarchical dependencies between fields.
-        
+
         This validator ensures that the deployment hierarchy is maintained:
         Component -> Build -> Branch -> App -> Portfolio
-        
+
         Returns
         -------
         Self
             The validated DeploymentDetails instance.
-            
+
         Raises
         ------
         ValueError
             If hierarchical dependencies are not satisfied.
-            
+
         Notes
         -----
         Validation Rules:
             - Component requires Build
-            - Build requires Branch  
+            - Build requires Branch
             - Branch requires App
             - App requires Portfolio (implicitly required by field definition)
-            
+
         Side Effects:
             - Sets scope if not provided based on available fields
         """
@@ -414,12 +415,12 @@ class DeploymentDetails(BaseModel):
     def get_scope(self) -> str:
         """
         Get the deployment scope based on available fields.
-    
+
         Returns
         -------
         str
             The deployment scope (portfolio, app, branch, or build).
-        
+
         Notes
         -----
         Scope is determined by the most specific level available:
@@ -427,20 +428,20 @@ class DeploymentDetails(BaseModel):
             - branch: if branch is provided but not build
             - app: if app is provided but not branch
             - portfolio: if only portfolio is provided
-        
+
         Environment variable ENV_SCOPE can override this logic.
         """
-        return DeploymentDetails._get_standard_scope(
+        return DeploymentDetails.get_scope_from(
             self.portfolio, self.app, self.branch, self.build
         )
 
     @staticmethod
-    def _get_standard_scope(
+    def get_scope_from(
         portfolio: str | None, app: str | None, branch: str | None, build: str | None
     ) -> str:
         """
         Determine the standard scope based on provided deployment fields.
-    
+
         Parameters
         ----------
         portfolio : str | None
@@ -451,12 +452,12 @@ class DeploymentDetails(BaseModel):
             The branch name.
         build : str | None
             The build identifier.
-        
+
         Returns
         -------
         str
             The determined scope (portfolio, app, branch, or build).
-        
+
         Notes
         -----
         The ENV_SCOPE environment variable can override the automatic determination.
@@ -476,12 +477,12 @@ class DeploymentDetails(BaseModel):
     def get_identity(self) -> str:
         """
         Get the deployment identity as a PRN with wildcards for missing fields.
-    
+
         Returns
         -------
         str
             The deployment identity in PRN format with '*' for missing fields.
-        
+
         Examples
         --------
         ::
@@ -497,14 +498,14 @@ class DeploymentDetails(BaseModel):
 
         return f"prn:{portfolio}:{app}:{branch_short_name}:{build}".lower()
 
-    @staticmethod
-    def from_arguments(**kwargs) -> "DeploymentDetails":
+    @classmethod
+    def from_arguments(cls, **kwargs) -> "DeploymentDetails":
         """
         Create a DeploymentDetails instance from keyword arguments.
-        
+
         This factory method provides a flexible way to create DeploymentDetails instances
         by accepting various parameter combinations and applying intelligent defaults.
-        
+
         Parameters
         ----------
         **kwargs : dict
@@ -523,17 +524,17 @@ class DeploymentDetails(BaseModel):
                 - tags/Tags (dict): Resource tags
                 - stack_file/StackFile (str): Stack file name
                 - delivered_by/DeliveredBy (str): Delivery person/system
-                
+
         Returns
         -------
         DeploymentDetails
             A new DeploymentDetails instance with populated fields.
-            
+
         Raises
         ------
         ValueError
             If required client parameter is missing or invalid.
-            
+
         Examples
         --------
         Create from individual parameters::
@@ -543,7 +544,7 @@ class DeploymentDetails(BaseModel):
             ...     portfolio="my-portfolio",
             ...     app="my-app"
             ... )
-            
+
         Create from PRN::
 
             >>> dd = DeploymentDetails.from_arguments(
@@ -551,72 +552,80 @@ class DeploymentDetails(BaseModel):
             ...     prn="prn:portfolio:app:branch:build:component"
             ... )
         """
-        client = kwargs.get("client", kwargs.get("Client", util.get_client()))
-        if not client:
-            raise ValueError("Client is required")
+
+        def _get(
+            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
+        ) -> str:
+            value = kwargs.get(key1, None) or kwargs.get(key2, None)
+            return value if value or can_be_empty else defualt
+
+        client = _get("client", "Client", util.get_client())
 
         prn = kwargs.get("prn", None)
         if prn is not None:
             portfolio, app, branch, build, component = util.split_prn(prn)
-        else:
-            portfolio = kwargs.get(
-                "portfolio", kwargs.get("Portfolio", util.get_portfolio())
-            )
-            app = kwargs.get("app", kwargs.get("App", util.get_app()))
-            branch = kwargs.get("branch", kwargs.get("Branch", util.get_branch()))
-            if branch:
-                branch_short_name = kwargs.get(
-                    "branch_short_name",
-                    kwargs.get("BranchShortName", util.branch_short_name(branch)),
-                )
-            else:
-                branch_short_name = None
-            build = kwargs.get("build", kwargs.get("Build", util.get_build()))
-            component = kwargs.get("component", kwargs.get("Component", None))
 
-        scope = kwargs.get(
-            "scope",
-            kwargs.get(
-                "Scope",
-                DeploymentDetails._get_standard_scope(portfolio, app, branch, build),
-            ),
+        else:
+            # You cannot set portfolio to None or empty string.  It must be provided.
+            portfolio = _get("portfolio", "Portfolio", util.get_portfolio())
+
+            # You are allowed to set app to None or empty string.  Only call for default if not provided.
+            app = _get("app", "App", util.get_app(), True)
+
+            # You are allowed to set branch to None or empty string.  Only call for default if not provided.
+            branch = _get("branch", "Branch", util.get_branch(), True)
+
+            if branch:
+                branch_short_name = _get(
+                    "branch_short_name",
+                    "BranchShortName",
+                    util.branch_short_name(branch),
+                )
+
+            # You are allow to set build to None or empty string.  Only call for default if not provided.
+            build = _get("build", "Build", util.get_build(), True)
+
+            component = _get("component", "Component", None)
+
+        scope = _get(
+            "scope", "Scope", cls.get_scope_from(portfolio, app, branch, build)
         )
 
-        return DeploymentDetails(
+        return cls(
             client=client,
             portfolio=portfolio,
             app=app,
             branch=branch,
-            branch_short_name=branch_short_name,  # Fixed: was branchShortName
+            branch_short_name=branch_short_name,
             build=build,
             component=component,
             scope=scope,
-            environment=kwargs.get("environment", kwargs.get("Environment", None)),
-            data_center=kwargs.get("data_center", kwargs.get("DataCenter", None)),
-            tags=kwargs.get("tags", kwargs.get("Tags", None)),
-            stack_file=kwargs.get("stack_file", kwargs.get("StackFile", None)),
-            delivered_by=kwargs.get("delivered_by", kwargs.get("DeliveredBy", None)),
+            environment=_get("environment", "Environment", None),
+            data_center=_get("data_center", "DataCenter", None),
+            tags=_get("tags", "Tags", None),
+            stack_file=_get("stack_file", "StackFile", None),
+            delivered_by=_get("delivered_by", "DeliveredBy", None),
         )
 
     # Override
     def model_dump(self, **kwargs) -> dict:
         """
         Override to exclude None values by default.
-    
+
         This method customizes the default serialization behavior to exclude
         None values unless explicitly requested.
-    
+
         Parameters
         ----------
         **kwargs : dict
             Keyword arguments passed to the parent model_dump method.
             All standard Pydantic model_dump parameters are supported.
-            
+
         Returns
         -------
         dict
             Dictionary representation of the model with None values excluded by default.
-            
+
         Examples
         --------
         ::
@@ -640,10 +649,10 @@ class DeploymentDetails(BaseModel):
     ) -> str:
         """
         Get the object path from the deployment details.
-        
+
         This method generates paths suitable for S3 keys or local filesystem paths
         based on the deployment hierarchy and scope.
-        
+
         Parameters
         ----------
         object_type : str
@@ -656,12 +665,12 @@ class DeploymentDetails(BaseModel):
         s3 : bool | None, optional
             Forces forward slashes for S3 instead of OS-dependent separators.
             If None, determined by util.is_use_s3().
-        
+
         Returns
         -------
         str
             The path to the object in the specified format.
-        
+
         Examples
         --------
         Get artefacts directory path::
@@ -669,12 +678,12 @@ class DeploymentDetails(BaseModel):
             >>> dd = DeploymentDetails(portfolio="ecom", app="web", branch="main", build="1.0")
             >>> path = dd.get_object_key("artefacts")
             >>> print(path)  # artefacts/ecom/web/main/1.0
-            
+
         Get specific file path::
 
             >>> path = dd.get_object_key("artefacts", "deploy.yaml")
             >>> print(path)  # artefacts/ecom/web/main/1.0/deploy.yaml
-            
+
         Override scope::
 
             >>> path = dd.get_object_key("artefacts", "app-config.yaml", scope="app")
@@ -721,9 +730,9 @@ class DeploymentDetails(BaseModel):
     ) -> str:
         """
         Get the artefacts path in the core automation storage.
-        
+
         This is a convenience method that calls get_object_key with object_type="artefacts".
-        
+
         Parameters
         ----------
         name : str | None, optional
@@ -732,12 +741,12 @@ class DeploymentDetails(BaseModel):
             The scope override. If None, uses the deployment's scope.
         s3 : bool | None, optional
             Forces forward slashes for S3 instead of OS-dependent separators.
-        
+
         Returns
         -------
         str
             The path to the artefacts location.
-        
+
         Examples
         --------
         ::
@@ -756,9 +765,9 @@ class DeploymentDetails(BaseModel):
     ) -> str:
         """
         Get the files path in the core automation storage.
-        
+
         This is a convenience method that calls get_object_key with object_type="files".
-        
+
         Parameters
         ----------
         name : str | None, optional
@@ -767,12 +776,12 @@ class DeploymentDetails(BaseModel):
             The scope override. If None, uses the deployment's scope.
         s3 : bool | None, optional
             Forces forward slashes for S3 instead of OS-dependent separators.
-        
+
         Returns
         -------
         str
             The path to the files location.
-        
+
         Examples
         --------
         ::

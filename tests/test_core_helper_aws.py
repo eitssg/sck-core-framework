@@ -20,10 +20,6 @@ def mock_identity():
 
 
 @pytest.fixture
-def mock_client():
-
-
-@pytest.fixture
 def mock_session(mock_client):
 
     with patch("boto3.session.Session") as mock_boto_session:

@@ -244,7 +244,7 @@ class ActionSpec(BaseModel):
         default=False,
     )
 
-    lifecycle_hooks: list['ActionSpec'] | None = Field(
+    lifecycle_hooks: list["ActionSpec"] | None = Field(
         alias="LifecycleHooks",
         description="Lifecycle Hooks.  A list of ActionSpec objects",
         default=None,
@@ -255,27 +255,27 @@ class ActionSpec(BaseModel):
     def handle_deprecations(cls, values: Any) -> Any:
         """
         Handle the deprecation of 'label' and 'type' fields in favor of 'name' and 'kind'.
-        
+
         This validator provides backward compatibility by mapping deprecated field names
         to their new equivalents and issuing appropriate warnings.
-        
+
         Parameters
         ----------
         values : Any
             The input values for model creation. Expected to be a dict for processing,
             but other types are passed through unchanged.
-            
+
         Returns
         -------
         Any
             The validated and potentially modified values with deprecated fields
             mapped to their new equivalents.
-            
+
         Raises
         ------
         ValueError
             If conflicting values are provided for both old and new field names.
-            
+
         Warnings
         --------
         DeprecationWarning
@@ -285,13 +285,13 @@ class ActionSpec(BaseModel):
             # Handle label -> name deprecation
             label_value = values.get("label") or values.get("Label")
             name_value = values.get("name") or values.get("Name")
-            
+
             if label_value and not name_value:
                 warnings.warn(
                     "The 'label' field is deprecated and will be removed in a future version. "
                     "Please use 'name' instead.",
                     DeprecationWarning,
-                    stacklevel=2
+                    stacklevel=2,
                 )
                 values["name"] = label_value
                 values["Name"] = label_value
@@ -304,19 +304,19 @@ class ActionSpec(BaseModel):
                 warnings.warn(
                     "The 'label' field is deprecated. Please use only 'name'.",
                     DeprecationWarning,
-                    stacklevel=2
+                    stacklevel=2,
                 )
-            
+
             # Handle type -> kind deprecation
             type_value = values.get("type") or values.get("Type")
             kind_value = values.get("kind") or values.get("Kind")
-            
+
             if type_value and not kind_value:
                 warnings.warn(
                     "The 'type' field is deprecated and will be removed in a future version. "
                     "Please use 'kind' instead.",
                     DeprecationWarning,
-                    stacklevel=2
+                    stacklevel=2,
                 )
                 values["kind"] = type_value
                 values["Kind"] = type_value
@@ -329,7 +329,7 @@ class ActionSpec(BaseModel):
                 warnings.warn(
                     "The 'type' field is deprecated. Please use only 'kind'.",
                     DeprecationWarning,
-                    stacklevel=2
+                    stacklevel=2,
                 )
         return values
 
@@ -338,17 +338,17 @@ class ActionSpec(BaseModel):
     def validate_depends_on(cls, value) -> list[str]:
         """
         Validate and normalize depends_on field values.
-        
+
         Parameters
         ----------
         value : str | list[str] | None
             The depends_on value to validate. Can be a string, list of strings, or None.
-            
+
         Returns
         -------
         list[str]
             A list of dependency names. Empty list if None was provided.
-            
+
         Raises
         ------
         ValueError
@@ -363,7 +363,9 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(f"All items in depends_on must be strings, got {type(item)}")
+                    raise ValueError(
+                        f"All items in depends_on must be strings, got {type(item)}"
+                    )
             return value
         raise ValueError(
             f"Invalid depends_on value: {value}. Must be a string or a list of strings"
@@ -374,14 +376,14 @@ class ActionSpec(BaseModel):
     def validate_action_kind(cls, value) -> str:
         """
         Validate and normalize action kind values.
-        
+
         Removes 'aws.' prefix from kind values for backward compatibility.
-        
+
         Parameters
         ----------
         value : str
             The kind value to validate and normalize.
-            
+
         Returns
         -------
         str
@@ -397,17 +399,17 @@ class ActionSpec(BaseModel):
     def validate_scope(cls, value) -> str:
         """
         Validate that scope is one of the allowed values.
-        
+
         Parameters
         ----------
         value : str
             The scope value to validate.
-            
+
         Returns
         -------
         str
             The validated scope value.
-            
+
         Raises
         ------
         ValueError
@@ -423,17 +425,17 @@ class ActionSpec(BaseModel):
     def validate_name_format(cls, value: str) -> str:
         """
         Validate that name contains only alphanumeric characters, hyphens, and underscores.
-        
+
         Parameters
         ----------
         value : str
             The name value to validate.
-            
+
         Returns
         -------
         str
             The validated name value.
-            
+
         Raises
         ------
         ValueError
@@ -441,17 +443,20 @@ class ActionSpec(BaseModel):
             or exceeds maximum length.
         """
         import re
+
         if not value or not value.strip():
             raise ValueError("Name cannot be empty or whitespace")
-        if not re.match(r'^[a-zA-Z0-9_-]+$', value):
+        if not re.match(r"^[a-zA-Z0-9_-]+$", value):
             raise ValueError(
                 f"Name '{value}' must contain only alphanumeric characters, hyphens, and underscores. "
                 f"No spaces or special characters allowed."
             )
-        if value.startswith('-') or value.endswith('-'):
+        if value.startswith("-") or value.endswith("-"):
             raise ValueError(f"Name '{value}' cannot start or end with a hyphen")
         if len(value) > 63:  # AWS resource name limit
-            raise ValueError(f"Name '{value}' is too long. Maximum length is 63 characters.")
+            raise ValueError(
+                f"Name '{value}' is too long. Maximum length is 63 characters."
+            )
         return value
 
     @field_validator("before", "after", mode="before")
@@ -459,17 +464,17 @@ class ActionSpec(BaseModel):
     def validate_action_lists(cls, value) -> list[str] | None:
         """
         Validate before/after action lists.
-        
+
         Parameters
         ----------
         value : str | list[str] | None
             The before/after value to validate. Can be a string, list of strings, or None.
-            
+
         Returns
         -------
         list[str] | None
             A list of action names or None if input was None.
-            
+
         Raises
         ------
         ValueError
@@ -484,20 +489,22 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(f"All items in list must be strings, got {type(item)}")
+                    raise ValueError(
+                        f"All items in list must be strings, got {type(item)}"
+                    )
             return value
         raise ValueError("Must be a string or a list of strings")
 
     @model_validator(mode="after")
-    def validate_no_self_dependency(self) -> 'ActionSpec':
+    def validate_no_self_dependency(self) -> "ActionSpec":
         """
         Validate that action doesn't depend on itself.
-        
+
         Returns
         -------
         ActionSpec
             The validated instance.
-            
+
         Raises
         ------
         ValueError
@@ -515,7 +522,7 @@ class ActionSpec(BaseModel):
     def get_scope_list(cls) -> list[str]:
         """
         Get the list of valid scopes.
-        
+
         Returns
         -------
         list[str]
@@ -526,7 +533,7 @@ class ActionSpec(BaseModel):
     def has_dependencies(self) -> bool:
         """
         Check if this action has any dependencies.
-        
+
         Returns
         -------
         bool
@@ -537,7 +544,7 @@ class ActionSpec(BaseModel):
     def is_conditional(self) -> bool:
         """
         Check if this action has a condition.
-        
+
         Returns
         -------
         bool
@@ -548,7 +555,7 @@ class ActionSpec(BaseModel):
     def get_execution_order_dependencies(self) -> list[str]:
         """
         Get all dependencies that affect execution order.
-        
+
         Returns
         -------
         list[str]
@@ -564,12 +571,12 @@ class ActionSpec(BaseModel):
     def label(self) -> str:
         """
         DEPRECATED: Use 'name' instead. Returns the name value for backward compatibility.
-        
+
         Returns
         -------
         str
             The name value.
-            
+
         Warnings
         --------
         DeprecationWarning
@@ -578,7 +585,7 @@ class ActionSpec(BaseModel):
         warnings.warn(
             "The 'label' property is deprecated. Use 'name' instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return self.name
 
@@ -586,12 +593,12 @@ class ActionSpec(BaseModel):
     def type(self) -> str:
         """
         DEPRECATED: Use 'kind' instead. Returns the kind value for backward compatibility.
-        
+
         Returns
         -------
         str
             The kind value.
-            
+
         Warnings
         --------
         DeprecationWarning
@@ -600,20 +607,20 @@ class ActionSpec(BaseModel):
         warnings.warn(
             "The 'type' property is deprecated. Use 'kind' instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return self.kind
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
         """
         Override to exclude None values by default.
-        
+
         Parameters
         ----------
         **kwargs : dict
             Keyword arguments passed to the parent model_dump method.
             All standard Pydantic model_dump parameters are supported.
-            
+
         Returns
         -------
         dict[str, Any]
@@ -629,14 +636,14 @@ class ActionSpec(BaseModel):
     def ser_model(self, info: SerializationInfo) -> OrderedDict:
         """
         Serialize the model to an OrderedDict in a specific order.
-        
+
         Respects exclude_none and by_alias parameters, and uses Field aliases.
-        
+
         Parameters
         ----------
         info : SerializationInfo
             Serialization information containing exclude_none and by_alias settings.
-            
+
         Returns
         -------
         OrderedDict
@@ -667,7 +674,7 @@ class ActionSpec(BaseModel):
                 continue
             if exclude_none and isinstance(value, list) and len(value) == 0:
                 continue
-            
+
             # Get the alias from the Field definition if by_alias is True
             if by_alias:
                 field_info = ActionSpec.model_fields.get(field)
@@ -677,31 +684,36 @@ class ActionSpec(BaseModel):
                     key = field
             else:
                 key = field
-            
+
             # For nested models, call their model_dump if needed
             if hasattr(value, "model_dump"):
                 value = value.model_dump(exclude_none=exclude_none, by_alias=by_alias)
             elif isinstance(value, list) and value and hasattr(value[0], "model_dump"):
-                value = [item.model_dump(exclude_none=exclude_none, by_alias=by_alias) for item in value]
-            
+                value = [
+                    item.model_dump(exclude_none=exclude_none, by_alias=by_alias)
+                    for item in value
+                ]
+
             out[key] = value
         return out
 
     def __str__(self) -> str:
         """
         String representation of the action.
-        
+
         Returns
         -------
         str
             Human-readable string representation showing key attributes.
         """
-        return f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
+        return (
+            f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
+        )
 
     def __repr__(self) -> str:
         """
         Detailed string representation of the action.
-        
+
         Returns
         -------
         str

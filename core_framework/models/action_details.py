@@ -39,12 +39,12 @@ not by the ActionDetails instance itself.
 
 """Defines the class ActionDetails that provide information about where ActionSpec files are stored in S3 (or local filesystem)."""
 
-from typing import Any
+from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 import core_framework as util
 from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
-from .deployment_details import DeploymentDetails as DeploymentDetailsClass
+from .deployment_details import DeploymentDetails
 
 
 class ActionDetails(BaseModel):
@@ -124,10 +124,39 @@ class ActionDetails(BaseModel):
         description="The content type of the action file such as 'application/json' or 'application/x-yaml'",
         default="application/x-yaml",
     )
+
+    @field_validator("content_type")
+    @classmethod
+    def validate_content_type(cls, value: str) -> str:
+        """
+        Validate that content_type is a valid YAML or JSON MIME type.
+
+        Parameters
+        ----------
+        value : str
+            The content_type value to validate
+
+        Returns
+        -------
+        str
+            The validated content_type value
+
+        Raises
+        ------
+        ValueError
+            If content_type is not a supported MIME type
+        """
+        allowed_types = util.get_valid_mimetypes()
+        if value not in allowed_types:
+            raise ValueError(
+                f"ContentType must be one of {allowed_types}, got: {value}"
+            )
+        return value
+
     mode: str = Field(
         alias="Mode",
         description="The storage mode - either V_LOCAL for local filesystem or V_SERVICE for S3 storage",
-        default_factory=lambda: V_LOCAL if util.is_local_mode() else V_SERVICE,
+        default=V_EMPTY,
     )
 
     @field_validator("mode")
@@ -198,7 +227,7 @@ class ActionDetails(BaseModel):
 
             >>> details = ActionDetails(bucket_name="my-bucket", key="path/file.actions")
             >>> print(details.s3_uri)
-            s3://my-bucket/path/file.actions
+            's3://my-bucket/path/file.actions?versionId=1234567890abcdef'
         """
         base_uri = f"s3://{self.bucket_name}/{self.key}"
         if self.version_id:
@@ -227,71 +256,15 @@ class ActionDetails(BaseModel):
         """
         return self.mode == V_LOCAL
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_artefacts_before(cls, values: Any) -> Any:
-        """
-        Validate and populate missing artefact-related fields before model creation.
-
-        This validator ensures that required fields for artefact access are properly
-        populated by applying intelligent defaults when values are missing. It also
-        sets the mode if not explicitly provided.
-
-        Parameters
-        ----------
-        values : Any
-            The input values for model creation. Expected to be a dict
-            for processing, but other types are passed through unchanged.
-
-        Returns
-        -------
-        Any
-            The validated and potentially modified values. If input was a dict,
-            missing fields may be populated with defaults.
-
-        Notes
-        -----
-        Side Effects:
-            - Populates missing client with util.get_client()
-            - Populates missing bucket_region with util.get_artefact_bucket_region()
-            - Populates missing bucket_name with util.get_artefact_bucket_name()
-            - Sets mode based on application configuration if not provided
-
-        This validator only processes dict inputs. Other input types are returned
-        unchanged to allow for flexible model creation patterns.
-        """
-        if isinstance(values, dict):
-            # Set mode if not provided, based on application configuration
-            if not (values.get("Mode") or values.get("mode")):
-                mode = V_LOCAL if util.is_local_mode() else V_SERVICE
-                values["mode"] = mode
-
-            # Get or set client
-            client = values.get("Client", values.get("client"))
-            if not client:
-                client = util.get_client()
-                values["client"] = client
-
-            # Get or set bucket region
-            region = values.get("BucketRegion", values.get("bucket_region", None))
-            if region is None:
-                region = util.get_artefact_bucket_region()
-                values["bucket_region"] = region
-
-            # Get or set bucket name
-            if not (values.get("BucketName") or values.get("bucket_name")):
-                bucket_name = util.get_artefact_bucket_name(client, region)
-                values["bucket_name"] = bucket_name
-
-        return values
-
     @model_validator(mode="after")
-    def validate_mode_consistency(self) -> "ActionDetails":
+    def validate_mode_consistency(self) -> Self:
         """
         Validate that the mode is consistent with other field requirements.
 
         This validator ensures that S3-specific fields are properly set when
         using S3 mode, and provides warnings for inconsistent configurations.
+        It also sets the default bucket_name if not provided, as it depends
+        on other fields (client, region) that must be resolved first.
 
         Returns
         -------
@@ -303,22 +276,15 @@ class ActionDetails(BaseModel):
         ValueError
             If mode-specific requirements are not met
         """
-        # For S3 mode, ensure bucket_region is set
-        if self.is_s3_mode() and not self.bucket_region:
-            raise ValueError("bucket_region is required when mode is V_SERVICE (S3)")
-
-        # For local mode, version_id should not be used
-        if self.is_local_mode() and self.version_id:
-            import warnings
-
-            warnings.warn(
-                "version_id is not applicable in local mode and will be ignored",
-                UserWarning,
+        # Set default bucket_name if not provided, using resolved client and region
+        if not self.bucket_name:
+            self.bucket_name = util.get_artefact_bucket_name(
+                self.client, self.bucket_region
             )
 
         return self
 
-    def set_key(self, dd: DeploymentDetailsClass, filename: str) -> None:
+    def set_key(self, dd: DeploymentDetails, filename: str) -> None:
         """
         Set the key based on deployment details and filename.
 
@@ -327,7 +293,7 @@ class ActionDetails(BaseModel):
 
         Parameters
         ----------
-        dd : DeploymentDetailsClass
+        dd : DeploymentDetails
             Deployment details instance containing the context for key generation.
         filename : str
             The name of the action file (e.g., "deploy.actions").
@@ -347,8 +313,8 @@ class ActionDetails(BaseModel):
         """
         self.key = dd.get_object_key(OBJ_ARTEFACTS, filename)
 
-    @staticmethod
-    def from_arguments(**kwargs) -> "ActionDetails":
+    @classmethod
+    def from_arguments(cls, **kwargs) -> "ActionDetails":
         """
         Create ActionDetails instance from keyword arguments.
 
@@ -385,76 +351,55 @@ class ActionDetails(BaseModel):
         --------
         Create from task name::
 
-            >>> details = ActionDetails.from_arguments(task="deploy", client="test")
+            >>> details = ActionDetails.from_arguments(**command_line_args)
 
-        Create with explicit parameters::
-
-            >>> details = ActionDetails.from_arguments(
-            ...     key="custom/path/file.actions",
-            ...     bucket_name="my-bucket",
-            ...     bucket_region="us-east-1",
-            ...     mode=V_SERVICE
-            ... )
-
-        Create from deployment details::
-
-            >>> details = ActionDetails.from_arguments(
-            ...     deployment_details=dd,
-            ...     action_file="custom.actions"
-            ... )
         """
-        try:
-            # Handle key generation from task/action_file
-            key = kwargs.get("key", kwargs.get("Key", V_EMPTY))
-            if not key:
-                task = kwargs.get("task", kwargs.get("Task", None))
-                action_file = kwargs.get("action_file", kwargs.get("ActionFile", None))
-                if task and not action_file:
-                    action_file = f"{task.lower()}.actions"
-                dd = kwargs.get(
-                    "deployment_details", kwargs.get("DeploymentDetails", kwargs)
-                )
-                if not isinstance(dd, DeploymentDetailsClass):
-                    dd = DeploymentDetailsClass.from_arguments(**kwargs)
-                if dd and action_file:
-                    key = dd.get_object_key(OBJ_ARTEFACTS, action_file)
+        def _get(
+            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
+        ) -> str:
+            value = kwargs.get(key1, None) or kwargs.get(key2, None)
+            return value if value or can_be_empty else defualt
 
-            # Extract all parameters with defaults
-            client = kwargs.get("client", kwargs.get("Client", util.get_client()))
-            bucket_region = kwargs.get(
-                "bucket_region",
-                kwargs.get("BucketRegion", util.get_artefact_bucket_region()),
-            )
-            bucket_name = kwargs.get(
-                "bucket_name",
-                kwargs.get(
-                    "BucketName", util.get_artefact_bucket_name(client, bucket_region)
-                ),
-            )
-            version_id = kwargs.get("version_id", kwargs.get("VersionId", None))
-            content_type = kwargs.get(
-                "content_type", kwargs.get("ContentType", "application/x-yaml")
-            )
-            # Allow mode to be explicitly set, otherwise use default factory
-            mode = kwargs.get("mode", kwargs.get("Mode", None))
+        # Extract all parameters with defaults
+        client = _get("client", "Client", util.get_client())
 
-            # Create the instance
-            instance_kwargs = {
-                "client": client,
-                "bucket_name": bucket_name,
-                "bucket_region": bucket_region,
-                "key": key,
-                "version_id": version_id,
-                "content_type": content_type,
-            }
+        # Handle key generation from task/action_file
+        key = _get("key", "Key", None)
+        if not key:
+            task = _get("task", "Task", "deploy")
 
-            # Only add mode if explicitly provided, otherwise let default factory handle it
-            if mode is not None:
-                instance_kwargs["mode"] = mode
+            action_file = _get("action_file", "ActionFile", f"{task.lower()}.actions")
 
-            return ActionDetails(**instance_kwargs)
-        except Exception as e:
-            raise ValueError(f"Failed to create ActionDetails from arguments: {e}")
+            dd = _get("deployment_details", "DeploymentDetails", None)
+            if isinstance(dd, dict):
+                dd = DeploymentDetails(**dd)
+            elif not isinstance(dd, DeploymentDetails):
+                dd = DeploymentDetails.from_arguments(**kwargs)
+
+            dd.client = client  # Ensure client is set to the correct value
+            key = dd.get_object_key(OBJ_ARTEFACTS, action_file)
+
+        # Bucket region must be populated before bucket_name
+        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
+
+        # Bucket name must alos be populated before creating ActionDetails
+        bucket_name = _get("bucket_name", "BucketName", util.get_artefact_bucket_name(client, bucket_region))
+
+        mode =_get("mode", "Mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
+
+        content_type = _get("content_type", "ContentType", "application/x-yaml")
+
+        version_id = _get("version_id", "VersionId", None)
+
+        return cls(
+            client=client,
+            bucket_name=bucket_name,
+            bucket_region=bucket_region,
+            key=key,
+            version_id=version_id,
+            content_type=content_type,
+            mode=mode,
+        )
 
     def model_dump(self, **kwargs) -> dict:
         """

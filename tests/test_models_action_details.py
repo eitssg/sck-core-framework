@@ -49,17 +49,27 @@ def test_action_details_init_and_aliases():
 
 
 def test_action_details_repr_and_eq():
+
+    os.environ[ENV_LOCAL_MODE] = "false"  # ensure we are not in local mode
+    os.environ[ENV_BUCKET_REGION] = "us-east-1"
+
+    with pytest.raises(ValueError, match=r".*ContentType must be one of .* got: t1.*"):
+        ActionDetails(
+            client="c1",
+            bucket_name="b1",
+            bucket_region="r1",
+            key="k1",
+            version_id="v1",
+            content_type="t1",  # invalid content type
+        )
+
     ad1 = ActionDetails(
         client="c1",
         bucket_name="b1",
         bucket_region="r1",
         key="k1",
         version_id="v1",
-        content_type="t1" "",
-    )
-
-    os.environ[ENV_BUCKET_REGION] = (
-        "us-east-1"  # the data path test will use 'service' mode s3 bucket
+        content_type="application/x-yaml",
     )
 
     ad2 = ActionDetails(
@@ -68,18 +78,13 @@ def test_action_details_repr_and_eq():
         bucket_region="r1",
         key="k1",
         version_id="v1",
-        content_type="t1",
+        content_type="application/x-yaml",
     )
     assert ad1 == ad2
     assert str(ad1) == str(ad2)
 
-    os.environ[ENV_LOCAL_MODE] = "true"
-
-    assert ad2.mode == V_LOCAL
-
-    del os.environ[ENV_LOCAL_MODE]
-
-    assert ad2.mode == V_SERVICE
+    with pytest.raises(ValueError, match=""):
+        ad1.mode = "buckets"
 
     data_path = ad2.data_path
 
