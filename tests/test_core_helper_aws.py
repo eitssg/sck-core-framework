@@ -21,19 +21,19 @@ def mock_identity():
 
 @pytest.fixture
 def mock_client():
-    mock_client = MagicMock()
-    mock_client.get_caller_identity.return_value = {
-        "Arn": "arn:aws:iam::123456789012:user/jbarwick",
-        "UserId": "AIDAJDPLRKLG7UEXAMPLE",
-        "Account": "123456789012",
-    }
-    return mock_client
 
 
 @pytest.fixture
-def mock_boto_session(mock_client):
+def mock_session(mock_client):
 
     with patch("boto3.session.Session") as mock_boto_session:
+
+        mock_client = MagicMock()
+        mock_client.get_caller_identity.return_value = {
+            "Arn": "arn:aws:iam::123456789012:user/jbarwick",
+            "UserId": "AIDAJDPLRKLG7UEXAMPLE",
+            "Account": "123456789012",
+        }
 
         mock_frozen_credentials = MagicMock()
         mock_frozen_credentials.access_key = "mock_access_key"
@@ -65,7 +65,7 @@ def prn():
     return "prn:example"
 
 
-def test_get_identity(mock_client):
+def test_get_identity(mock_session):
 
     identity = aws.get_identity()
 
@@ -74,7 +74,7 @@ def test_get_identity(mock_client):
     assert identity["Arn"].endswith(":user/jbarwick")
 
 
-def test_get_identity_client_error():
+def test_get_identity_client_error(mock_session):
 
     with patch("core_helper.aws.sts_client") as mock_sts:
         mock_sts.side_effect = ClientError(
@@ -84,7 +84,7 @@ def test_get_identity_client_error():
         assert aws.get_identity() is None
 
 
-def test_get_session(mock_boto_session):
+def test_get_session(mock_session):
 
     creds = aws.get_session_credentials()
     if not creds:
@@ -97,7 +97,7 @@ def test_get_session(mock_boto_session):
     session = aws.get_session()
 
     assert session is not None
-    assert mock_boto_session.called
+    assert mock_session.called
 
     assert (
         session.get_credentials().get_frozen_credentials().access_key
@@ -125,13 +125,15 @@ def get_invoke_response():
     return io.BytesIO(data.encode("utf-8"))
 
 
-def test_invoke_lambda(mock_boto_session, mock_client):
+def test_invoke_lambda(mock_session):
 
     arn = os.getenv(
         "API_LAMBDA_ARN",
         "arn:aws:lambda:ap-sourtheast-1:123456789012:function:core-invoker",
     )
     payload = {"action": "example:action", "data": {"key": "value"}}
+
+    mock_client = mock_session.return_value.client.return_value
 
     mock_client.invoke.return_value = {
         "StatusCode": 200,
@@ -152,7 +154,7 @@ def test_invoke_lambda(mock_boto_session, mock_client):
     assert result[TR_RESPONSE]["code"] == 200
 
 
-def test_get_session_credentials(mock_boto_session):
+def test_get_session_credentials(mock_session):
 
     credentials = aws.get_session_credentials()
 
@@ -173,7 +175,7 @@ def test_get_session_credentials_client_error(mock_boto_session):
     assert aws.get_session_credentials() is None
 
 
-def test_assume_role(mock_boto_session, mock_client):
+def test_assume_role(mock_session):
 
     mock_response = {
         "Credentials": {

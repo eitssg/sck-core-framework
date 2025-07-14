@@ -2044,7 +2044,7 @@ def test_to_json():
         "date": date(2023, 10, 1),
         "time": time(12, 0),
         "decimal": Decimal("41.5"),
-        "quoted_number": '00000432.1',
+        "quoted_number": "00000432.1",
         "value": 42.1,
     }
 
@@ -2061,7 +2061,9 @@ def test_to_json():
     assert '"time": "12:00:00"' in json_data, "JSON data should contain the time field"
     assert '"decimal": 41.5' in json_data, "JSON data should contain the decimal field"
     assert '"value": 42.1' in json_data, "JSON data should contain the value field"
-    assert '"quoted_number": "00000432.1"' in json_data, "JSON data should contain the quoted number field"
+    assert (
+        '"quoted_number": "00000432.1"' in json_data
+    ), "JSON data should contain the quoted number field"
 
     try:
         util.to_json({"uknown_type": set([1, 2, 3])})
@@ -2132,7 +2134,7 @@ def test_to_yaml():
         "time": time(12, 0),
         "datalist": ["string1", "string2"],
         "value": 42.1,
-        "quoted_number": '00000432.1',
+        "quoted_number": "00000432.1",
         "decimal": Decimal("41.5"),
         "quoted_bool": True,
         "quoted_none": None,
@@ -2153,7 +2155,9 @@ def test_to_yaml():
     assert (
         "datalist:\n  - string1\n  - string2\n" in yaml_data
     ), "YAML data should contain the datalist field quoted strings"
-    assert "quoted_number: '00000432.1'" in yaml_data, "YAML data should contain the quoted number field"
+    assert (
+        "quoted_number: '00000432.1'" in yaml_data
+    ), "YAML data should contain the quoted number field"
     assert "decimal: 41.5" in yaml_data, "YAML data should contain the decimal field"
 
 
@@ -2164,10 +2168,12 @@ def test_write_yaml():
     yaml_data = stream.getvalue()
 
     assert isinstance(yaml_data, str), "YAML data should be a string"
-    assert 'name: Test' in yaml_data, "YAML data should contain the name field"
+    assert "name: Test" in yaml_data, "YAML data should contain the name field"
 
     # Date must be in ISO 8601 format surrounded by single quotes
-    assert "date: '2023-10-01T12:00:00'" in yaml_data, "YAML data should contain the date field"
+    assert (
+        "date: '2023-10-01T12:00:00'" in yaml_data
+    ), "YAML data should contain the date field"
     assert "value: 42.1" in yaml_data, "YAML data should contain the value field"
 
 

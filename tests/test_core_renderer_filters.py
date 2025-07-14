@@ -830,7 +830,7 @@ def test_filter_to_yaml():
 
     # Test 1
     data = {"key": "value", "items": [1, 2]}
-    expected_yaml = 'key: value\nitems:\n  - 1\n  - 2'
+    expected_yaml = "key: value\nitems:\n  - 1\n  - 2"
     result = filter_to_yaml(data)
     assert result == expected_yaml
 
@@ -843,7 +843,7 @@ def test_filter_to_yaml():
         ],
         "empty": None,
     }
-    expected_yaml = 'key: value\nitems:\n  - name: name1\n    size: large\n  - name: name2\n    size: small\nempty:'
+    expected_yaml = "key: value\nitems:\n  - name: name1\n    size: large\n  - name: name2\n    size: small\nempty:"
     result = filter_to_yaml(data)
     assert result == expected_yaml
 

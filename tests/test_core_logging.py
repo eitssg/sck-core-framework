@@ -23,7 +23,7 @@ def test_status(capsys, mock_format_time):
     captured = capsys.readouterr()
     assert (
         captured.out
-        == '2021-07-01 12:00:00 [Ident] [STATUS] 200 OK (build)\n    item: a\n'
+        == "2021-07-01 12:00:00 [Ident] [STATUS] 200 OK (build)\n    item: a\n"
     )
 
     log.status(
