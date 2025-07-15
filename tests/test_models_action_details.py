@@ -53,7 +53,7 @@ def test_action_details_repr_and_eq():
     os.environ[ENV_LOCAL_MODE] = "false"  # ensure we are not in local mode
     os.environ[ENV_BUCKET_REGION] = "us-east-1"
 
-    with pytest.raises(ValueError, match=r".*ContentType must be one of .* got: t1.*"):
+    with pytest.raises(ValueError, match=r".*ContentType must be one of .* got: type2.*"):
         ActionDetails(
             client="c1",
             bucket_name="b1",

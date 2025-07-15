@@ -12,36 +12,62 @@ from core_framework.constants import TR_RESPONSE, TR_STATUS
 
 @pytest.fixture
 def mock_identity():
-    return {
+    identity = {
         "Arn": "arn:aws:iam::123456789012:user/jbarwick",
         "UserId": "AIDAJDPLRKLG7UEXAMPLE",
         "Account": "123456789012",
     }
 
+    return identity
+
 
 @pytest.fixture
-def mock_session(mock_client):
+def mock_credentials():
+
+    credentials = {
+        "AccessKeyId": "mock_access_key",
+        "SecretAccessKey": "mock_secret_key",
+        "SessionToken": "mock_session_token",
+    }
+
+    return credentials
+
+
+@pytest.fixture
+def mock_client(mock_credentials, mock_identity):
+
+    mock_client = MagicMock()
+    mock_client.get_caller_identity.return_value = mock_identity
+    mock_client.assume_role.return_value = {
+        "Credentials": mock_credentials,
+        "ResponseMetadata": {"HTTPStatusCode": 200},
+    }
+    return mock_client
+
+
+@pytest.fixture
+def mock_session_credentials(mock_credentials):
+
+    mock_frozen_credentials = MagicMock()
+    mock_frozen_credentials.access_key = mock_credentials["AccessKeyId"]
+    mock_frozen_credentials.secret_key = mock_credentials["SecretAccessKey"]
+    mock_frozen_credentials.token = mock_credentials["SessionToken"]
+
+    mock_session_credentials = MagicMock()
+    mock_session_credentials.get_frozen_credentials.return_value = (
+        mock_frozen_credentials
+    )
+    
+    return mock_session_credentials
+
+
+@pytest.fixture
+def mock_session(mock_client, mock_session_credentials):
 
     with patch("boto3.session.Session") as mock_boto_session:
 
-        mock_client = MagicMock()
-        mock_client.get_caller_identity.return_value = {
-            "Arn": "arn:aws:iam::123456789012:user/jbarwick",
-            "UserId": "AIDAJDPLRKLG7UEXAMPLE",
-            "Account": "123456789012",
-        }
-
-        mock_frozen_credentials = MagicMock()
-        mock_frozen_credentials.access_key = "mock_access_key"
-        mock_frozen_credentials.secret_key = "mock_secret_key"
-        mock_frozen_credentials.token = "mock_session_token"
-
-        mock_session_credentials = MagicMock()
-        mock_session_credentials.get_frozen_credentials.return_value = (
-            mock_frozen_credentials
-        )
-
         mock_session = MagicMock()
+        mock_session.region_name = "us-west-2"
         mock_session.get_credentials.return_value = mock_session_credentials
         mock_session.client.return_value = mock_client
 
@@ -162,7 +188,7 @@ def test_get_session_credentials(mock_session):
     assert credentials["SessionToken"] == "mock_session_token"
 
 
-def test_get_session_credentials_client_error(mock_boto_session):
+def test_get_session_credentials_client_error(mock_session):
 
     session = aws.get_session()
     # Change the value of the MagicMock mock_boto_session get_credentials to return None
@@ -175,13 +201,13 @@ def test_assume_role(mock_session):
 
     mock_response = {
         "Credentials": {
-            "AccessKeyId": "mock_access_key",
-            "SecretAccessKey": "mock_secret_key",
-            "SessionToken": "mock_session_token",
+            "AccessKeyId": "mock_access_key1",
+            "SecretAccessKey": "mock_secret_key1",
+            "SessionToken": "mock_session_token1",
         },
         "ResponseMetadata": {"HTTPStatusCode": 200},
     }
-    mock_client.assume_role.return_value = mock_response
+    mock_session.client.assume_role.return_value = mock_response
 
     role = "arn:aws:iam::123456789012:role/mock-role"
     credentials = aws.assume_role(role=role)
@@ -189,14 +215,14 @@ def test_assume_role(mock_session):
     if not credentials:
         assert False, "Credentials are None"
 
-    credentials = aws.assume_role()
+    credentials = aws.assume_role(role=role)
 
     if not credentials:
         assert False, "Credentials are None.  Should have come from store"
 
-    assert credentials["AccessKeyId"] == "mock_access_key"
-    assert credentials["SecretAccessKey"] == "mock_secret_key"
-    assert credentials["SessionToken"] == "mock_session_token"
+    assert credentials["AccessKeyId"] == "mock_access_key1"
+    assert credentials["SecretAccessKey"] == "mock_secret_key1"
+    assert credentials["SessionToken"] == "mock_session_token1"
 
     creds = aws.get_role_credentials(role)
 

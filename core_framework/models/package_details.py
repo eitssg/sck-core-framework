@@ -630,15 +630,8 @@ class PackageDetails(BaseModel):
 
         # Handle deployspec parameter
         deployspec = _get("deployspec", "DeploySpec", None)
-        if isinstance(deployspec, dict):
-            # Convert single ActionSpec dict to DeploySpec
-            deployspec = DeploySpec(actions=[deployspec])
-        elif isinstance(deployspec, list):
-            # Convert list of ActionSpec dicts to DeploySpec
-            deployspec = DeploySpec(actions=deployspec)
-        elif deployspec is not None and not isinstance(deployspec, DeploySpec):
-            # Invalid deployspec type
-            deployspec = None
+        if deployspec is None:
+            deployspec = DeploySpec(actions=[])
 
         return cls(
             client=client,

@@ -40,10 +40,9 @@ Creating from arguments with automatic defaults::
     >>> state = StateDetails.from_arguments(deployment_details=dd, task="deploy")
 """
 
-from typing import Any, Self, Callable
+from typing import Any
 import os
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
-import logging
 
 import core_framework as util
 from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY

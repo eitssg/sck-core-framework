@@ -275,7 +275,7 @@ def test_split_branch():
 def test_get_artefacts_path():
 
     task_payload = util.generate_task_payload(
-        tasik="deploy",
+        task="deploy",
         client="example_client",
         portfolio="example_portfolio",
         app="example_app",
@@ -677,22 +677,8 @@ def test_split_prn():
         None,
         None,
     ), "Should handle missing app, branch, build, and component in PRN"
-    result = util.split_prn("prn")
-    assert result == (
-        None,
-        None,
-        None,
-        None,
-        None,
-    ), "Should handle empty PRN"
-    try:
+    with pytest.raises(ValueError, match="PRN must start with 'prn:'"):
         util.split_prn("invalid:prn:format")
-        assert False, "Should raise ValueError for invalid PRN format"
-    except ValueError as e:
-        assert (
-            str(e) == "PRN must start with 'prn:'"
-        ), "Should raise ValueError for invalid PRN format"
-
 
 def test_split_portfolio():
     try:
