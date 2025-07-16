@@ -201,3 +201,17 @@ class InMemoryCache:
         """
         data = self.retrieve(key)
         return data if data else None
+
+    def clear_data(self, key: str) -> None:
+        """
+        Clears a specific item from the cache.
+
+        This method removes the item associated with the given key from the cache,
+        regardless of its expiration status.
+
+        :param key: The key of the item to be removed.
+        :type key: str
+        """
+        with self._lock:
+            if key in self._storage:
+                del self._storage[key]

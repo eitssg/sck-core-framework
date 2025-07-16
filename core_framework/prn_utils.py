@@ -401,7 +401,7 @@ def generate_app_prn(request: dict) -> str:
         return "{}:{}".format(request[ARG_PORTFOLIO_PRN], request[ARG_NAME])
 
 
-def branch_short_name(name: str) -> str:
+def branch_short_name(name: str | None) -> str | None:
     """
     Geneerate a short name for a branch based on the name attribute.  The name will be lower case
     and should contain only letters, numbers, and hyphens.  The name will be truncated to 20 characters.
@@ -412,6 +412,10 @@ def branch_short_name(name: str) -> str:
     Returns:
         str: The shortened name.
     """
+    if name is None:
+        return None
+    if not name:
+        return V_EMPTY
     return re.sub(r"[^a-z0-9\\-]", "-", name.lower())[0:20].rstrip("-")
 
 

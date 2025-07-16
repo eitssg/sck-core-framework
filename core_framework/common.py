@@ -75,19 +75,17 @@ from .constants import (
     ENV_BIZAPP,
     ENV_CONSOLE_LOG,
     ENV_CONSOLE,
+    ENV_AWS_ENDPOINT_URL,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
     V_DEFAULT_BRANCH,
     V_DEFAULT_REGION_ALIAS,
-    V_DEPLOYSPEC_FILE_YAML,
-    V_DEPLOYSPEC_FILE_JSON,
     V_FALSE,
     V_TRUE,
     V_LOCAL,
     V_SERVICE,
     V_EMPTY,
-    V_DEPLOYSPEC,
     V_PIPELINE,
     V_INTERACTIVE,
     # Deployment Scopes (NOT Automation SCOPE.  That's different!  ENV_SCOPE is a "prefix" to all automation objects)
@@ -166,23 +164,18 @@ def split_prn(
     >>> split_prn("prn:ecommerce:web")
     ('ecommerce', 'web', None, None, None)
     """
-    if not prn or not prn.startswith("prn"):
-        raise ValueError("PRN must start with 'prn:'")
-
-    if not prn.startswith("prn:"):
+    if not prn or not prn.startswith("prn:"):
         raise ValueError("PRN must start with 'prn:'")
 
     parts = prn.split(":")
 
-    if len(parts) < 2:
-        return None, None, None, None, None
-    if len(parts) < 3:
+    if len(parts) <= 2:
         return parts[1], None, None, None, None
-    if len(parts) < 4:
+    if len(parts) <= 3:
         return parts[1], parts[2], None, None, None
-    if len(parts) < 5:
+    if len(parts) <= 4:
         return parts[1], parts[2], parts[3], None, None
-    if len(parts) < 6:
+    if len(parts) <= 5:
         return parts[1], parts[2], parts[3], parts[4], None
 
     return parts[1], parts[2], parts[3], parts[4], parts[5]
@@ -1836,7 +1829,7 @@ def is_json_mimetype(mimetype: str) -> bool:
     >>> is_json_mimetype("application/x-yaml")
     False
     """
-    return mimetype.lower() == "application/json"
+    return mimetype.lower() in ["application/json", "application/x-json", "text/json"]
 
 
 def is_zip_mimetype(mimetype: str) -> bool:
@@ -2064,3 +2057,20 @@ def get_timestamp_str() -> str:
     '2023-01-01T12:00:00+00:00'
     """
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def get_cognito_endpoint(default: str = None) -> str | None:
+    """
+    Get the Cognito endpoint URL from environment variable COGNITO_ENDPOINT.
+
+    Returns
+    -------
+    str | None
+        The Cognito endpoint URL or None if not set
+
+    Examples
+    --------
+    >>> get_cognito_endpoint()
+    'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456789'
+    """
+    return os.getenv(ENV_AWS_ENDPOINT_URL, default)

@@ -37,7 +37,7 @@ def test_action_details_init_and_aliases():
         BucketRegion="region2",
         Key="key2",
         VersionId="ver2",
-        ContentType="type2",
+        ContentType="application/x-yaml",
     )
     dumped = action_details2.model_dump(by_alias=True)
     assert dumped["Client"] == "client2"
@@ -45,7 +45,7 @@ def test_action_details_init_and_aliases():
     assert dumped["BucketRegion"] == "region2"
     assert dumped["Key"] == "key2"
     assert dumped["VersionId"] == "ver2"
-    assert dumped["ContentType"] == "type2"
+    assert dumped["ContentType"] == "application/x-yaml"
 
 
 def test_action_details_repr_and_eq():
@@ -53,7 +53,7 @@ def test_action_details_repr_and_eq():
     os.environ[ENV_LOCAL_MODE] = "false"  # ensure we are not in local mode
     os.environ[ENV_BUCKET_REGION] = "us-east-1"
 
-    with pytest.raises(ValueError, match=r".*ContentType must be one of .* got: type2.*"):
+    with pytest.raises(ValueError, match=r".*ContentType must be one of .* got: t1.*"):
         ActionDetails(
             client="c1",
             bucket_name="b1",
@@ -103,24 +103,22 @@ def test_action_details_repr_and_eq():
     os.environ[ENV_BUCKET_REGION] = "us-east-3"
 
     # get client, bucket_name, and bucket_region from environment variables
-
     ad3 = ActionDetails(
         key="k1",
         version_id="v1",
-        content_type="t1",
+        content_type="application/x-yaml",  # Use valid content type
     )
 
     assert ad3.client == "client-12"
-    assert ad3.bucket_name is "bucket_name"
-    assert ad3.bucket_region is "us-east-3"
+    assert ad3.bucket_name == "bucket_name"  # Use == instead of is
+    assert ad3.bucket_region == "us-east-3"  # Use == instead of is
 
-    # derrive from paramters including environtment variables
-
+    # derive from parameters including environment variables
     ad4: ActionDetails = ActionDetails.from_arguments(
         **{
             "portfolio": "portfolio-1",
             "version_id": "v1",
-            "content_type": "t1",
+            "content_type": "application/x-yaml",  # Use valid content type
             "deployment_details": V_EMPTY,  # force a type validation check for unit test
         }
     )

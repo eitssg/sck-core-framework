@@ -1,3 +1,23 @@
+"""
+This module is to test the core framework common utilities.
+
+The functions to test are in the file "core_framework/common.py"
+
+the import is:
+
+import core_framework as util
+
+All functions in 'core_framework.common' are exposed in "core_framwork.__init__" so that
+they can be imported directly from the core_framework module.  This is to allow for a more
+standard import style across the core automation framework.
+
+this has become the standard 'style' for importing the core automation framework.
+
+Perhaps in the future, I'll call it "import core_framwork as core" or 
+"import core_framework as cf" but for now, it is util.
+
+"""
+
 from botocore.exceptions import ProfileNotFound
 from decimal import Decimal
 import tempfile
@@ -679,6 +699,7 @@ def test_split_prn():
     ), "Should handle missing app, branch, build, and component in PRN"
     with pytest.raises(ValueError, match="PRN must start with 'prn:'"):
         util.split_prn("invalid:prn:format")
+
 
 def test_split_portfolio():
     try:
@@ -2201,3 +2222,82 @@ def test_read_yaml():
 
 if __name__ == "__main__":
     pytest.main()
+
+
+def test_valid_mimetypes():
+
+    valid_mimetypes = util.get_valid_mimetypes()
+
+    assert isinstance(valid_mimetypes, list), "Valid mimetypes should be a list"
+    assert len(valid_mimetypes) > 0, "Valid mimetypes list should not be empty"
+
+    for mimetype in valid_mimetypes:
+        assert isinstance(mimetype, str), "Each mimetype should be a string"
+        assert mimetype, "Mimetype should not be an empty string"
+
+    assert (
+        util.is_zip_mimetype("application/zip") is True
+    ), "application/zip should be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("application/x-zip-compressed") is True
+    ), "application/x-zip-compressed should be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("application/x-zip") is True
+    ), "application/x-zip should be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("application/gzip") is False
+    ), "application/gzip should not be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("text/plain") is False
+    ), "text/plain should not be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("") is False
+    ), "Empty string should not be a valid zip mimetype"
+
+    assert (
+        util.is_yaml_mimetype("application/x-yaml") is True
+    ), "application/x-yaml should be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("text/yaml") is True
+    ), "text/yaml should be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("application/yaml") is True
+    ), "application/yaml should be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("application/json") is False
+    ), "application/json should not be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("text/plain") is False
+    ), "text/plain should not be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("") is False
+    ), "Empty string should not be a valid YAML mimetype"
+
+    assert (
+        util.is_json_mimetype("application/json") is True
+    ), "application/json should be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("application/x-json") is True
+    ), "application/x-json should be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("text/json") is True
+    ), "text/json should be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("application/x-yaml") is False
+    ), "application/x-yaml should not be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("text/plain") is False
+    ), "text/plain should not be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("") is False
+    ), "Empty string should not be a valid JSON mimetype"
+
+
+def test_get_timestamp_str():
+
+    with patch("core_framework.common.datetime.datetime") as mock_datetime:
+        mock_datetime.now.return_value = datetime(2023, 10, 1, 12, 0, 0)
+        timestamp_str = util.get_timestamp_str()
+        assert (
+            timestamp_str == "2023-10-01T12:00:00"
+        ), "Timestamp string should match the expected format"

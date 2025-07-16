@@ -575,12 +575,10 @@ class DeploymentDetails(BaseModel):
             # You are allowed to set branch to None or empty string.  Only call for default if not provided.
             branch = _get("branch", "Branch", util.get_branch(), True)
 
-            if branch:
-                branch_short_name = _get(
-                    "branch_short_name",
-                    "BranchShortName",
-                    util.branch_short_name(branch),
-                )
+            # If supplied a branch short name, use it.  Otherwise, generate from branch.
+            branch_short_name = _get(
+                "branch_short_name", "BranchShortName", util.branch_short_name(branch)
+            )
 
             # You are allow to set build to None or empty string.  Only call for default if not provided.
             build = _get("build", "Build", util.get_build(), True)

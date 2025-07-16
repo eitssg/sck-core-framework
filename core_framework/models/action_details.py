@@ -256,8 +256,9 @@ class ActionDetails(BaseModel):
         """
         return self.mode == V_LOCAL
 
-    @model_validator(mode="after")
-    def validate_mode_consistency(self) -> Self:
+    @model_validator(mode="before")
+    @classmethod
+    def validate_mode_after(cls, values: dict) -> dict:
         """
         Validate that the mode is consistent with other field requirements.
 
@@ -266,23 +267,37 @@ class ActionDetails(BaseModel):
         It also sets the default bucket_name if not provided, as it depends
         on other fields (client, region) that must be resolved first.
 
+        Parameters
+        ----------
+        value : dict
+            The raw input values for the ActionDetails instance
+
         Returns
         -------
-        ActionDetails
-            The validated instance
+        dict
+            The validated values
 
         Raises
         ------
         ValueError
             If mode-specific requirements are not met
         """
-        # Set default bucket_name if not provided, using resolved client and region
-        if not self.bucket_name:
-            self.bucket_name = util.get_artefact_bucket_name(
-                self.client, self.bucket_region
-            )
+        if isinstance(values, dict):
+            # Set default bucket_name if not provided, using resolved client and region
+            client = values.get("client") or values.get("Client")
+            if not client:
+                client = util.get_client()
+                values["client"] = client
+            region = values.get("bucket_region") or values.get("BucketRegion")
+            if not region:
+                region = util.get_artefact_bucket_region()
+                values["bucket_region"] = region
+            bucket_name = values.get("bucket_name") or values.get("BucketName")
+            if not bucket_name:
+                bucket_name = util.get_artefact_bucket_name(client, region)
+                values["bucket_name"] = bucket_name
 
-        return self
+        return values
 
     def set_key(self, dd: DeploymentDetails, filename: str) -> None:
         """
@@ -354,6 +369,7 @@ class ActionDetails(BaseModel):
             >>> details = ActionDetails.from_arguments(**command_line_args)
 
         """
+
         def _get(
             key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
         ) -> str:
@@ -380,12 +396,18 @@ class ActionDetails(BaseModel):
             key = dd.get_object_key(OBJ_ARTEFACTS, action_file)
 
         # Bucket region must be populated before bucket_name
-        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
+        bucket_region = _get(
+            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
+        )
 
         # Bucket name must alos be populated before creating ActionDetails
-        bucket_name = _get("bucket_name", "BucketName", util.get_artefact_bucket_name(client, bucket_region))
+        bucket_name = _get(
+            "bucket_name",
+            "BucketName",
+            util.get_artefact_bucket_name(client, bucket_region),
+        )
 
-        mode =_get("mode", "Mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
+        mode = _get("mode", "Mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
 
         content_type = _get("content_type", "ContentType", "application/x-yaml")
 

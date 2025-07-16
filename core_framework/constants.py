@@ -520,6 +520,8 @@ ENV_CONSOLE_LOG = "CONSOLE_LOG"
 """ \\- "CONSOLE_LOG". If set to True, the log output will be sent to the console """
 ENV_CONSOLE = "CONSOLE"
 """ \\- "CONSOLE". If set to 'interactive', the console will prompt for input.  If set to 'non-interactive', the console will not prompt for input. """
+ENV_AWS_ENDPOINT_URL = "AWS_ENDPOINT_URL"
+""" \\- "AWS_ENDPOINT_URL". The endpoint URL for the AWS services.  Used for local development or testing. """
 
 # Jina2 Context Fitler Constants
 CTX_TAGS = "tags"

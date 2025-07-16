@@ -90,7 +90,7 @@ def test_task_payload_model(runtime_arguments):
 
         assert (
             task_payload.actions.bucket_name
-            == "my-client-core-automation-ap-southeast-1"
+            == "my-client-core-automation-specified_region"
         )
 
         assert task_payload.actions.bucket_region == "specified_region"
@@ -102,7 +102,7 @@ def test_task_payload_model(runtime_arguments):
 
         assert (
             task_payload.package.bucket_name
-            == "my-client-core-automation-ap-southeast-1"
+            == "my-client-core-automation-specified_region"
         )
 
         assert task_payload.package.bucket_region == "specified_region"
@@ -164,7 +164,9 @@ def test_package_details_model(runtime_arguments):
 
         assert package_details is not None
 
-        assert package_details.bucket_name == "my-client-core-automation-ap-southeast-1"
+        assert (
+            package_details.bucket_name == "my-client-core-automation-specified_region"
+        )
 
         assert package_details.bucket_region == "specified_region"
 
@@ -205,12 +207,12 @@ def test_deploy_spec_model(deployspec_sample):
 
     data = deploy_spec.model_dump(by_alias=True)
 
-    assert "actions" in data, "Expected 'actions' to be present in model_dump"
-    assert isinstance(data["actions"], list), "Expected 'Actions' to be a list"
-    assert len(data["actions"]) == 6, "Expected 6 actions in the model_dump"
+    assert "Actions" in data, "Expected 'actions' to be present in model_dump"
+    assert isinstance(data["Actions"], list), "Expected 'Actions' to be a list"
+    assert len(data["Actions"]) == 6, "Expected 6 actions in the model_dump"
 
     # Ensure pascal case in the cascaded dump
-    assert "Label" in data["actions"][0], "Expected 'Label' to be present in action"
+    assert "Name" in data["Actions"][0], "Expected 'Name' to be present in action"
 
 
 def test_action_spec_model_dump(deployspec_sample):
@@ -219,23 +221,23 @@ def test_action_spec_model_dump(deployspec_sample):
 
     data = action_spec.model_dump(by_alias=True)
 
-    assert "Label" in data, "Expected 'Label' to be present in model_dump"
-    assert "Type" in data, "Expected 'Type' to be present in model_dump"
+    assert "Name" in data, "Expected 'Name' to be present in model_dump"
+    assert "Kind" in data, "Expected 'Kind' to be present in model_dump"
     assert "Params" in data, "Expected 'Params' to be present in model_dump"
     assert "Scope" in data, "Expected 'Scope' to be present in model_dump"
 
-    assert data["Label"] == "test1-create-user"
+    assert data["Name"] == "test1-create-user"
 
     assert "Action" not in data, "Expected 'action' to be excluded from model_dump"
 
     data = action_spec.model_dump(by_alias=False)
 
-    assert "label" in data, "Expected 'label' to be present in model_dump"
-    assert "type" in data, "Expected 'type' to be present in model_dump"
+    assert "name" in data, "Expected 'name' to be present in model_dump"
+    assert "kind" in data, "Expected 'kind' to be present in model_dump"
     assert "params" in data, "Expected 'params' to be present in model_dump"
     assert "scope" in data, "Expected 'scope' to be present in model_dump"
 
-    assert data["label"] == "test1-create-user"
+    assert data["name"] == "test1-create-user"
 
 
 def test_action_spec_validation():

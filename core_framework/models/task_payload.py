@@ -226,7 +226,7 @@ class TaskPayload(BaseModel):
                 dd = DeploymentDetails(**dd)
                 # If we supplied a client, then push it to deployment details
             elif not isinstance(dd, DeploymentDetails):
-                dd = DeploymentDetails()
+                dd = DeploymentDetails(client=client)
 
             # If we supplied a client, then push it to deployment details
             if client:
