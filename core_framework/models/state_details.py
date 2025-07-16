@@ -1,10 +1,10 @@
 """StateDetails Model Module
 =========================
 
-This module contains the StateDetails class which provides information about the current state 
+This module contains the StateDetails class which provides information about the current state
 of the deployment, including the location of state files in either S3 or local storage.
 
-The StateDetails class tracks state files that contain deployment execution information, 
+The StateDetails class tracks state files that contain deployment execution information,
 typically stored as {task}.state files in the artefacts folder structure.
 
 Classes
@@ -181,9 +181,7 @@ class StateDetails(BaseModel):
         """
         allowed_types = util.get_valid_mimetypes()
         if value not in allowed_types:
-            raise ValueError(
-                f"ContentType must be one of {allowed_types}, got: {value}"
-            )
+            raise ValueError(f"ContentType must be one of {allowed_types}, got: {value}")
         return value
 
     @property
@@ -253,9 +251,7 @@ class StateDetails(BaseModel):
             If mode is not 'local' or 'service'.
         """
         if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(
-                f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'"
-            )
+            raise ValueError(f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'")
         return value
 
     @field_validator("key")
@@ -318,7 +314,7 @@ class StateDetails(BaseModel):
         """
         # Get the key from deployment details with appropriate separator for mode
         s3_mode = self.mode == V_SERVICE
-        key = deployment_details.get_object_key(OBJ_ARTEFACTS, filename, s3=s3_mode)
+        self.key = deployment_details.get_object_key(OBJ_ARTEFACTS, filename, s3=s3_mode)
 
     def get_name(self) -> str:
         """
@@ -438,6 +434,31 @@ class StateDetails(BaseModel):
         """
         return self.mode == V_SERVICE
 
+    @model_validator(mode="before")
+    @classmethod
+    def validate_model_before(cls, values: dict[str, Any]) -> dict[str, Any]:
+
+        if isinstance(values, dict):
+            client = values.get("client", None) or values.get("Client", None)
+            if not client:
+                client = util.get_client()
+                values["client"] = client
+
+            region = values.get("bucket_region", None) or values.get("BucketRegion", None)
+            if not region:
+                region = util.get_artefact_bucket_region()
+                values["bucket_region"] = region
+
+            bucket_name = values.get("bucket_name", None) or values.get("BucketName", None)
+            if not bucket_name:
+                bucket_name = util.get_artefact_bucket_name(client, region)
+                values["bucket_name"] = bucket_name
+
+            if not values.get("Mode") and not values.get("mode"):
+                values["mode"] = V_LOCAL if util.is_local_mode() else V_SERVICE
+
+        return values
+
     @classmethod
     def from_arguments(cls, **kwargs: Any) -> "StateDetails":
         """
@@ -534,9 +555,7 @@ class StateDetails(BaseModel):
             - Key path separators are automatically normalized for the chosen mode
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else defualt
 
@@ -563,9 +582,7 @@ class StateDetails(BaseModel):
 
             key = dd.get_object_key(OBJ_ARTEFACTS, state_file)
 
-        bucket_region = _get(
-            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
-        )
+        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
 
         bucket_name = _get(
             "bucket_name",
@@ -631,10 +648,7 @@ class StateDetails(BaseModel):
         str
             Detailed representation showing key attributes.
         """
-        return (
-            f"StateDetails(client='{self.client}', bucket_name='{self.bucket_name}', "
-            f"key='{self.key}', mode='{self.mode}')"
-        )
+        return f"StateDetails(client='{self.client}', bucket_name='{self.bucket_name}', " f"key='{self.key}', mode='{self.mode}')"
 
     def __setattr__(self, name: str, value: Any) -> None:
         """

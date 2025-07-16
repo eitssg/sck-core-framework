@@ -33,18 +33,14 @@ class Jinja2Renderer:
         template_path: str | None = None,
         dictionary: dict[str, str] | None = None,
     ):
-        loader: jinja2.BaseLoader
+        self.template_path = template_path
+        self.dictionary = dictionary
 
+        loader: jinja2.BaseLoader
         if template_path is not None:
-            self.template_path = template_path
             loader = jinja2.FileSystemLoader(template_path)
-        elif dictionary is not None:
-            self.dictionary = dictionary
-            loader = jinja2.DictLoader(dictionary)
         else:
-            raise jinja2.exceptions.TemplateNotFound(
-                "You must provide either a template path or a dictionary of templates."
-            )
+            loader = jinja2.DictLoader(dictionary)
 
         self.env = jinja2.Environment(
             loader=loader,
@@ -67,9 +63,7 @@ class Jinja2Renderer:
         """
         return self.env.from_string(string).render(context)
 
-    def render_object(
-        self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]
-    ) -> list[Any] | dict[str, Any] | str:
+    def render_object(self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]) -> list[Any] | dict[str, Any] | str:
         """
         Render a dictionary using the provided context.
 
@@ -100,9 +94,7 @@ class Jinja2Renderer:
             rendered_json = self.render_json(json_data, context)
             return json.loads(rendered_json)
         else:
-            raise TypeError(
-                "Unsupported data type for rendering: {}".format(type(data))
-            )
+            raise TypeError("Unsupported data type for rendering: {}".format(type(data)))
 
     def render_json(self, json_data: str, context: dict[str, Any]) -> dict | None:
         """
@@ -165,9 +157,7 @@ class Jinja2Renderer:
             renderer_path = renderer_path.replace("\\", "/")
 
             # Load and render the files
-            log.debug(
-                "Rendering file '{}' with short_path '{}'", renderer_path, short_path
-            )
+            log.debug("Rendering file '{}' with short_path '{}'", renderer_path, short_path)
 
             rendered_template = self.render_file(renderer_path, context)
 

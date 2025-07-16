@@ -33,7 +33,7 @@ logging.root = CoreLogger("root", level=_log_level)  # type: ignore
 logging.Logger.root = logging.root
 logging.setLoggerClass(CoreLogger)
 
-# Please note that Lambda has a time imit nd when it restarts, thread local variables are reset.
+# Please note that Lambda has a time limit and when it restarts, thread local variables are reset.
 _thread_local = local()
 _thread_local.default_identity = None
 _thread_local.identity = None
@@ -43,11 +43,10 @@ def getLevelName(level: int) -> str:
     """
     Return the name of the logging level for the specified level.
 
-    Args:
-        level (int): The log level integer value
-
-    Returns:
-        str: The string represetation of the logging level
+    :param level: The log level integer value
+    :type level: int
+    :return: The string representation of the logging level
+    :rtype: str
     """
     return logging.getLevelName(level)
 
@@ -56,11 +55,10 @@ def getLevelFromName(level: str) -> int:
     """
     Return the logging level for the name provided.
 
-    Args:
-        level (str): The name of the logging level
-
-    Returns:
-        int: The logging level integer value
+    :param level: The name of the logging level
+    :type level: str
+    :return: The logging level integer value
+    :rtype: int
     """
     return logging._nameToLevel.get(level, 0)
 
@@ -69,8 +67,8 @@ def setRootLevel(level: int):
     """
     Set the logging level for the logger.
 
-    Args:
-        level (int): The logging level integer value
+    :param level: The logging level integer value
+    :type level: int
     """
     logging.root.setLevel(level)
 
@@ -79,8 +77,8 @@ def getRootLevel() -> int:
     """
     Return the current logging level for the logger.
 
-    Returns:
-        int: The logging level integer value
+    :return: The logging level integer value
+    :rtype: int
     """
     return logging.root.level
 
@@ -89,8 +87,8 @@ def getLevel() -> int:
     """
     Return the current logging level for the log module.
 
-    Returns:
-        int: The logging level integer value
+    :return: The logging level integer value
+    :rtype: int
     """
     return _log_level
 
@@ -99,8 +97,8 @@ def setLevel(level: int | str):
     """
     Set the logging level for the log module.
 
-    Args:
-        level (int): The logging level integer value
+    :param level: The logging level integer value or string name
+    :type level: int | str
     """
     global _log_level
 
@@ -114,29 +112,30 @@ def setLevelForLogger(name: str, level: int | str):
     """
     Sets the log level for the specified logger.
 
-    .. code-block:: python
+    :param name: The logger's name
+    :type name: str
+    :param level: The level that you wish to set
+    :type level: int | str
 
-        import core_logging as log
+    Example:
+        .. code-block:: python
 
-        log.setLevel("WARN")  # Set the default log level to WARN
+            import core_logging as log
 
-        # Set the log level for the specified identity to DEBUG
-        identity = "prn:portfolio:app:branch:build"
-        log.setLevelForLogger(identity, "DEBUG")
+            log.setLevel("WARN")  # Set the default log level to WARN
 
-        # Log a message for the identity
-        log.debug("This is a debug message", identity=identity)
+            # Set the log level for the specified identity to DEBUG
+            identity = "prn:portfolio:app:branch:build"
+            log.setLevelForLogger(identity, "DEBUG")
 
-    Outputs the following:
+            # Log a message for the identity
+            log.debug("This is a debug message", identity=identity)
 
-    .. code-block:: console
+        Outputs the following:
 
-        2024-12-19 10:21:55 [prn:portfolio:app:branch:build] [DEBUG] This is a debug message
+        .. code-block:: console
 
-    Args:
-        name (str): The logger's name
-        level (int): The level that you wish to set
-
+            2024-12-19 10:21:55 [prn:portfolio:app:branch:build] [DEBUG] This is a debug message
     """
     if isinstance(level, str):
         level = getLevelFromName(level.upper())
@@ -146,26 +145,30 @@ def setLevelForLogger(name: str, level: int | str):
 
 def setup(identity: str):
     """
-    Initialize the logger with the specified identity.  The identity is a PRN (Pipeline Resource Name) or (Pipeline Reference Name/Number)
-    and is in the format of "prn:portfolio:app:branch:build".  The identity is used to identify the source of the log message.
+    Initialize the logger with the specified identity.
 
-    The identity can actually be any string.  It is not validated.
+    The identity is a PRN (Pipeline Resource Name) or (Pipeline Reference Name/Number)
+    and is in the format of "prn:portfolio:app:branch:build". The identity is used to
+    identify the source of the log message.
 
-    Args:
-        identity (str): The PRN or identity of the logger.
+    The identity can actually be any string. It is not validated.
 
+    :param identity: The PRN or identity of the logger
+    :type identity: str
     """
     _thread_local.default_identity = _thread_local.identity = identity
 
 
 def set_identity(identity: str):
     """
-    Hold an identity for the logger.  This is used to identify the source of the log message.  This value will be used if not specified in the log call
+    Hold an identity for the logger.
 
-    Args:
-        identity (str): The PRN or identity of the logger.
+    This is used to identify the source of the log message. This value will be used
+    if not specified in the log call.
+
+    :param identity: The PRN or identity of the logger
+    :type identity: str
     """
-
     _thread_local.identity = identity
 
 
@@ -173,26 +176,29 @@ def get_default_identity() -> str | None:
     """
     Return the threadlocal default identity for the logger.
 
-    Returns:
-        str: The thread_local identity or empty string
+    :return: The thread_local identity or None
+    :rtype: str | None
     """
     return getattr(_thread_local, "default_identity", None)
 
 
 def get_identity() -> str | None:
-    """Return the default identity for the logger.
+    """
+    Return the default identity for the logger.
 
     This default identity is used to identify the source of the log message and will be used
     if not specified in the log call.
 
-    Returns:
-        str: The default identity for the logger.
+    :return: The default identity for the logger
+    :rtype: str | None
     """
     return getattr(_thread_local, "identity", get_default_identity())
 
 
 def clear_identity():
-    """Clear both current and default thread-local identity values."""
+    """
+    Clear both current and default thread-local identity values.
+    """
     if hasattr(_thread_local, "identity"):
         del _thread_local.identity
     if hasattr(_thread_local, "default_identity"):
@@ -201,28 +207,30 @@ def clear_identity():
 
 def reset_identity():
     """
-    Deprecated: use the "getLogger()" method to get a logger with the specified identity..  This method is NOT thread safe.
-
     Resets the identity to the default identity that was established when the logger was setup with the setup() method.
+
+    .. deprecated::
+        Use the "getLogger()" method to get a logger with the specified identity. This method is NOT thread safe.
     """
     _thread_local.identity = get_default_identity()
 
 
 def get_logger_identity(**kwargs: dict) -> str:
     """
-    Attempts to retrieve the identity from the kwargs parameter.  If it's not found, it will return the default identity.
+    Attempts to retrieve the identity from the kwargs parameter.
 
-    The kwargs is NOT expended.  No \\*\\* on the kwargs  We are mutating kwargs and popping off the Identity.
+    If it's not found, it will return the default identity.
+
+    The kwargs is NOT expanded. No \\*\\* on the kwargs. We are mutating kwargs and popping off the Identity.
 
     We may change this behaviour in the future.
 
     Looking for "identity" or "prn" in kwargs. ("prn" is not popped off)
 
-    Args:
-        kwargs (dict): A dictionary of name/value pairs that should have the identity in it.
-
-    Returns:
-        str | None: The identity if found, else None
+    :param kwargs: A dictionary of name/value pairs that should have the identity in it
+    :type kwargs: dict
+    :return: The identity if found, else a fallback identity
+    :rtype: str
     """
     module = kwargs.get("module", None)
     function = kwargs.get("function", None)
@@ -231,8 +239,13 @@ def get_logger_identity(**kwargs: dict) -> str:
 
 
 def __get_formatter() -> logging.Formatter:
+    """
+    Get the appropriate formatter based on environment configuration.
 
-    # Get the Core Automatin Formatters
+    :return: The configured formatter (JSON or text)
+    :rtype: logging.Formatter
+    """
+    # Get the Core Automation Formatters
     date_fmt = DEFAULT_DATE_FORMAT
     msg_fmt = DEFAULT_LOG_FORMAT
 
@@ -244,7 +257,16 @@ def __get_formatter() -> logging.Formatter:
 
 
 def __get_handlers(name, **kwargs) -> list[logging.Handler]:
+    """
+    Get the list of handlers for the logger based on environment configuration.
 
+    :param name: The name of the logger
+    :type name: str
+    :param kwargs: Additional configuration options
+    :type kwargs: dict
+    :return: List of configured handlers
+    :rtype: list[logging.Handler]
+    """
     handlers: list[logging.Handler] = []
 
     formatter = __get_formatter()
@@ -260,13 +282,13 @@ def __get_handlers(name, **kwargs) -> list[logging.Handler]:
     log_dir = os.getenv(ENV_LOG_DIR)
     if log_dir:
 
-        # If a LOG GROUP is defined, add it to the folder diretory path
+        # If a LOG GROUP is defined, add it to the folder directory path
         log_group = kwargs.get("log_group", os.getenv(ENV_LOG_GROUP, ""))
 
         # If a LOG STREAM is defined, set it as the filename
         log_stream = kwargs.get("log_stream", os.getenv(ENV_LOG_STREAM, "core"))
 
-        # Set teh filename to the log_dir/log_group/log_stream.log file
+        # Set the filename to the log_dir/log_group/log_stream.log file
         log_file = os.path.join(log_dir, log_group, f"{log_stream}.log")
 
         os.makedirs(log_dir, exist_ok=True)
@@ -282,14 +304,17 @@ def getLogger(name: str | None, **kwargs) -> CoreLogger:
     """
     Return a logging object with the specified name.
 
-    Args:
-        name (str | None): The name/identity of the logger
-        kwargs (dict): experimental parameters "log_stream" and "log_group".
-            * log_stream: The name of the log stream filename. defaults to "core".
-            * log_group: The name of the log group folder. Defaults to "".
+    :param name: The name/identity of the logger
+    :type name: str | None
+    :param kwargs: Experimental parameters "log_stream" and "log_group"
+    :type kwargs: dict
+    :return: The logger object
+    :rtype: CoreLogger
 
-    Returns:
-        CoreLogger: The logger object
+    .. note::
+        Experimental parameters:
+        - log_stream: The name of the log stream filename. defaults to "core".
+        - log_group: The name of the log group folder. Defaults to "".
     """
     logger: CoreLogger
     if name is None:
@@ -305,7 +330,13 @@ def getLogger(name: str | None, **kwargs) -> CoreLogger:
     return logger
 
 
-def get_caller_info():
+def __get_caller_info():
+    """
+    Get information about the calling function.
+
+    :return: Tuple of (module_name, function_name, filename, line_number)
+    :rtype: tuple[str, str, str, int]
+    """
     frame = inspect.currentframe()
     caller_frame = frame.f_back.f_back  # Go back two frames to get the caller
     module = inspect.getmodule(caller_frame)
@@ -319,189 +350,202 @@ def get_caller_info():
 def log(level: int, message: str | dict, *args, **kwargs):
     """
     Log a message at the specified level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        level (int): The logging level (MSG, STATUS, TRACE, etc.)
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param level: The logging level (MSG, STATUS, TRACE, etc.)
+    :type level: int
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.log(level, message, *args, **kwargs)
 
 
 def msg(message: str | dict, *args, **kwargs):
     """
-    Log a message at the MSG level
+    Log a message at the MSG level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.msg(message, *args, **kwargs)
 
 
 def trace(message: str | dict, *args, **kwargs):
     """
-    Log a message at the TRACE level
+    Log a message at the TRACE level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.trace(message, *args, **kwargs)
 
 
 def debug(message: str | dict, *args, **kwargs):
     """
-    Log a message at the DEBUG level
+    Log a message at the DEBUG level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.debug(message, *args, **kwargs)
 
 
 def critical(message: str | dict, *args, **kwargs):
     """
-    Log a message at the CRITICAL level
+    Log a message at the CRITICAL level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.critical(message, *args, **kwargs)
 
 
 def fatal(message: str | dict, *args, **kwargs):
     """
-    Log a message at the FATAL level
+    Log a message at the FATAL level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.fatal(message, *args, **kwargs)
 
 
 def error(message: str | dict, *args, **kwargs):
     """
-    Log a message at the ERROR level
+    Log a message at the ERROR level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.error(message, *args, **kwargs)
 
 
 def info(message: str | dict, *args, **kwargs):
     """
-    Log a message at the INFO level
+    Log a message at the INFO level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.info(message, *args, **kwargs)
 
 
 def warn(message: str | dict, *args, **kwargs):
     """
-    Log a message at the WARNING level
+    Log a message at the WARNING level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.warning(message, *args, **kwargs)
 
 
 def warning(message: str | dict, *args, **kwargs):
     """
-    Log a message at the WARNING level
+    Log a message at the WARNING level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        message (Union[str, dict], optional): The message to output. Defaults to None.
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param message: The message to output
+    :type message: str | dict
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.warning(message, *args, **kwargs)
 
 
 def status(code: str | int, reason: str, *args, **kwargs):
     """
-    Log a message at the STATUS level
+    Log a message at the STATUS level.
+
     The log identity is taken from the kwargs parameter if it exists, else it's taken from the _identity variable.
 
-    Args:
-        code (str): _description_
-        reason (str): The status message
-        args (tuple): values used to replace the %s place holders in the message.
-        kwargs: Name/Value pairs that will be added to the output. Defaults to None.
+    :param code: The status code
+    :type code: str | int
+    :param reason: The status message
+    :type reason: str
+    :param args: Values used to replace the %s place holders in the message
+    :type args: tuple
+    :param kwargs: Name/Value pairs that will be added to the output
+    :type kwargs: dict
     """
-    module_name, function_name, _, _ = get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
 
     reason = "" if reason is None else reason
 

@@ -42,7 +42,7 @@ Creating from arguments with automatic defaults::
     >>> package = PackageDetails.from_arguments(deployment_details=dd)
 """
 
-from typing import Any, Self
+from typing import Any
 import os
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 
@@ -62,7 +62,284 @@ from core_framework.constants import (
 )
 
 
-class PackageDetails(BaseModel):
+class FolderInfo(BaseModel):
+    """FolderInfo is a model that contains information about a folder witin the context of the core model."""
+
+    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
+
+    client: str = Field(
+        alias="Client",
+        description="The client identifier for the deployment",
+        default=V_EMPTY,
+    )
+
+    bucket_region: str = Field(
+        alias="BucketRegion",
+        description="The region of the bucket where packages are stored (S3 mode only)",
+        default=V_EMPTY,
+    )
+
+    bucket_name: str = Field(
+        alias="BucketName",
+        description="The S3 bucket name or root directory path where packages are stored",
+        default=V_EMPTY,
+    )
+
+    key: str = Field(
+        alias="Key",
+        description="The full path to the package file relative to bucket_name",
+        default=V_EMPTY,
+    )
+
+    @field_validator("key")
+    @classmethod
+    def validate_key(cls, value: str) -> str:
+        """
+        Validate and normalize the key path based on storage mode.
+
+        Parameters
+        ----------
+        value : str
+            The key path to validate.
+
+        Returns
+        -------
+        str
+            The validated and normalized key path.
+
+        Notes
+        -----
+        - For S3 mode: removes leading slashes and normalizes to forward slashes
+        - For local mode: normalizes to OS-appropriate path separators
+        - Validates that the path is not empty when provided
+        """
+        if not value:
+            return value
+
+        # Remove leading slashes for consistency
+        if value.startswith("/"):
+            value = value.lstrip("/")
+        if value.startswith("\\"):
+            value = value.lstrip("\\")
+
+        # Note: We can't access self.mode here in a field validator
+        # So we'll normalize the path separators in the model_validator instead
+        return value
+
+    mode: str = Field(
+        alias="Mode",
+        description="The storage mode: 'local' for filesystem or 'service' for S3",
+        default=V_EMPTY,
+    )
+
+    @field_validator("mode")
+    @classmethod
+    def validate_mode(cls, value: str) -> str:
+        """
+        Validate that mode is either 'local' or 'service'.
+
+        Parameters
+        ----------
+        value : str
+            The mode value to validate.
+
+        Returns
+        -------
+        str
+            The validated mode value.
+
+        Raises
+        ------
+        ValueError
+            If mode is not 'local' or 'service'.
+        """
+        if value not in [V_LOCAL, V_SERVICE]:
+            raise ValueError(f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'")
+        return value
+
+    version_id: str | None = Field(
+        alias="VersionId",
+        description="The version ID of the package file (S3 only)",
+        default=None,
+    )
+
+    content_type: str | None = Field(
+        alias="ContentType",
+        description="The MIME type of the package file",
+        default="application/zip",
+    )
+
+    @field_validator("content_type")
+    @classmethod
+    def validate_content_type(cls, value: str) -> str:
+        """
+        Validate that content_type is a valid YAML or JSON MIME type.
+
+        Parameters
+        ----------
+        value : str
+            The content_type value to validate
+
+        Returns
+        -------
+        str
+            The validated content_type value
+
+        Raises
+        ------
+        ValueError
+            If content_type is not a supported MIME type
+        """
+        allowed_types = util.get_valid_mimetypes()
+        if value not in allowed_types:
+            raise ValueError(f"ContentType must be one of {allowed_types}, got: {value}")
+        return value
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_before(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """
+        Validate and populate missing fields before model creation.
+
+        This validator ensures that required fields are properly populated by applying
+        intelligent defaults when values are missing.
+
+        Parameters
+        ----------
+        values : Any
+            The input values for model creation. Expected to be a dict for processing,
+            but other types are passed through unchanged.
+
+        Returns
+        -------
+        Any
+            The validated and potentially modified values.
+
+        Notes
+        -----
+        Side Effects:
+            - Populates missing client with util.get_client()
+            - Populates missing bucket_region with util.get_bucket_region()
+            - Populates missing bucket_name with util.get_bucket_name()
+        """
+        if isinstance(values, dict):
+            # Set client if not provided
+            client = values.get("Client") or values.get("client")
+
+            if not client:
+                client = util.get_client()
+                values["client"] = client
+
+            # Set bucket region if not provided
+            region = values.get("BucketRegion") or values.get("bucket_region")
+            if not region:
+                region = util.get_bucket_region()
+                values["bucket_region"] = region
+
+            # Set bucket name if not provided
+            bucket_name = values.get("BucketName") or values.get("bucket_name")
+            if not bucket_name:
+                bucket_name = util.get_bucket_name(client, region)
+                values["bucket_name"] = bucket_name
+
+            if not values.get("Mode") and not values.get("mode"):
+                values["mode"] = V_LOCAL if util.is_local_mode() else V_SERVICE
+
+        return values
+
+    def get_full_path(self) -> str:
+        """
+        Get the full path to the package file.
+
+        Combines bucket_name and key to create the complete path to the package file.
+
+        Returns
+        -------
+        str
+            The full path to the package file.
+
+        Examples
+        --------
+        S3 mode::
+
+            >>> package = PackageDetails(
+            ...     bucket_name="my-bucket",
+            ...     key="packages/ecommerce/web/package.zip",
+            ...     mode="service"
+            ... )
+            >>> print(package.get_full_path())  # s3://my-bucket/packages/ecommerce/web/package.zip
+
+        Local mode::
+
+            >>> package = PackageDetails(
+            ...     bucket_name="/var/storage",
+            ...     key="packages/ecommerce/web/package.zip",
+            ...     mode="local"
+            ... )
+            >>> print(package.get_full_path())  # file:///var/storage/packages/ecommerce/web/package.zip
+
+            >>> package = PackageDetails(
+            ...     bucket_name="N:\data\storage",
+            ...     key="packages\ecommerce\web\package.zip",
+            ...     mode="local"
+            ... )
+            >>> print(package.get_full_path())  # file://N:\data\storage\packages\ecommerce\web\package.zip
+        """
+        if not self.bucket_name or not self.key:
+            return ""
+
+        # Use appropriate separator based on mode
+        if self.mode == V_LOCAL:
+            separator = os.path.sep
+            return f"file://{self.bucket_name}{separator}{self.key}"
+        else:
+            separator = "/"
+            return f"s3://{self.bucket_name}/{self.key}"
+
+    def is_local_mode(self) -> bool:
+        """
+        Check if the package is in local storage mode.
+
+        Returns
+        -------
+        bool
+            True if mode is local, False if mode is service.
+
+        Examples
+        --------
+        ::
+
+            >>> package = PackageDetails(mode="local")
+            >>> print(package.is_local_mode())  # True
+
+            >>> package = PackageDetails(mode="service")
+            >>> print(package.is_local_mode())  # False
+        """
+        return self.mode == V_LOCAL
+
+    def is_service_mode(self) -> bool:
+        """
+        Check if the package is in service (S3) storage mode.
+
+        Returns
+        -------
+        bool
+            True if mode is service, False if mode is local.
+
+        Examples
+        --------
+        ::
+
+            >>> package = PackageDetails(mode="service")
+            >>> print(package.is_service_mode())  # True
+
+            >>> package = PackageDetails(mode="local")
+            >>> print(package.is_service_mode())  # False
+        """
+        return self.mode == V_SERVICE
+
+
+class PackageDetails(FolderInfo):
     """
     PackageDetails is a model that contains all information needed to locate and process a package.
 
@@ -137,161 +414,11 @@ class PackageDetails(BaseModel):
         ... )
     """
 
-    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
-
-    client: str = Field(
-        alias="Client",
-        description="The client identifier for the deployment",
-        default=V_EMPTY,
-    )
-
-    bucket_region: str = Field(
-        alias="BucketRegion",
-        description="The region of the bucket where packages are stored (S3 mode only)",
-        default=V_EMPTY,
-    )
-
-    bucket_name: str = Field(
-        alias="BucketName",
-        description="The S3 bucket name or root directory path where packages are stored",
-        default=V_EMPTY,
-    )
-
-    key: str = Field(
-        alias="Key",
-        description="The full path to the package file relative to bucket_name",
-        default=V_EMPTY,
-    )
-
-    mode: str = Field(
-        alias="Mode",
-        description="The storage mode: 'local' for filesystem or 'service' for S3",
-        default=V_EMPTY,
-    )
-
     compile_mode: str = Field(
         alias="CompileMode",
         description="The compile mode: 'full' or 'incremental'",
         default=V_FULL,
     )
-
-    deployspec: DeploySpec | None = Field(
-        alias="DeploySpec",
-        description="Optional DeploySpec object containing deployment actions",
-        default=None,
-    )
-
-    version_id: str | None = Field(
-        alias="VersionId",
-        description="The version ID of the package file (S3 only)",
-        default=None,
-    )
-
-    content_type: str | None = Field(
-        alias="ContentType",
-        description="The MIME type of the package file",
-        default="application/zip",
-    )
-
-    @field_validator("content_type")
-    @classmethod
-    def validate_content_type(cls, value: str) -> str:
-        """
-        Validate that content_type is a valid YAML or JSON MIME type.
-
-        Parameters
-        ----------
-        value : str
-            The content_type value to validate
-
-        Returns
-        -------
-        str
-            The validated content_type value
-
-        Raises
-        ------
-        ValueError
-            If content_type is not a supported MIME type
-        """
-        allowed_types = util.get_valid_mimetypes()
-        if value not in allowed_types:
-            raise ValueError(
-                f"ContentType must be one of {allowed_types}, got: {value}"
-            )
-        return value
-
-    @property
-    def data_path(self) -> str:
-        """
-        Get the storage volume path for the application.
-
-        Used for local mode only. Returns the storage volume path from utility functions.
-        For service mode, this returns an empty string.
-
-        Returns
-        -------
-        str
-            The storage volume path for local mode, empty string for service mode.
-
-        Examples
-        --------
-        ::
-
-            >>> package = PackageDetails(mode="local")
-            >>> path = package.data_path
-            >>> print(path)  # /var/local/storage (example)
-        """
-        return util.get_storage_volume() if self.mode == V_LOCAL else ""
-
-    @property
-    def temp_dir(self) -> str:
-        """
-        Get the temporary directory for processing the package.
-
-        Returns the system temporary directory path from utility functions.
-
-        Returns
-        -------
-        str
-            The temporary directory path.
-
-        Examples
-        --------
-        ::
-
-            >>> package = PackageDetails()
-            >>> temp_path = package.temp_dir
-            >>> print(temp_path)  # /tmp (example)
-        """
-        return util.get_temp_dir()
-
-    @field_validator("mode")
-    @classmethod
-    def validate_mode(cls, value: str) -> str:
-        """
-        Validate that mode is either 'local' or 'service'.
-
-        Parameters
-        ----------
-        value : str
-            The mode value to validate.
-
-        Returns
-        -------
-        str
-            The validated mode value.
-
-        Raises
-        ------
-        ValueError
-            If mode is not 'local' or 'service'.
-        """
-        if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(
-                f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'"
-            )
-        return value
 
     @field_validator("compile_mode")
     @classmethod
@@ -315,168 +442,14 @@ class PackageDetails(BaseModel):
             If compile_mode is not 'full' or 'incremental'.
         """
         if value not in [V_FULL, V_INCREMENTAL, V_EMPTY]:
-            raise ValueError(
-                f"Compile mode must be '{V_FULL}' or 'incremental', got '{value}'"
-            )
+            raise ValueError(f"Compile mode must be '{V_FULL}' or 'incremental', got '{value}'")
         return value
 
-    @field_validator("key")
-    @classmethod
-    def validate_key(cls, value: str) -> str:
-        """
-        Validate and normalize the key path based on storage mode.
-
-        Parameters
-        ----------
-        value : str
-            The key path to validate.
-
-        Returns
-        -------
-        str
-            The validated and normalized key path.
-
-        Notes
-        -----
-        - For S3 mode: removes leading slashes and normalizes to forward slashes
-        - For local mode: normalizes to OS-appropriate path separators
-        - Validates that the path is not empty when provided
-        """
-        if not value:
-            return value
-
-        # Remove leading slashes for consistency
-        if value.startswith("/"):
-            value = value.lstrip("/")
-        if value.startswith("\\"):
-            value = value.lstrip("\\")
-
-        # Note: We can't access self.mode here in a field validator
-        # So we'll normalize the path separators in the model_validator instead
-        return value
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_before(cls, values: Any) -> Any:
-        """
-        Validate and populate missing fields before model creation.
-
-        This validator ensures that required fields are properly populated by applying
-        intelligent defaults when values are missing.
-
-        Parameters
-        ----------
-        values : Any
-            The input values for model creation. Expected to be a dict for processing,
-            but other types are passed through unchanged.
-
-        Returns
-        -------
-        Any
-            The validated and potentially modified values.
-
-        Notes
-        -----
-        Side Effects:
-            - Populates missing client with util.get_client()
-            - Populates missing bucket_region with util.get_bucket_region()
-            - Populates missing bucket_name with util.get_bucket_name()
-        """
-        if isinstance(values, dict):
-            # Set client if not provided
-            if not values.get("Client") and not values.get("client"):
-                values["client"] = util.get_client()
-
-            client = values.get("Client", values.get("client", util.get_client()))
-
-            # Set bucket region if not provided
-            if not values.get("BucketRegion") and not values.get("bucket_region"):
-                values["bucket_region"] = util.get_bucket_region()
-
-            region = values.get("BucketRegion", values.get("bucket_region"))
-
-            # Set bucket name if not provided
-            if not values.get("BucketName") and not values.get("bucket_name"):
-                values["bucket_name"] = util.get_bucket_name(client, region)
-
-        return values
-
-    def get_name(self) -> str:
-        """
-        Get the filename from the key path.
-
-        Extracts the filename from the full key path, handling both local and S3 paths.
-
-        Returns
-        -------
-        str
-            The filename from the key path, or default package name if no key is set.
-
-        Examples
-        --------
-        ::
-
-            >>> package = PackageDetails(key="packages/ecommerce/web/main/1.0.0/package.zip")
-            >>> print(package.get_name())  # package.zip
-
-            >>> package = PackageDetails(key="")
-            >>> print(package.get_name())  # package.zip (default)
-        """
-        if not self.key:
-            return V_PACKAGE_ZIP
-
-        # Use appropriate separator based on mode
-        separator = os.path.sep if self.mode == V_LOCAL else "/"
-        return self.key.rsplit(separator, 1)[-1]
-
-    def get_full_path(self) -> str:
-        """
-        Get the full path to the package file.
-
-        Combines bucket_name and key to create the complete path to the package file.
-
-        Returns
-        -------
-        str
-            The full path to the package file.
-
-        Examples
-        --------
-        S3 mode::
-
-            >>> package = PackageDetails(
-            ...     bucket_name="my-bucket",
-            ...     key="packages/ecommerce/web/package.zip",
-            ...     mode="service"
-            ... )
-            >>> print(package.get_full_path())  # s3://my-bucket/packages/ecommerce/web/package.zip
-
-        Local mode::
-
-            >>> package = PackageDetails(
-            ...     bucket_name="/var/storage",
-            ...     key="packages/ecommerce/web/package.zip",
-            ...     mode="local"
-            ... )
-            >>> print(package.get_full_path())  # file:///var/storage/packages/ecommerce/web/package.zip
-
-            >>> package = PackageDetails(
-            ...     bucket_name="N:\data\storage",
-            ...     key="packages\ecommerce\web\package.zip",
-            ...     mode="local"
-            ... )
-            >>> print(package.get_full_path())  # file://N:\data\storage\packages\ecommerce\web\package.zip
-        """
-        if not self.bucket_name or not self.key:
-            return ""
-
-        # Use appropriate separator based on mode
-        if self.mode == V_LOCAL:
-            separator = os.path.sep
-            return f"file://{self.bucket_name}{separator}{self.key}"
-        else:
-            separator = "/"
-            return f"s3://{self.bucket_name}/{self.key}"
+    deployspec: DeploySpec | None = Field(
+        alias="DeploySpec",
+        description="Optional DeploySpec object containing deployment actions",
+        default=None,
+    )
 
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """
@@ -502,48 +475,6 @@ class PackageDetails(BaseModel):
             >>> print(package.key)  # packages/ecommerce/web/main/1.0.0/package.zip
         """
         self.key = deployment_details.get_object_key(OBJ_PACKAGES, filename)
-
-    def is_local_mode(self) -> bool:
-        """
-        Check if the package is in local storage mode.
-
-        Returns
-        -------
-        bool
-            True if mode is local, False if mode is service.
-
-        Examples
-        --------
-        ::
-
-            >>> package = PackageDetails(mode="local")
-            >>> print(package.is_local_mode())  # True
-
-            >>> package = PackageDetails(mode="service")
-            >>> print(package.is_local_mode())  # False
-        """
-        return self.mode == V_LOCAL
-
-    def is_service_mode(self) -> bool:
-        """
-        Check if the package is in service (S3) storage mode.
-
-        Returns
-        -------
-        bool
-            True if mode is service, False if mode is local.
-
-        Examples
-        --------
-        ::
-
-            >>> package = PackageDetails(mode="service")
-            >>> print(package.is_service_mode())  # True
-
-            >>> package = PackageDetails(mode="local")
-            >>> print(package.is_service_mode())  # False
-        """
-        return self.mode == V_SERVICE
 
     @classmethod
     def from_arguments(cls, **kwargs) -> "PackageDetails":
@@ -587,9 +518,7 @@ class PackageDetails(BaseModel):
 
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else defualt
 
@@ -614,9 +543,7 @@ class PackageDetails(BaseModel):
         # Handle bucket_region
         bucket_region = _get("bucket_region", "BucketRegion", util.get_bucket_region())
 
-        bucket_name = _get(
-            "bucket_name", "BucketName", util.get_bucket_name(client, bucket_region)
-        )
+        bucket_name = _get("bucket_name", "BucketName", util.get_bucket_name(client, bucket_region))
 
         mode = _get("mode", "Mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
 
@@ -638,11 +565,11 @@ class PackageDetails(BaseModel):
             bucket_name=bucket_name,
             bucket_region=bucket_region,
             key=key,
-            compile_mode=compile_mode,
-            deployspec=deployspec,
             mode=mode,
             version_id=version_id,
             content_type=content_type,
+            compile_mode=compile_mode,
+            deployspec=deployspec,
         )
 
     def model_dump(self, **kwargs) -> dict:
@@ -687,7 +614,4 @@ class PackageDetails(BaseModel):
         str
             Detailed representation showing key attributes.
         """
-        return (
-            f"PackageDetails(client='{self.client}', bucket_name='{self.bucket_name}', "
-            f"key='{self.key}', mode='{self.mode}')"
-        )
+        return f"PackageDetails(client='{self.client}', bucket_name='{self.bucket_name}', " f"key='{self.key}', mode='{self.mode}')"

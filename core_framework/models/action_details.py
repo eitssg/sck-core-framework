@@ -148,9 +148,7 @@ class ActionDetails(BaseModel):
         """
         allowed_types = util.get_valid_mimetypes()
         if value not in allowed_types:
-            raise ValueError(
-                f"ContentType must be one of {allowed_types}, got: {value}"
-            )
+            raise ValueError(f"ContentType must be one of {allowed_types}, got: {value}")
         return value
 
     mode: str = Field(
@@ -258,7 +256,7 @@ class ActionDetails(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_mode_after(cls, values: dict) -> dict:
+    def validate_mode_before(cls, values: dict) -> dict:
         """
         Validate that the mode is consistent with other field requirements.
 
@@ -288,14 +286,19 @@ class ActionDetails(BaseModel):
             if not client:
                 client = util.get_client()
                 values["client"] = client
+
             region = values.get("bucket_region") or values.get("BucketRegion")
             if not region:
                 region = util.get_artefact_bucket_region()
                 values["bucket_region"] = region
+
             bucket_name = values.get("bucket_name") or values.get("BucketName")
             if not bucket_name:
                 bucket_name = util.get_artefact_bucket_name(client, region)
                 values["bucket_name"] = bucket_name
+
+            if not values.get("Mode") and not values.get("mode"):
+                values["mode"] = V_LOCAL if util.is_local_mode() else V_SERVICE
 
         return values
 
@@ -370,9 +373,7 @@ class ActionDetails(BaseModel):
 
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else defualt
 
@@ -396,9 +397,7 @@ class ActionDetails(BaseModel):
             key = dd.get_object_key(OBJ_ARTEFACTS, action_file)
 
         # Bucket region must be populated before bucket_name
-        bucket_region = _get(
-            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
-        )
+        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
 
         # Bucket name must alos be populated before creating ActionDetails
         bucket_name = _get(
