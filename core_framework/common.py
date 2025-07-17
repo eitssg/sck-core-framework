@@ -2030,7 +2030,7 @@ def read_json(input_stream: IO) -> Any:
     return json.load(input_stream, object_hook=__iso8601_parser)
 
 
-def get_curreent_timestamp() -> str:
+def get_current_timestamp() -> str:
     """
     Get the current timestamp as a string in ISO8601 format.
 
@@ -2041,7 +2041,7 @@ def get_curreent_timestamp() -> str:
 
     Examples
     --------
-    >>> get_curreent_timestamp()
+    >>> get_current_timestamp()
     '2023-01-01T12:00:00+00:00'
     """
     return datetime.datetime.now(datetime.timezone.utc).isoformat()

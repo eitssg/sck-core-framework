@@ -2014,5 +2014,5 @@ def test_get_timestamp_str():
 
     with patch("core_framework.common.datetime.datetime") as mock_datetime:
         mock_datetime.now.return_value = datetime(2023, 10, 1, 12, 0, 0)
-        timestamp_str = util.get_curreent_timestamp()
+        timestamp_str = util.get_current_timestamp()
         assert timestamp_str == "2023-10-01T12:00:00", "Timestamp string should match the expected format"

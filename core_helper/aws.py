@@ -594,7 +594,7 @@ def _assume_role_with_credentials(credentials: dict[str, Any], role_arn: str, **
             config=__get_client_config(),
         )
 
-        session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-login-{util.get_curreent_timestamp()}"
+        session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-login-{util.get_current_timestamp()}"
 
         log.trace(
             "Assuming role with credentials",
@@ -689,7 +689,7 @@ def assume_role(**kwargs) -> dict[str, str] | None:
     try:
         session = get_session(**kwargs)
 
-        session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{util.get_curreent_timestamp()}"
+        session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{util.get_current_timestamp()}"
         log.debug("Assuming role [{}] with session name [{}]", role_arn, session_name)
         # Call the STS client with the session and role ARN directy instead of sts_client() to avoid recursion
         client = session.client("sts", **kwargs, config=__get_client_config())
