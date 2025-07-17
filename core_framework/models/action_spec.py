@@ -5,7 +5,7 @@ ActionSpec Model Module
 This module contains the ActionSpec class which provides a model for how Tasks or Actions are to
 be provided to the core-execute library.
 
-The ActionSpec class defines actions that can be performed by the Core Automation framework. 
+The ActionSpec class defines actions that can be performed by the Core Automation framework.
 These actions can include creating or deleting AWS resources, updating user permissions, and more.
 
 Things that you wouldn't necessarily do in a CloudFormation template.
@@ -14,23 +14,6 @@ Classes
 -------
 ActionSpec : BaseModel
     Model for action specifications with fields for name, kind, parameters, dependencies, and metadata.
-
-Constants
----------
-NAME : str
-    The name field constant
-LABEL : str
-    DEPRECATED: Use NAME instead
-TYPE : str
-    DEPRECATED: Use KIND instead
-KIND : str
-    The kind field constant
-DEPENDS_ON : str
-    The depends_on field constant
-PARAMS : str
-    The params field constant
-SCOPE : str
-    The scope field constant
 
 Note
 ----
@@ -51,74 +34,6 @@ from pydantic import (
 )
 
 
-# Give constants for the keys in the definition
-NAME = "name"
-""" The name of the name field in the Actions object.
-
-    Value: name
-"""
-
-LABEL = "label"  # DEPRECATED: Use NAME instead
-""" DEPRECATED: Use NAME instead. The name of the label field in the Actions object.
-
-    Value: label
-"""
-TYPE = "type"  # DEPRECATED: Use KIND instead
-""" DEPRECATED: Use KIND instead. The name of the type field in the Actions object.
-
-    Value: type
-"""
-
-KIND = "kind"
-""" The name of the kind field in the Actions object.
-
-    Value: kind
-"""
-DEPENDS_ON = "depends_on"
-""" The name of the depends_on field in the Actions object.
-
-    Value: depends_on
-"""
-PARAMS = "params"
-""" The name of the params field in the Actions object.
-
-    Value: params
-"""
-SCOPE = "scope"
-""" The name of the scope field in the Actions object.
-
-    Value: scope
-"""
-ACCOUNT = "account"
-""" The name of the account field in the Actions object.
-
-    Core automation uses the value of this field to determine which account to deploy the stack to.
-    If Core does not have access to the account with the appropriate role, deployments will fail.
-
-    Value: account
-"""
-REGION = "region"
-""" The name of the region field in the Actions object.
-
-    Core automation uses the value of this field to determine which region to deploy the stack to.
-
-    Value: region
-"""
-TAGS = "tags"
-""" tags can be defined on the action that will be added to all resources in the deployment.  BaseAction implementations
-    can use these tags as necessary.
-"""
-USER_NAME = "user_name"
-""" The name of the user_name field in the Actions object.
-
-    Core automation uses the value of this field to determine which user to deploy in IAM.
-
-    There is a special action for add/delete/update users.  This is the Username to be applied to the action.
-
-    Value: user_name
-"""
-
-
 class ActionSpec(BaseModel):
     """
     The ActionSpec class defines an "action" or "task" that Core Automation will perform when deploying infrastructure to your Cloud.
@@ -132,8 +47,6 @@ class ActionSpec(BaseModel):
         The name of the action. A unique identifier for the action spec
     kind : str
         The action kind. This is the name of the action spec (e.g. create_user, create_stack, etc.)
-    action : str | None
-        The action to perform as defined by the execute.actionlib module
     scope : str
         The scope of the action (optional). Examples: portfolio, app, branch, or build.
     params : dict[str, Any]
@@ -192,12 +105,6 @@ class ActionSpec(BaseModel):
         alias="Kind",
         description="The action kind.  This is the snake_case of the action in core_execute.actionlib",
         min_length=1,
-    )
-
-    action: str | None = Field(
-        alias="Action",
-        description="The action to perform as defined by the execute.actionlib module",
-        default=None,
     )
 
     depends_on: list[str] = Field(
@@ -288,8 +195,7 @@ class ActionSpec(BaseModel):
 
             if label_value and not name_value:
                 warnings.warn(
-                    "The 'label' field is deprecated and will be removed in a future version. "
-                    "Please use 'name' instead.",
+                    "The 'label' field is deprecated and will be removed in a future version. " "Please use 'name' instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -313,8 +219,7 @@ class ActionSpec(BaseModel):
 
             if type_value and not kind_value:
                 warnings.warn(
-                    "The 'type' field is deprecated and will be removed in a future version. "
-                    "Please use 'kind' instead.",
+                    "The 'type' field is deprecated and will be removed in a future version. " "Please use 'kind' instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -363,13 +268,9 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(
-                        f"All items in depends_on must be strings, got {type(item)}"
-                    )
+                    raise ValueError(f"All items in depends_on must be strings, got {type(item)}")
             return value
-        raise ValueError(
-            f"Invalid depends_on value: {value}. Must be a string or a list of strings"
-        )
+        raise ValueError(f"Invalid depends_on value: {value}. Must be a string or a list of strings")
 
     @field_validator("kind", mode="before")
     @classmethod
@@ -454,9 +355,7 @@ class ActionSpec(BaseModel):
         if value.startswith("-") or value.endswith("-"):
             raise ValueError(f"Name '{value}' cannot start or end with a hyphen")
         if len(value) > 63:  # AWS resource name limit
-            raise ValueError(
-                f"Name '{value}' is too long. Maximum length is 63 characters."
-            )
+            raise ValueError(f"Name '{value}' is too long. Maximum length is 63 characters.")
         return value
 
     @field_validator("before", "after", mode="before")
@@ -489,9 +388,7 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(
-                        f"All items in list must be strings, got {type(item)}"
-                    )
+                    raise ValueError(f"All items in list must be strings, got {type(item)}")
             return value
         raise ValueError("Must be a string or a list of strings")
 
@@ -611,6 +508,20 @@ class ActionSpec(BaseModel):
         )
         return self.kind
 
+    @property
+    def action(self) -> str:
+        """
+        The action to perform as defined by the execute.actionlib module.
+
+        This property returns the value of the 'kind' field for backward compatibility.
+
+        Returns
+        -------
+        str
+            The action kind value.
+        """
+        return self.kind
+
     def model_dump(self, **kwargs) -> dict[str, Any]:
         """
         Override to exclude None values by default.
@@ -652,11 +563,10 @@ class ActionSpec(BaseModel):
         exclude_none = info.exclude_none
         by_alias = info.by_alias
 
-        # Only specify the field names in the desired order
+        # Only specify the field names in the desired order (removed 'action' from field_order)
         field_order = [
             "name",
-            "kind",  # Changed from "type" to "kind"
-            "action",
+            "kind",
             "depends_on",
             "params",
             "scope",
@@ -689,10 +599,7 @@ class ActionSpec(BaseModel):
             if hasattr(value, "model_dump"):
                 value = value.model_dump(exclude_none=exclude_none, by_alias=by_alias)
             elif isinstance(value, list) and value and hasattr(value[0], "model_dump"):
-                value = [
-                    item.model_dump(exclude_none=exclude_none, by_alias=by_alias)
-                    for item in value
-                ]
+                value = [item.model_dump(exclude_none=exclude_none, by_alias=by_alias) for item in value]
 
             out[key] = value
         return out
@@ -706,9 +613,7 @@ class ActionSpec(BaseModel):
         str
             Human-readable string representation showing key attributes.
         """
-        return (
-            f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
-        )
+        return f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
 
     def __repr__(self) -> str:
         """
