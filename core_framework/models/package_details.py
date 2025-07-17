@@ -451,6 +451,19 @@ class PackageDetails(FolderInfo):
         default=None,
     )
 
+    @property
+    def temp_dir(self) -> str:
+        """
+        Get the temporary directory for processing the package.
+
+        Returns
+        -------
+        str
+            The temporary directory 
+
+        """
+        return util.get_temp_dir
+
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """
         Set the key path based on deployment details and filename.

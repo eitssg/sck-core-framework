@@ -168,6 +168,18 @@ class TaskPayload(BaseModel):
         default=V_PIPELINE,
     )
 
+    @property
+    def temp_dir(self) -> str:
+        """
+        Get the temporary directory for this task.
+
+        Returns
+        -------
+        str
+            The path to the temporary directory for this task.
+        """
+        return util.get_temp_dir()
+
     @field_validator("task")
     @classmethod
     def validate_task_value(cls, value: str) -> str:
