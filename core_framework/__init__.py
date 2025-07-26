@@ -74,6 +74,7 @@ from .common import (
     get_console_mode,
     get_master_region,
     get_current_timestamp,
+    get_current_timestamp_short,
     get_cognito_endpoint,
     generate_branch_short_name,
     generate_bucket_name,

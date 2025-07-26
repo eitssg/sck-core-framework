@@ -1,4 +1,8 @@
-"""Magic module for emulating the boto3 S3 client and Buckets so we can elect to store files locally instead of in S3"""
+"""Magic module for emulating boto3 S3 clients, resources, and objects.
+
+This module allows for transparently switching between using AWS S3 and a local
+filesystem for object storage, which is useful for development and testing.
+"""
 
 from typing import Any, Self, IO
 import os
@@ -20,11 +24,22 @@ import core_helper.aws as aws
 
 
 class MagicObject(BaseModel):
-    """
-    MagicObject class to emulate an S3 Object.  Currently only emulates the "copy_from" method.
+    """Emulates an S3 Object to allow local filesystem storage via the S3 API.
 
-    The purpose is to copy objects from the local filesystem instead of S3 using s3 api.
-
+    :ivar bucket_name: The name of the bucket containing the object.
+    :vartype bucket_name: str
+    :ivar key: The key of the object within the bucket.
+    :vartype key: str | None
+    :ivar data_path: The root directory for local storage.
+    :vartype data_path: str
+    :ivar version_id: The version ID of the object, emulated using file modification time.
+    :vartype version_id: str | None
+    :ivar content_type: The MIME type of the object.
+    :vartype content_type: str | None
+    :ivar etag: The ETag of the object, emulated using a file hash.
+    :vartype etag: str | None
+    :ivar error: Any error message encountered during an operation.
+    :vartype error: str | None
     """
 
     model_config = ConfigDict(populate_by_name=True)
@@ -38,7 +53,12 @@ class MagicObject(BaseModel):
     error: str | None = Field(default=None, alias="Error")
 
     def head_object(self, **kwargs) -> Self:
-        """Emulate the S3 head_object() API method to get the metadata of an object"""
+        """Emulates the S3 head_object() API method to get object metadata.
+
+        :param kwargs: Keyword arguments, expects 'Key'.
+        :return: The instance of the object with populated metadata.
+        :rtype: Self
+        """
         try:
             self.key = kwargs.get("Key", self.key)
             if not self.key:
@@ -61,16 +81,15 @@ class MagicObject(BaseModel):
 
         return self
 
-    def generate_file_hash(self, file_path, hash_algorithm="sha256"):
-        """
-        Generate a hash of a file.
+    def generate_file_hash(self, file_path: str, hash_algorithm: str = "sha256") -> str:
+        """Generates a hash of a file.
 
-        Args:
-            file_path (str): The path to the file.
-            hash_algorithm (str): The hash algorithm to use (default: 'sha256').
-
-        Returns:
-            str: The hexadecimal hash of the file.
+        :param file_path: The path to the file.
+        :type file_path: str
+        :param hash_algorithm: The hash algorithm to use (default: 'sha256').
+        :type hash_algorithm: str, optional
+        :return: The hexadecimal hash of the file.
+        :rtype: str
         """
         hash_func = hashlib.new(hash_algorithm)
 
@@ -81,21 +100,20 @@ class MagicObject(BaseModel):
         return hash_func.hexdigest()
 
     def copy_from(self, **kwargs) -> dict:  # noqa: C901
-        """Copies the artefact on the local filessystem instead of S3
+        """Emulates the S3 copy_from() method to copy an object on the local filesystem.
 
-        Args:
-            CopySource (dict): The source object to copy from
-            Bucket (str): The source bucket name
-            Key (str): The source key
-
+        :param kwargs: Keyword arguments, expects 'CopySource'.
+                       'CopySource' is a dict with 'Bucket' and 'Key'.
+        :return: A dictionary emulating the S3 CopyObjectResult.
+        :rtype: dict
         """
         try:
             source = kwargs.get("CopySource", None)
-            source_bucket = source.get("Bucket", None)
-            source_key = source.get("Key", None)
-
             if not source:
                 raise ValueError("Copy source 'CopySource' is required")
+
+            source_bucket = source.get("Bucket", None)
+            source_key = source.get("Key", None)
 
             if not source_bucket:
                 raise ValueError("Source bucket 'Bucket' is required")
@@ -104,14 +122,10 @@ class MagicObject(BaseModel):
                 raise ValueError("Source key 'Key' is required")
 
             if not self.key:
-                raise ValueError("Destination Bucket ke has not been specified")
+                raise ValueError("Destination Bucket key has not been specified")
 
             if source_bucket != self.bucket_name:
-                raise ValueError(
-                    "Source S3 bucket '{}' must be in same bucket as the target '{}'".format(
-                        source, self.bucket_name
-                    )
-                )
+                raise ValueError(f"Source S3 bucket '{source_bucket}' must be in same bucket as the target '{self.bucket_name}'")
 
             source_fn = os.path.join(self.data_path, source_bucket, source_key)
             target_fn = os.path.join(self.data_path, self.bucket_name, self.key)
@@ -127,10 +141,7 @@ class MagicObject(BaseModel):
         except Exception as e:
             self.error = "\n".join([self.error or "", str(e)])
 
-        if self.version_id:
-            dt = datetime.fromtimestamp(int(self.version_id)).isoformat()
-        else:
-            dt = None
+        dt = datetime.fromtimestamp(int(self.version_id)).isoformat() if self.version_id else None
 
         rv = {
             "CopyObjectResult": {
@@ -146,12 +157,11 @@ class MagicObject(BaseModel):
         return rv
 
     def download_fileobj(self, **kwargs) -> Self:
-        """
-        Emulate the S3 download_fileobj() API method to download a fileobj from the local filesystem.
+        """Emulates the S3 download_fileobj() method to download from the local filesystem.
 
-        Args:
-            Key (str): The key of the object
-            Fileobj (file): The file object to write the data to
+        :param kwargs: Keyword arguments, expects 'Key' and 'Fileobj'.
+        :return: The instance of the object.
+        :rtype: Self
         """
         try:
             self.key = kwargs.get("Key", self.key)
@@ -164,7 +174,6 @@ class MagicObject(BaseModel):
             if fileobj is None:
                 raise ValueError("Fileobj is required")
 
-            # extra_args = kwargs.get("ExtraArgs")
             if os.path.exists(key):
                 with open(key, "rb") as file:
                     fileobj.write(file.read())
@@ -178,33 +187,31 @@ class MagicObject(BaseModel):
         return self
 
     def put_object(self, **kwargs) -> Self:
-        """Put an object on the local filesystem instead of S3"""
+        """Emulates the S3 put_object() method to store a file on the local filesystem.
 
+        :param kwargs: Keyword arguments, expects 'Key' and 'Body'.
+        :return: The instance of the object.
+        :rtype: Self
+        """
         try:
             self.key = kwargs.get("Key", self.key)
             if not self.key:
                 raise ValueError("Key is required")
 
             body = kwargs.get("Body")
-
-            if not body:
+            if body is None:
                 raise ValueError("Body is required")
 
             fn = os.path.join(self.data_path, self.bucket_name, self.key)
 
-            # get the directory of the file fn
             dirname = os.path.dirname(fn)
             os.makedirs(dirname, exist_ok=True)
+
             if isinstance(body, IO):
                 with open(fn, "wb") as file:
-                    while True:
-                        chunk = body.read(1024)
-                        if not chunk:
-                            break
-                        file.write(chunk)
+                    shutil.copyfileobj(body, file)
             elif isinstance(body, str):
-                body = body.encode("utf-8")
-                with open(fn, "wb") as file:
+                with open(fn, "w", encoding="utf-8") as file:
                     file.write(body)
             elif isinstance(body, bytes):
                 with open(fn, "wb") as file:
@@ -219,59 +226,57 @@ class MagicObject(BaseModel):
 
 
 class MagicBucket(BaseModel):
-    """
-    Provides a Magic Bucket with the S3 Bucket API for downloading fileobj and getting a MagicObject that behaves like an S3 Object.
+    """Emulates an S3 Bucket to allow local filesystem storage via the S3 API.
 
-    The purpose is to read objects from the local filesystem instead of S3 using s3 api.
+    :ivar name: The name of the bucket.
+    :vartype name: str
+    :ivar data_path: The root directory for local storage.
+    :vartype data_path: str | None
     """
 
     name: str = Field(default_factory=get_bucket_name, alias="Bucket")
     data_path: str | None = Field(default_factory=get_storage_volume, alias="DataPath")
 
     def head_object(self, **kwargs) -> dict:
-        """Emulate the S3 head_object() API method to get the metadata of an object"""
+        """Emulates the S3 head_object() method to get object metadata.
 
+        :param kwargs: Keyword arguments passed to the MagicObject.
+        :return: A dictionary of the object's metadata.
+        :rtype: dict
+        """
         key = kwargs.pop("Key", None)
-
-        object = self.Object(key)
-
-        return object.head_object(**kwargs).model_dump(exclude_none=True)
+        obj = self.Object(key)
+        return obj.head_object(**kwargs).model_dump(exclude_none=True)
 
     def download_fileobj(self, **kwargs) -> dict:
-        """Emulate the S3 download_fileobj() API method to download a fileobj from the local filesystem."""
+        """Emulates the S3 download_fileobj() method.
 
+        :param kwargs: Keyword arguments passed to the MagicObject.
+        :return: A dictionary of the object's metadata after download.
+        :rtype: dict
+        """
         key = kwargs.pop("Key", None)
-
-        object = self.Object(key)
-
-        return object.download_fileobj(**kwargs).model_dump(exclude_none=True)
+        obj = self.Object(key)
+        return obj.download_fileobj(**kwargs).model_dump(exclude_none=True)
 
     def put_object(self, **kwargs) -> MagicObject:
-        """Put an object on the local filesystem instead of S3
+        """Emulates the S3 put_object() method.
 
-        Args:
-            Key (str): The key of the object
-            Body (str): The body of the object
-            ContentType (str): The content type of the object
-            ServerSideEncryption (str): The server side encryption type
-
+        :param kwargs: Keyword arguments passed to the MagicObject.
+        :return: The MagicObject instance after the put operation.
+        :rtype: MagicObject
         """
-
         key = kwargs.pop("Key", None)
-
-        object = self.Object(key)
-
-        return object.put_object(**kwargs)
+        obj = self.Object(key)
+        return obj.put_object(**kwargs)
 
     def Object(self, key: str | None) -> MagicObject:
-        """
-        Emulate the S3 Object() API method to return a MagicObject instead of an S3 Object
+        """Emulates the S3 Bucket.Object() method to return a MagicObject.
 
-        Args:
-            key (str): The key of the object
-
-        Returns:
-            MagicObject: A MagicObject that behaves like an S3 Object
+        :param key: The key of the object.
+        :type key: str or None
+        :return: A MagicObject instance.
+        :rtype: MagicObject
         """
         if self.data_path:
             return MagicObject(Bucket=self.name, Key=key, DataPath=self.data_path)
@@ -280,93 +285,77 @@ class MagicBucket(BaseModel):
 
 
 class MagicS3Client(BaseModel):
-    """
-    MagicS3Client class to emulate an S3 client.  Currently only emulates the "download_fileobj" and "put_object" methods.
+    """Emulates an S3 client to allow local filesystem storage via the S3 API.
 
-    The purpose is to read and write objects to the local filesystem instead of S3 using s3 api.
+    :ivar region_name: The AWS region.
+    :vartype region_name: str
+    :ivar data_path: The root directory for local storage.
+    :vartype data_path: str | None
     """
 
     region_name: str = Field(default_factory=get_region, alias="Region")
     data_path: str | None = Field(alias="DataPath", default=None)
 
     def head_object(self, **kwargs) -> dict:
-        """Emulate the S3 head_object() API method to get the metadata of an object"""
+        """Emulates the S3 client.head_object() method.
 
+        :param kwargs: Keyword arguments, expects 'Bucket' and 'Key'.
+        :return: A dictionary of the object's metadata.
+        :rtype: dict
+        """
         bucket_name = kwargs.pop("Bucket", None)
-
         bucket = self.Bucket(bucket_name)
-
         return bucket.head_object(**kwargs)
 
     def download_fileobj(self, **kwargs) -> dict:
-        """
-        Emulate the S3 download_fileobj() API method to download a fileobj from the local filesystem.
+        """Emulates the S3 client.download_fileobj() method.
 
-        Args:
-            Bucket (str): The name of the bucket
-            Key (str): The key of the object
-            Fileobj (file): The file object to write the data to
-            ExtraArgs (dict): Extra arguments to pass to the download
-
-        Raises:
-            ValueError: If missing the Key or Fileobj buffer
-
-        Returns:
-            dict: A dictionary emulating what S3 would return for a download_fileobj() call
+        :param kwargs: Keyword arguments, expects 'Bucket', 'Key', and 'Fileobj'.
+        :return: A dictionary of the object's metadata after download.
+        :rtype: dict
         """
         bucket_name = kwargs.pop("Bucket", None)
-
         bucket = self.Bucket(bucket_name)
-
         return bucket.download_fileobj(**kwargs)
 
     def put_object(self, **kwargs) -> MagicObject:
-        """
-        Emulate the S3 put_object() API method to store a file on the local filesystem.
+        """Emulates the S3 client.put_object() method.
 
-        Args:
-            Bucket (str): The name of the bucket
-            Key (str): The key of the object
-            Body (str): The body of the object
-            ContentType (str): The content type of the object
-            ServerSideEncryption (str): The server side encryption type
-
-        Returns:
-            dict: A dictionary that would emulate what S3 would return for a put_object() call
+        :param kwargs: Keyword arguments, expects 'Bucket', 'Key', and 'Body'.
+        :return: The MagicObject instance after the put operation.
+        :rtype: MagicObject
         """
         bucket_name = kwargs.pop("Bucket", None)
-
         bucket = self.Bucket(bucket_name)
-
         return bucket.put_object(**kwargs)
 
     def Bucket(self, bucket_name: str) -> MagicBucket:
-        """
-        Emulate the S3 Bucket() API method to return a MagicBucket instead of an S3 Bucket
+        """Emulates the S3 client.Bucket() method to return a MagicBucket.
 
-        Args:
-            bucket_name (str): The name of the bucket
-
-        Returns:
-            MagicBucket: A MagicBucket that behaves like an S3 Bucket
+        :param bucket_name: The name of the bucket.
+        :type bucket_name: str
+        :return: A MagicBucket instance.
+        :rtype: MagicBucket
         """
         return MagicBucket(Bucket=bucket_name, DataPath=self.data_path)
 
     @staticmethod
     def get_bucket(Region: str, BucketName: str, DataPath: str | None = None) -> Any:
-        """
-        Get a Bucket object.  Will be S3 bucket or MagicBucket
+        """Gets a Bucket object, which can be a real S3 Bucket or a MagicBucket.
 
-        Args:
-            Region (str): The region of the bucket
-            BucketName (str): The name of the bucket
-            DataPath (str): The path to the bucket or let the system use default.
+        The selection is based on the ``is_use_s3()`` configuration.
 
-        Returns:
-            MagicBucket: A MagicBucket object
+        :param Region: The AWS region of the bucket.
+        :type Region: str
+        :param BucketName: The name of the bucket.
+        :type BucketName: str
+        :param DataPath: The local storage path if not using S3. Defaults to None.
+        :type DataPath: str or None, optional
+        :return: An S3 Bucket or a MagicBucket instance.
+        :rtype: Any
         """
         if is_use_s3():
-            s3 = aws.s3_resource(region=BucketName)
+            s3 = aws.s3_resource(region=Region)
             bucket = s3.Bucket(BucketName)
         else:
             local = MagicS3Client(Region=Region, DataPath=DataPath)
@@ -376,15 +365,16 @@ class MagicS3Client(BaseModel):
 
     @staticmethod
     def get_client(Region: str, DataPath: str | None = None) -> Any:
-        """
-        Get a S3 client object.  Will be S3 client or MagicS3Client
+        """Gets an S3 client, which can be a real boto3 client or a MagicS3Client.
 
-        Args:
-            Region (str): The region of the bucket
-            DataPath (str): The path to the bucket
+        The selection is based on the ``is_use_s3()`` configuration.
 
-        Returns:
-            MagicS3Client: A MagicS3Client object
+        :param Region: The AWS region for the client.
+        :type Region: str
+        :param DataPath: The local storage path if not using S3. Defaults to None.
+        :type DataPath: str or None, optional
+        :return: A boto3 S3 client or a MagicS3Client instance.
+        :rtype: Any
         """
         if is_use_s3():
             client = aws.s3_client(region=Region)

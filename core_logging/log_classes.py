@@ -17,12 +17,17 @@ import core_framework as util
 
 # Default formats for the log messages
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+""":const DEFAULT_DATE_FORMAT: The default format for dates in log messages."""
 DEFAULT_LOG_FORMAT = "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
+""":const DEFAULT_LOG_FORMAT: The default format for log messages."""
 
 # Custom log levels not supported by the logging module
 MSG = 70
+""":const MSG: Custom log level for simple messages."""
 STATUS = 60
+""":const STATUS: Custom log level for status updates."""
 TRACE = 5
+""":const TRACE: Custom log level for detailed trace messages."""
 
 # In the logging object, all levels exist, here are some custom ones:
 logging.addLevelName(MSG, "MSG")
@@ -33,114 +38,117 @@ logging.addLevelName(TRACE, "TRACE")
 
 # Attributes of the log message when the output is set to JSON
 LOG_DETAILS = "Details"
-""" \\- "Details" """
+""":const LOG_DETAILS: Key for the 'Details' field in a JSON log entry."""
 LOG_STATUS = "Status"
-""" \\- "Status" """
+""":const LOG_STATUS: Key for the 'Status' field in a JSON log entry."""
 LOG_MESSAGE = "Message"
-""" \\- "Message" """
+""":const LOG_MESSAGE: Key for the 'Message' field in a JSON log entry."""
 LOG_REASON = "Reason"
-""" \\- "Reason" """
+""":const LOG_REASON: Key for the 'Reason' field in a JSON log entry."""
 LOG_RESOURCE = "Resource"
-""" \\- "Resource" """
+""":const LOG_RESOURCE: Key for the 'Resource' field in a JSON log entry."""
 LOG_TIMESTAMP = "Timestamp"
-""" \\- "Timestamp" """
+""":const LOG_TIMESTAMP: Key for the 'Timestamp' field in a JSON log entry."""
 LOG_TYPE = "Type"
-""" \\- "Type" """
+""":const LOG_TYPE: Key for the 'Type' field in a JSON log entry."""
 LOG_SCOPE = "Scope"
-""" \\- "Scope" """
+""":const LOG_SCOPE: Key for the 'Scope' field in a JSON log entry."""
 
 # Future - Not in use yet
 ENV_LOG_GROUP = "LOG_GROUP"
-""" \\- "LOG_GROUP" """
+""":const ENV_LOG_GROUP: Environment variable for the log group name."""
 ENV_LOG_STREAM = "LOG_STREAM"
-""" \\- "LOG_STREAM" """
+""":const ENV_LOG_STREAM: Environment variable for the log stream name."""
 
 # Attributes for the extra: Mapping[str, object] parameter when calling the log methods
 L_STATUS_LABEL = "status_label"
-""" \\- "status_label" """
+""":const L_STATUS_LABEL: Key for the 'status_label' extra parameter."""
 L_STATUS = "status"
-""" \\- "status" """
+""":const L_STATUS: Key for the 'status' extra parameter."""
 L_REASON = "reason"
-""" \\- "reason" """
+""":const L_REASON: Key for the 'reason' extra parameter."""
 L_MESSAGE = "message"
-""" \\- "message" """
+""":const L_MESSAGE: Key for the 'message' extra parameter."""
 L_DETAILS = "details"
-""" \\- "details" """
+""":const L_DETAILS: Key for the 'details' extra parameter."""
 L_TYPE = "type"
-""" \\- "type" """
+""":const L_TYPE: Key for the 'type' extra parameter."""
 L_SCOPE = "scope"
-""" \\- "scope" """
+""":const L_SCOPE: Key for the 'scope' extra parameter."""
 L_IDENTITY = "identity"
-""" \\- "identity" """
+""":const L_IDENTITY: Key for the 'identity' extra parameter."""
 L_PRN = "prn"
-""" \\- "prn" """
+""":const L_PRN: Key for the 'prn' extra parameter."""
 
 
 class CoreLogFormatter(logging.Formatter):
     """Base Class for the CoreLogJsonFormatter and CoreLogTextFormatter classes."""
 
     def __init__(self, fmt: str, datefmt: str):
-        """
-        Initialize the formatter with the specified format and date format.
+        """Initialize the formatter with the specified format and date format.
 
-        Args:
-            fmt (str): Message Format
-            datefmt (str): Datetime Format
+        :param fmt: Message Format.
+        :type fmt: str
+        :param datefmt: Datetime Format.
+        :type datefmt: str
         """
         super().__init__(fmt, datefmt)
 
     def format_datetime(self, t: datetime, date_format: str | None = None) -> str:
-        """
-        Formats a datetime object to a string using the specified format.  If no format is specified, the default format is used.
+        """Formats a datetime object to a string using the specified format.
 
+        If no format is specified, the default format is used.
         The default format is "%Y-%m-%d %H:%M:%S" if date_format is None.
 
-        Args:
-            t (datetime): The datetime object to format.
-            date_format (str | None, optional): The date format to use. Defaults to None.
-
-        Returns:
-            str: The formatted date string.
+        :param t: The datetime object to format.
+        :type t: datetime
+        :param date_format: The date format to use. Defaults to None.
+        :type date_format: str or None, optional
+        :return: The formatted date string.
+        :rtype: str
         """
         return t.strftime(date_format or DEFAULT_DATE_FORMAT)
 
     def formatTime(
         self, record: logging.LogRecord, date_format: str | None = None
     ) -> str:  # NOSONAR: python:S100
-        """
-        Exracts the "created" field from the logging.LogRecord object and converts it to a datetime object.
-        to be used as the timestamp of the log message.
+        """Extracts the "created" field from the LogRecord and converts it to a datetime string.
 
         If date_format is not specified, the default format is used.
 
-        Args:
-            record (logging.LogRecord): The log record object.
-            date_format (str | None, optional): The format to use for the datetime. Defaults to None.
-
-        Returns:
-            str: The formatted datatime string.
+        :param record: The log record object.
+        :type record: logging.LogRecord
+        :param date_format: The format to use for the datetime. Defaults to None.
+        :type date_format: str or None, optional
+        :return: The formatted datetime string.
+        :rtype: str
         """
         t = datetime.fromtimestamp(record.created)
         return self.format_datetime(t, date_format or self.datefmt)
 
     def formatMessage(self, record) -> str:
+        """Formats the message from a record.
+
+        :param record: The log record.
+        :return: The formatted message.
+        :rtype: str
+        """
         return super().formatMessage(record)
 
     @staticmethod
     def replace_holders(message: str, args) -> tuple[str, tuple]:
+        """Replace the {} place holders in the message with the values in the args tuple.
+
+        If there are more values in the args tuple than there are {} place holders
+        in the message, then the remaining values are returned in a tuple.
+
+        :param message: The message to replace the place holders in.
+        :type message: str
+        :param args: The values to replace the place holders with.
+        :type args: tuple
+        :return: A tuple of the message and a tuple of unused values.
+        :rtype: tuple
         """
-        Replace the %s place holders in the message with the values in the args tuple.  If there are more values in the args tuple
-        than there are %s place holders in the message, then the remaining values are returned in a list.
-
-        Args:
-            message (str): The message to replace the place holders in.
-            args (tuple): The values to replace the place holders with.
-
-        Returns:
-            tuple: A tuple of the message and a list of unused values.
-        """
-
-        # Count the number of "{}" strings in the message
         if args:
             count = message.count("{}")
             # If there are more "{}" strings than there are values in the args tuple, then we need to add empty strings to args
@@ -156,13 +164,14 @@ class CoreLogFormatter(logging.Formatter):
 
     @staticmethod
     def add_details(record: logging.LogRecord, data: dict) -> None:
-        """
-        Add the "Details" property to the fields.  This is called by the emit() method.
+        """Add the "Details" property to the fields.
 
-        Args:
-            record (logging.LogRecord): The log record object.
-            data (dict): The dictionary of data to add to the record object.
+        This is called by the emit() method.
 
+        :param record: The log record object.
+        :type record: logging.LogRecord
+        :param data: The dictionary of data to add to the record object.
+        :type data: dict
         """
         if hasattr(record, L_DETAILS):
             details = getattr(record, L_DETAILS)
@@ -179,14 +188,13 @@ class CoreLogTextFormatter(CoreLogFormatter):
     """Text Formatter for the CoreLogger class that outputs a log message as standard text."""
 
     def __init__(self, text_format: str | None = None, datefmt: str | None = None):
-        """
-        Initializes the formatter with the specified format and date format.
+        """Initializes the formatter with the specified format and date format.
 
-        Args:
-            fmt (str): message format
-            datefmt (str): datetime format
+        :param text_format: message format.
+        :type text_format: str, optional
+        :param datefmt: datetime format.
+        :type datefmt: str, optional
         """
-
         if not text_format:
             text_format = "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
         if not datefmt:
@@ -196,21 +204,29 @@ class CoreLogTextFormatter(CoreLogFormatter):
 
     @staticmethod
     def represent_ordereddict(dumper: Any, ordered: OrderedDict) -> Any:
+        """Represents an OrderedDict as a dict for YAML dumping.
+
+        :param dumper: The YAML dumper.
+        :type dumper: Any
+        :param ordered: The OrderedDict to represent.
+        :type ordered: OrderedDict
+        :return: The dictionary representation.
+        :rtype: Any
+        """
         items = dict(ordered)  # translate the OrderedDict into a dict
         return dumper.represent_dict(items)
 
     def format(self, record: logging.LogRecord) -> str:
+        """Formats the record object into a string.
+
+        ``record.details`` will be translated to YAML format and the generated
+        string will be appended to the end of the message.
+
+        :param record: The logger record object.
+        :type record: logging.LogRecord
+        :return: A string to output to the log.
+        :rtype: str
         """
-        Formats the record object into a string.  record.details will be translated to YAML
-        format and the generated string will be appended to the end of the.
-
-        Args:
-            record (logging.LogRecord): The logger record object
-
-        Returns:
-            str: A string to output to the log.
-        """
-
         # If for some reason record.args is not a tuple, make it one.  This happens if the original
         # tuple had only one element that is also a list (or dictionary)
         if not isinstance(record.args, tuple):
@@ -223,7 +239,7 @@ class CoreLogTextFormatter(CoreLogFormatter):
         ):
             record.msg = f"{record.status} {record.reason}"
 
-        # The user can send an list of replacement values if the "msg" contains "%s"
+        # The user can send a list of replacement values if the "msg" contains "{}"
         # place_holders.
         record.msg, record.args = self.replace_holders(record.msg, record.args)
 
@@ -250,17 +266,25 @@ class CoreLogTextFormatter(CoreLogFormatter):
         return data
 
     def _indent_yaml(self, data: dict, indent=4) -> str:
+        """Indents a dictionary as a YAML string.
+
+        :param data: The dictionary to format.
+        :type data: dict
+        :param indent: The number of spaces to indent. Defaults to 4.
+        :type indent: int, optional
+        :return: The indented YAML string.
+        :rtype: str
+        """
         yaml_str = util.to_yaml(data).rstrip("\n")
         return textwrap.indent(yaml_str, " " * indent)
 
     def details(self, record: logging.LogRecord, content: str) -> str:
-        """
-        Returns a reformatted string based o the content of the log message.
+        """Returns a reformatted string based on the content of the log message.
 
-        First, content may be a string with multiple lines.  Each line is formatted and printed to the console.
-        such that the message:
+        First, content may be a string with multiple lines. Each line is formatted
+        and printed to the console. For example, the message:
 
-        .. code-block:: shell
+        .. code-block:: text
 
             this is a test
             of a message
@@ -269,19 +293,19 @@ class CoreLogTextFormatter(CoreLogFormatter):
 
         Will be output to the log as:
 
-        .. code-block:: shell
+        .. code-block:: text
 
             2024-01-01 12:00:00 [root] [INFO] this is a test
             2024-01-01 12:00:00 [root] [INFO] of a message
             2024-01-01 12:00:00 [root] [INFO] with multiple
             2024-01-01 12:00:00 [root] [INFO] lines
 
-        Args:
-            record (logging.LogRecord): The logging log recrd object.
-            content (str): The text to reformat.
-
-        Returns:
-            str: a string of formatted output lines.
+        :param record: The logging log record object.
+        :type record: logging.LogRecord
+        :param content: The text to reformat.
+        :type content: str
+        :return: a string of formatted output lines.
+        :rtype: str
         """
         lines = content.split("\n")
 
@@ -300,14 +324,13 @@ class CoreLogJsonFormatter(CoreLogFormatter):
     """JSON Formatter for the CoreLogger class that outputs a log message as a JSON object."""
 
     def __init__(self, text_format: str | None = None, datefmt: str | None = None):
-        """
-        Initializes the formatter with the specified format and date format.
+        """Initializes the formatter with the specified format and date format.
 
-        Args:
-            text_format (str): Message format
-            datefmt (str): datetime format
+        :param text_format: Message format.
+        :type text_format: str, optional
+        :param datefmt: datetime format.
+        :type datefmt: str, optional
         """
-
         if not text_format:
             text_format = "%(asctime)s [%(name)s] [%(levelname)s] %(message)s"
         if not datefmt:
@@ -319,14 +342,16 @@ class CoreLogJsonFormatter(CoreLogFormatter):
     def set_element(
         data: dict, record: logging.LogRecord, key: str, alternate: str | None = None
     ):
-        """
-        Adds an element to the data dictionary if it exists in the record object.
+        """Adds an element to the data dictionary if it exists in the record object.
 
-        Args:
-            data (dict): The dictionary to add the element to.
-            record (logging.LogRecord): The log record object to extract the element from.
-            key (str): The key to add to the data dictionary.
-            alternate (str | None, optional): An alternate key to use if the primary key does not exist. Defaults to None.
+        :param data: The dictionary to add the element to.
+        :type data: dict
+        :param record: The log record object to extract the element from.
+        :type record: logging.LogRecord
+        :param key: The key to add to the data dictionary.
+        :type key: str
+        :param alternate: An alternate key to use if the primary key does not exist. Defaults to None.
+        :type alternate: str or None, optional
         """
         value = None
 
@@ -343,31 +368,32 @@ class CoreLogJsonFormatter(CoreLogFormatter):
             data[key] = value
 
     def format(self, record: logging.LogRecord) -> str:
-        """
-        Formats the record object into a JSON string to be output to the log.
+        """Formats the record object into a JSON string to be output to the log.
 
         The JSON object will contain the following fields:
 
         .. code-block:: json
 
             {
-                "Timestamp": "2024-01-01 12:00:00",
-                "Type": "INFO",
-                "Status": "COMPILE_COMPLETE",
-                "Reason": "Compile Complete",
-                "Message": "This is a test message",
-                "Details": {
-                    "prn": "prn:core:automation:master:1.0.0",
-                },
-                "Scope": "build",
-                "Resource": "my-resource-component in the prn"
+                "@timestamp": "2024-01-01T12:00:00.000Z",
+                "log.logger": "my-logger",
+                "log.level": "INFO",
+                "status": "COMPILE_COMPLETE",
+                "reason": "Compile Complete",
+                "message": "This is a test message",
+                "scope": "build",
+                "file": "test.py",
+                "line": 10,
+                "function": "my_function",
+                "context": {
+                    "prn": "prn:core:automation:master:1.0.0"
+                }
             }
 
-        The Details field can be any arbitrary dictionary that is passed in the log message.
-
-        Args:
-            record (logging.LogRecord): The log record object.
-
+        :param record: The log record object.
+        :type record: logging.LogRecord
+        :return: The formatted JSON string.
+        :rtype: str
         """
         # If for some reason record.args is not a tuple, make it one.  This happens if the original
         # tuple had only one element that is also a list (or dictionary)
@@ -381,7 +407,7 @@ class CoreLogJsonFormatter(CoreLogFormatter):
         ):
             record.msg = f"{record.status} {record.reason}"
 
-        # The user can send an list of replacement values if the "msg" contains "%s"
+        # The user can send a list of replacement values if the "msg" contains "{}"
         # place_holders.
         record.msg, record.args = self.replace_holders(record.msg, record.args)
 
@@ -416,21 +442,19 @@ class CoreLogJsonFormatter(CoreLogFormatter):
 
 
 class CoreLoggerHandler(logging.Handler):
-    """
-    This is the core logging handler that does special things with messages and arguments.
+    """This is the core logging handler that does special things with messages and arguments.
 
-    There are two types of formatters used by this handler.  The CoreLogJsonFormatter and the CoreLogTextFormatter.
+    There are two types of formatters used by this handler: The CoreLogJsonFormatter
+    and the CoreLogTextFormatter.
 
-    Which formatter is used is determined by the LOG_AS_JSON environment variable.  If it's set to 'true' (case insensitive),
-    then the CoreLogJsonFormatter is used.
-
+    Which formatter is used is determined by the LOG_AS_JSON environment variable.
+    If it's set to 'true' (case insensitive), then the CoreLogJsonFormatter is used.
     """
 
     formatter: CoreLogFormatter
 
     def __init__(self, name: str, **kwargs):
-        """
-        Initialize a new instance of the CoreLoggerHandler class.
+        """Initialize a new instance of the CoreLoggerHandler class.
 
         You can pass level in kwargs as the following is executed:
 
@@ -438,23 +462,23 @@ class CoreLoggerHandler(logging.Handler):
 
             level = kwargs.get("level", NOTSET)
 
-        Args:
-            name (str): The name of the handler.
-            **kwargs: Additional keyword arguments to pass to the handler.
+        :param name: The name of the handler.
+        :type name: str
+        :param kwargs: Additional keyword arguments to pass to the handler.
+        :type kwargs: Any
         """
-
         super().__init__(level=kwargs.get("level", NOTSET))
-
         self.name = name
 
     def emit(self, record) -> None:
-        """
-        Emit the log message to the console.  This is the method that is called by the logging framework to output the log message.
+        """Emit the log message to the console.
 
-        This is almost identicl to the standard emit() however there is some special handling for STATUS messages.
+        This is the method that is called by the logging framework to output the log message.
+        This is almost identical to the standard emit() however there is some special
+        handling for STATUS messages.
 
-        Args:
-            record (dict): The log record object.
+        :param record: The log record object.
+        :type record: logging.LogRecord
         """
         if self.formatter:
             print(self.formatter.format(record))
@@ -463,42 +487,45 @@ class CoreLoggerHandler(logging.Handler):
 
 
 class CoreLogger(logging.Logger):
-    """
-    CoreLogger is a special logger that is designed to work with the standard python logger but provides some additional features.
+    """CoreLogger is a special logger that provides additional features.
 
-    Feetures include the ability to log messages as JSON objects, the ability to log status messages, and the ability to log trace messages.
+    Features include the ability to log messages as JSON objects, the ability to
+    log status messages, and the ability to log trace messages.
 
-    The primary feature of this logger is that it overrides all logging methods (log.debug, log.info, log.error, etc) and accepts a \\*\\*kwargs
-    argument that will be used to determne the identity of the logger.
+    The primary feature of this logger is that it overrides all logging methods
+    (log.debug, log.info, log.error, etc) and accepts a ``**kwargs``
+    argument that will be used to determine the identity of the logger.
 
     The flow looks like:
 
-    log.info("This is a message", identity="my-identity")
+    .. code-block:: python
 
-        1.  identity = kwargs.get("identity", None)
-        2.  logger = logging.getLogger(idendity)
-        3.  logger.info("This is a message", \\*\\*kwargs)
+        log.info("This is a message", identity="my-identity")
 
-    Pretty simple. The magic is in the handler and is set in the contructor of this class. If you want more handlers, you will
-    need to add them after you instantiate the logger with getLogger()
+        # 1. identity = kwargs.get("identity", None)
+        # 2. logger = logging.getLogger(identity)
+        # 3. logger.info("This is a message", **kwargs)
+
+    The magic is in the handler and is set in the constructor of this class.
+    If you want more handlers, you will need to add them after you instantiate
+    the logger with getLogger().
 
     See CoreLoggerHandler for more information.
 
-    Parameters:
-        name (str): The name of the logger
-        level (int, optional): The log level. Defaults to NOTSET.
-
+    :param name: The name of the logger.
+    :type name: str
+    :param level: The log level. Defaults to NOTSET.
+    :type level: int, optional
     """
 
     def __init__(self, name: str, level: int = NOTSET):
         super().__init__(name, level=level)
 
     def setLevel(self, level: int | str) -> None:
-        """
-        Special function to set the level of the logger and all of the handlers.
+        """Special function to set the level of the logger and all of its handlers.
 
-        Args:
-            level (int): The loglevel to set
+        :param level: The loglevel to set.
+        :type level: int or str
         """
         super().setLevel(level)
         for handler in self.handlers:
@@ -507,12 +534,14 @@ class CoreLogger(logging.Logger):
     def core_log(
         self, level: int, message: str | dict | None, args: tuple, **kwargs
     ) -> None:
-        """
-        This is a duplicate of logging.Logger._log() but the signature differs with the default by removing fixed parameters
-        and replacing them with \\*\\*kwargs so we can convert both the message and the kwargs to extra data allowing the caller
-        to submit arbitrary meta-data in the call to the logger.
+        """This is a duplicate of logging.Logger._log() but with a modified signature.
 
-        The message can have replacement strings %s symbol in the string and pass (args) tuples to replace the %s symbols.
+        It replaces fixed parameters with ``**kwargs`` so we can convert both the
+        message and the kwargs to extra data, allowing the caller to submit
+        arbitrary meta-data in the call to the logger.
+
+        The message can have replacement strings {} in the string and pass ``args``
+        tuples to replace them.
 
         Examples:
 
@@ -523,21 +552,18 @@ class CoreLogger(logging.Logger):
 
         .. warning::
 
-            The current customizations and coding increase the stack_depth of the logger.  In order to
-            get the module and line number of your log message, be aware that the default stack_depth is 4.
+            The current customizations and coding increase the stack_depth of the logger.
+            In order to get the correct module and line number of your log message,
+            be aware that the default stacklevel is 4.
 
-        Args:
-            level (int): The loglevel
-            message (str): The message to log.
-            args (tuple): A list of replacement values for the message.
-            **kwargs: Elements to add to the log.record as exta data.
-                * exc_info: Exception information
-                * extra: Additional data to add to the log record.
-                * stack_info: Stack information
-                * stacklevel: Stack level
-                * details: Additional details to add to the log record output
-                * message: Explicit message overwriting the message parameter
-
+        :param level: The loglevel.
+        :type level: int
+        :param message: The message to log.
+        :type message: str or dict or None
+        :param args: A tuple of replacement values for the message.
+        :type args: tuple
+        :param kwargs: Elements to add to the log record as extra data.
+        :type kwargs: Any
         """
         exc_info = kwargs.pop("exc_info", None)
         extra = kwargs.pop("extra", {})
@@ -563,29 +589,33 @@ class CoreLogger(logging.Logger):
         self._log(level, message, args, exc_info, extra, stack_info, stacklevel)
 
     def msg(self, message: Any, *args: Any, **kwargs: Any) -> None:
-        """
-        Outputs a simple message to the log in the 'MSG' level.
+        """Outputs a simple message to the log in the 'MSG' level.
 
-        Args:
-            message (Any): The message to output.
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param message: The message to output.
+        :type message: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         self.core_log(MSG, message, args, **kwargs)
 
     def status(self, code: str | int, reason: str, *args: Any, **kwargs: Any) -> None:
-        """
-        Outputs a status message to the log in the 'STATUS' level.
+        """Outputs a status message to the log in the 'STATUS' level.
 
         Supplying a code and reason will output a message in the following format:
-
-        message = f"{code} {reason}"
+        ``message = f"{code} {reason}"``
 
         Code and Reason are added as metadata so that JSON formatters can use them individually.
 
-        Args:
-            code (str | int): The 'code' of the message
-            reason (str): The 'reason' of the message
+        :param code: The 'code' of the message.
+        :type code: str or int
+        :param reason: The 'reason' of the message.
+        :type reason: str
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if self.isEnabledFor(STATUS):
             s = str(code)
@@ -603,115 +633,112 @@ class CoreLogger(logging.Logger):
             self.core_log(STATUS, None, args, **kwargs)
 
     def trace(self, message, *args, **kwargs) -> None:
-        """
-        Log a message with severity 'TRACE'.
+        """Log a message with severity 'TRACE'.
 
-        Args:
-            message (str): The message to output
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param message: The message to output.
+        :type message: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if self.isEnabledFor(TRACE):
             self.core_log(TRACE, message, args, **kwargs)
 
     def debug(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'DEBUG'.
+        """Log 'msg' with severity 'DEBUG'.
 
         To pass exception information, use the keyword argument exc_info with
-        a true value, e.g.
+        a true value, e.g. ``logger.debug("...", exc_info=True)``
 
-        logger.debug("Houston, we have a %s", "thorny problem", exc_info=True)
-
-        Args:
-            message (str): The message to output
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param msg: The message to output.
+        :type msg: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if self.isEnabledFor(DEBUG):
             self.core_log(DEBUG, msg, args, **kwargs)
 
     def info(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'INFO'.
+        """Log 'msg' with severity 'INFO'.
 
         To pass exception information, use the keyword argument exc_info with
-        a true value, e.g.
+        a true value, e.g. ``logger.info("...", exc_info=True)``
 
-        logger.info("Houston, we have a %s", "notable problem", exc_info=True)
-
-        Args:
-            message (str): The message to output
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param msg: The message to output.
+        :type msg: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if self.isEnabledFor(INFO):
             self.core_log(INFO, msg, args, **kwargs)
 
     def warning(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'WARNING'.
+        """Log 'msg' with severity 'WARNING'.
 
         To pass exception information, use the keyword argument exc_info with
-        a true value, e.g.
+        a true value, e.g. ``logger.warning("...", exc_info=True)``
 
-        logger.warning("Houston, we have a %s", "bit of a problem", exc_info=True)
-
-        Args:
-            message (str): The message to output
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param msg: The message to output.
+        :type msg: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if self.isEnabledFor(WARNING):
             self.core_log(WARNING, msg, args, **kwargs)
 
     def error(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'ERROR'.
+        """Log 'msg' with severity 'ERROR'.
 
         To pass exception information, use the keyword argument exc_info with
-        a true value, e.g.
+        a true value, e.g. ``logger.error("...", exc_info=True)``
 
-        logger.error("Houston, we have a %s", "major problem", exc_info=True)
-
-        Args:
-            message (str): The message to output
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param msg: The message to output.
+        :type msg: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if self.isEnabledFor(ERROR):
             self.core_log(ERROR, msg, args, **kwargs)
 
     def critical(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'CRITICAL'.
+        """Log 'msg' with severity 'CRITICAL'.
 
         To pass exception information, use the keyword argument exc_info with
-        a true value, e.g.
+        a true value, e.g. ``logger.critical("...", exc_info=True)``
 
-        logger.critical("Houston, we have a %s", "major disaster", exc_info=True)
-
-        Args:
-            message (str): The message to output
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param msg: The message to output.
+        :type msg: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if self.isEnabledFor(CRITICAL):
             self.core_log(CRITICAL, msg, args, **kwargs)
 
     def log(self, level, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with the integer severity 'level'.
+        """Log 'msg' with the integer severity 'level'.
 
         To pass exception information, use the keyword argument exc_info with
-        a true value, e.g.
+        a true value, e.g. ``logger.log(level, "...", exc_info=True)``
 
-        logger.log(level, "We have a %s", "mysterious problem", exc_info=True)
-
-        Args:
-            message (str): The message to output
-            *args: Additional arguments to replace in the message.
-            **kwargs: Additional keyword arguments to pass to the logger.
+        :param level: The numeric log level.
+        :type level: int
+        :param msg: The message to output.
+        :type msg: Any
+        :param args: Additional arguments to replace in the message.
+        :type args: Any
+        :param kwargs: Additional keyword arguments to pass to the logger.
+        :type kwargs: Any
         """
         if not isinstance(level, int):
             raise TypeError("level must be an integer")

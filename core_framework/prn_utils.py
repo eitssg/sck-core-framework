@@ -1,9 +1,7 @@
-"""Utilities to validate or generate PRN Identifiers"""
+"""Utilities to validate or generate PRN Identifiers."""
 
 from typing import Any
-
 import re
-
 from .constants import (
     SCOPE_CLIENT,
     SCOPE_PORTFOLIO,
@@ -14,20 +12,18 @@ from .constants import (
     V_EMPTY,
 )
 
-PRN_REGEX = r"(prn)(:[a-zA-Z0-9\-]+)*"
-PORTFOLIO_PRN_REGEX = r"(prn)(:[a-zA-Z0-9\-]+)"
-APP_PRN_REGEX = r"(prn)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)"
-BRANCH_PRN_REGEX = r"(prn)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)"
-BUILD_PRN_REGEX = (
-    r"(prn)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)"
-)
-COMPONENT_PRN_REGEX = r"(prn)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)(:[a-zA-Z0-9\-]+)"
+PRN_REGEX = r"prn(:[a-zA-Z0-9\-]+)*"
+PORTFOLIO_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+"
+APP_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
+BRANCH_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
+BUILD_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
+COMPONENT_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
 
 # Constant for the PRN key
 PRN = "prn"
 DELIMITER = ":"
 
-# These would typically come in API calles as paramters to a request
+# These would typically come in API calls as parameters to a request
 ARG_PORTFOLIO_PRN = "portfolio_prn"
 ARG_APP_PRN = "app_prn"
 ARG_BRANCH_PRN = "branch_prn"
@@ -37,17 +33,15 @@ ARG_NAME = "name"
 
 
 def get_prn_scope(prn: str) -> str | None:
-    """
-    Returns the scope of the PRN.  The copses are "client", "portfolio", "app", "branch", "build", "component".
+    """Determines the scope of a PRN based on its structure.
 
-    If there are no colons, then the scope is "client"
+    The scope is determined by the number of colons in the PRN string.
+    The scopes are "client", "portfolio", "app", "branch", "build", and "component".
 
-    Args:
-        prn (str): The PRN to extract the scope from
-
-    Returns:
-        str | None: The scope of the PRN or None if the PRN is invalid
-
+    :param prn: The PRN to extract the scope from.
+    :type prn: str
+    :return: The scope of the PRN or None if the PRN is invalid.
+    :rtype: str or None
     """
     # Define the mapping of colon counts to scopes
     scope_mapping = {
@@ -67,221 +61,168 @@ def get_prn_scope(prn: str) -> str | None:
 
 
 def extract_prn(obj: Any) -> str:
-    """
-    A little helper that will extract a prn based on various input:
+    """Extracts a PRN string from various object types.
 
-    obj: dict = { "prn": 'prn:portfolio:app:branch:build:component' }
-    and return the obj['prn'] value
+    This helper function can extract a PRN from:
+    - A dictionary with a 'prn' key.
+    - A string that is already a PRN.
+    - An object with a 'prn' attribute.
 
-    obj: str = 'prn:portfolio:app:branch:build:component'
-    and return the obj value
-
-    obj: class = Class namespace
-    and return the obj.prn vaue
-
-    Args:
-        obj (Any): dict, string, or class namespace
-
-    Returns:
-        str: the prn value
+    :param obj: The object to extract the PRN from (dict, str, or object).
+    :type obj: Any
+    :return: The extracted PRN string, or an empty string if not found.
+    :rtype: str
     """
     if isinstance(obj, dict):
-        prn = obj.get(PRN, "")
+        return obj.get(PRN, "")
     elif isinstance(obj, str):
         return obj
     elif hasattr(obj, PRN):
-        return obj.prn
-    return prn
+        return getattr(obj, PRN, "")
+    return ""
 
 
 def extract_portfolio(obj: Any) -> str | None:
-    """
-    Extract the portfolio from the provided Object which can be a string or dictionary
+    """Extracts the portfolio name from a PRN.
 
-    Args:
-        obj (Any): The Identity or PRN information
-
-    Returns:
-        str | None: The portfolio name or None if not found
+    :param obj: An object containing PRN information (dict, str, or object).
+    :type obj: Any
+    :return: The portfolio name, or None if not found.
+    :rtype: str or None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[1] if len(prn_sections) > 1 else None
 
 
 def extract_app(obj: Any) -> str | None:
-    """
-    Extract the app from the provided Object which can be a string or dictionary
+    """Extracts the app name from a PRN.
 
-    Args:
-        obj (Any): The Identity or PRN information
-
-    Returns:
-        str | None: The app name or None if not found
+    :param obj: An object containing PRN information (dict, str, or object).
+    :type obj: Any
+    :return: The app name, or None if not found.
+    :rtype: str or None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[2] if len(prn_sections) > 2 else None
 
 
 def extract_branch(obj: Any) -> str | None:
-    """
-    Extract the branch from the provided Object which can be a string or dictionary
+    """Extracts the branch name from a PRN.
 
-    Args:
-        obj (Any): The Identity or PRN information
-
-    Returns:
-        str | None: The branch name or None if not found
+    :param obj: An object containing PRN information (dict, str, or object).
+    :type obj: Any
+    :return: The branch name, or None if not found.
+    :rtype: str or None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[3] if len(prn_sections) > 3 else None
 
 
 def extract_build(obj: Any) -> str | None:
-    """
-    Extract the build from the provided Object which can be a string or dictionary
+    """Extracts the build name from a PRN.
 
-    Args:
-        obj (Any): The Identity or PRN information
-
-    Returns:
-        str | None: The build name or None if not found
+    :param obj: An object containing PRN information (dict, str, or object).
+    :type obj: Any
+    :return: The build name, or None if not found.
+    :rtype: str or None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[4] if len(prn_sections) > 4 else None
 
 
 def extract_component(obj: Any) -> str | None:
-    """
-    Extract the component from the provided Object which can be a string or dictionary
+    """Extracts the component name from a PRN.
 
-    Args:
-        obj (Any): The Identity or PRN information
-
-    Returns:
-        str | None: The component name or None if not found
+    :param obj: An object containing PRN information (dict, str, or object).
+    :type obj: Any
+    :return: The component name, or None if not found.
+    :rtype: str or None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[5] if len(prn_sections) > 5 else None
 
 
 def extract_portfolio_prn(obj: Any) -> str:
+    """Extracts the portfolio-level PRN from a full PRN string.
+
+    :param obj: An object containing PRN information.
+    :type obj: Any
+    :return: The portfolio PRN (e.g., "prn:portfolio") or an empty string.
+    :rtype: str
     """
-    Uses a regular expression to extract the portfolio prn from the provided object
-    after calling the extract_prn function to get the prn value.
-
-    Args:
-        obj (Any): The PRN information
-
-    Returns:
-        str: The portfolio prn in the formatn "prn:portfolio" or ""
-    """
-
-    matches = re.match(PORTFOLIO_PRN_REGEX, extract_prn(obj))
-    if matches is None:
-        return V_EMPTY
-    portfolio_prn = V_EMPTY.join(matches.groups())
-    return portfolio_prn
+    match = re.match(f"({PORTFOLIO_PRN_REGEX})", extract_prn(obj))
+    return match.group(1) if match else V_EMPTY
 
 
 def extract_app_prn(obj: Any) -> str:
-    """
-    Uses a regular expression to extract the app prn from the provided object
-    after calling the extract_prn function to get the prn value.
+    """Extracts the app-level PRN from a full PRN string.
 
-    Args:
-        obj (Any): The PRN information
-
-    Returns:
-        str: The app prn in the formatn "prn:portfolio:app" or ""
+    :param obj: An object containing PRN information.
+    :type obj: Any
+    :return: The app PRN (e.g., "prn:portfolio:app") or an empty string.
+    :rtype: str
     """
-    matches = re.match(APP_PRN_REGEX, extract_prn(obj))
-    if matches is None:
-        return V_EMPTY
-    app_prn = V_EMPTY.join(matches.groups())
-    return app_prn
+    match = re.match(f"({APP_PRN_REGEX})", extract_prn(obj))
+    return match.group(1) if match else V_EMPTY
 
 
 def extract_branch_prn(obj: Any) -> str:
-    """
-    Uses a regular expression to extract the branch prn from the provided object
-    after calling the extract_prn function to get the prn value.
+    """Extracts the branch-level PRN from a full PRN string.
 
-    Args:
-        obj (Any): The PRN information
-
-    Returns:
-        str: The branch prn in the formatn "prn:portfolio:app:branch" or ""
+    :param obj: An object containing PRN information.
+    :type obj: Any
+    :return: The branch PRN (e.g., "prn:portfolio:app:branch") or an empty string.
+    :rtype: str
     """
-    matches = re.match(BRANCH_PRN_REGEX, extract_prn(obj))
-    if matches is None:
-        return V_EMPTY
-    branch_prn = V_EMPTY.join(matches.groups())
-    return branch_prn
+    match = re.match(f"({BRANCH_PRN_REGEX})", extract_prn(obj))
+    return match.group(1) if match else V_EMPTY
 
 
 def extract_build_prn(obj: Any) -> str:
-    """
-    Uses a regular expression to extract the build prn from the provided object
-    after calling the extract_prn function to get the prn value.
+    """Extracts the build-level PRN from a full PRN string.
 
-    Args:
-        obj (Any): The PRN information
-
-    Returns:
-        str: The build prn in the formatn "prn:portfolio:app:branch:build" or ""
+    :param obj: An object containing PRN information.
+    :type obj: Any
+    :return: The build PRN (e.g., "prn:portfolio:app:branch:build") or an empty string.
+    :rtype: str
     """
-    matches = re.match(BUILD_PRN_REGEX, extract_prn(obj))
-    if matches is None:
-        return V_EMPTY
-    build_prn = V_EMPTY.join(matches.groups())
-    return build_prn
+    match = re.match(f"({BUILD_PRN_REGEX})", extract_prn(obj))
+    return match.group(1) if match else V_EMPTY
 
 
 def extract_component_prn(obj: Any) -> str:
-    """
-    Uses a regular expression to extract the component prn from the provided object
-    after calling the extract_prn function to get the prn value.
+    """Extracts the component-level PRN from a full PRN string.
 
-    Args:
-        obj (Any): The PRN information
-
-    Returns:
-        str: The component prn in the formatn "prn:portfolio:app:branch:build:component" or ""
+    :param obj: An object containing PRN information.
+    :type obj: Any
+    :return: The component PRN (e.g., "prn:portfolio:app:branch:build:component") or an empty string.
+    :rtype: str
     """
-    matches = re.match(COMPONENT_PRN_REGEX, extract_prn(obj))
-    if matches is None:
-        return V_EMPTY
-    component_prn = V_EMPTY.join(matches.groups())
-    return component_prn
+    match = re.match(f"({COMPONENT_PRN_REGEX})", extract_prn(obj))
+    return match.group(1) if match else V_EMPTY
 
 
 def generate_prn(scope: str, request: dict) -> str | None:
-    """
-    Generate a prn from the item_type which is "portfolio", "app", "branch", "build", or "component"
-    and the request informatin such as:
+    """Generates a PRN based on a scope and a request dictionary.
 
-    request should contain PRN's at the top level including one or more of the following:
+    The request dictionary should contain PRN information. For example:
 
     .. code-block:: json
 
-            {
-                "prn": "prn:portfolio:app:branch:build",
-                "portfolio_prn": "prn:portfolio",
-                "app_prn": "prn:portfolio:app",
-                "branch_prn": "prn:portfolio:app:branch",
-                "build_prn": "prn:portfolip:app:branch:build",
-                "component_prn": "prn:portfolio:app:branch:build:component",
-            }
+        {
+            "prn": "prn:portfolio:app:branch:build",
+            "portfolio_prn": "prn:portfolio",
+            "app_prn": "prn:portfolio:app",
+            "branch_prn": "prn:portfolio:app:branch",
+            "name": "new-item-name"
+        }
 
-    The primary attribute in requests object is "prn" and if not present, the other keys
-    will be insspected based on the scope.
-
-    Args:
-        scope (str): The type/scope of item: "portfolio", "app", "branch", "build", or "component"
-        request (dict): The input dictionary
-
-    Returns:
-        str | None: The generated PRN or None if the item_type is invalid or the prn cannot be determined.
+    :param scope: The scope of the PRN to generate ("portfolio", "app", etc.).
+    :type scope: str
+    :param request: The input dictionary containing PRN and name information.
+    :type request: dict
+    :return: The generated PRN, or None if the scope is invalid.
+    :rtype: str or None
     """
     if scope == SCOPE_PORTFOLIO:
         return generate_portfolio_prn(request)
@@ -298,41 +239,37 @@ def generate_prn(scope: str, request: dict) -> str | None:
 
 
 def validate_prn(scope: str, prn: Any) -> bool:
+    """Validates a PRN against a specific scope.
+
+    :param scope: The scope to validate against ("portfolio", "app", etc.).
+    :type scope: str
+    :param prn: The PRN to validate.
+    :type prn: Any
+    :return: True if the PRN is valid for the given scope, otherwise False.
+    :rtype: bool
     """
-    Validate the PRN based on the scope of the item.  The scopes are "portfolio", "app", "branch", "build", or "component"
-
-    Args:
-        scope (str): The type/scope of item: "portfolio", "app", "branch", "build", or "component"
-        prn (Any): The Pipeline Reference Number (PRN) to validate.
-
-    Returns:
-        bool: True if the PRN is valid for the scope.
-
-    """
-
+    prn_str = extract_prn(prn)
     if scope == SCOPE_PORTFOLIO:
-        return validate_portfolio_prn(prn)
+        return validate_portfolio_prn(prn_str)
     elif scope == SCOPE_APP:
-        return validate_app_prn(prn)
+        return validate_app_prn(prn_str)
     elif scope == SCOPE_BRANCH:
-        return validate_branch_prn(prn)
+        return validate_branch_prn(prn_str)
     elif scope == SCOPE_BUILD:
-        return validate_build_prn(prn)
+        return validate_build_prn(prn_str)
     elif scope == SCOPE_COMPONENT:
-        return validate_component_prn(prn)
+        return validate_component_prn(prn_str)
     else:
         return False
 
 
 def validate_item_type(scope: str) -> bool:
-    """
-    Validate the scope to ensure it is one of the valid values: "portfolio", "app", "branch", "build", or "component"
+    """Validates if a scope string is a recognized PRN scope.
 
-    Args:
-        scope (str): A string to inspect
-
-    Returns:
-        bool: True if the scope is one of the valid values
+    :param scope: The scope string to validate.
+    :type scope: str
+    :return: True if the scope is valid, otherwise False.
+    :rtype: bool
     """
     return scope in [
         SCOPE_PORTFOLIO,
@@ -344,229 +281,213 @@ def validate_item_type(scope: str) -> bool:
 
 
 def generate_portfolio_prn(request: dict) -> str:
+    """Generates or extracts a portfolio-level PRN from a request dictionary.
+
+    It checks for a valid portfolio PRN in the 'prn' key first. If not found,
+    it attempts to extract it from other PRN keys. If all else fails, it
+    constructs a new PRN using the 'name' key (e.g., "prn:<name>").
+
+    :param request: The dictionary containing PRN and name information.
+    :type request: dict
+    :return: The extracted or generated portfolio PRN.
+    :rtype: str
     """
-    Inspects the rqeust dictionary and looks for a prn that can be considered a "portfolio" prn.
+    prn = request.get(PRN, "")
+    if validate_portfolio_prn(prn):
+        return prn
 
-    It will inspect "prn" first, and if that is not a portfolio prn, it will generate a portfolio
-    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+    for key in [ARG_PORTFOLIO_PRN, ARG_APP_PRN, ARG_BRANCH_PRN, ARG_BUILD_PRN]:
+        if key in request:
+            portfolio_prn = extract_portfolio_prn(request[key])
+            if portfolio_prn:
+                return portfolio_prn
 
-    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
-    of the request object. "prn:<name>"
-
-    Args:
-        request (dict): The object containing PRN's
-
-    Returns:
-        str: The extracted or generated portfolio prn
-    """
-    if PRN in request and validate_portfolio_prn(request[PRN]):
-        return request[PRN]
-    elif ARG_PORTFOLIO_PRN in request:
-        return extract_portfolio_prn(request.get(ARG_PORTFOLIO_PRN))
-    elif ARG_APP_PRN in request:
-        return extract_portfolio_prn(request.get(ARG_APP_PRN))
-    elif ARG_BRANCH_PRN in request:
-        return extract_portfolio_prn(request.get(ARG_BRANCH_PRN))
-    elif ARG_BUILD_PRN in request:
-        return extract_portfolio_prn(request.get(ARG_BUILD_PRN))
-    else:
-        return "{}:{}".format(PRN, request.get(ARG_NAME))
+    return f"{PRN}{DELIMITER}{request.get(ARG_NAME, '')}"
 
 
 def generate_app_prn(request: dict) -> str:
+    """Generates or extracts an app-level PRN from a request dictionary.
+
+    It checks for a valid app PRN in the 'prn' key first. If not found,
+    it attempts to extract it from other PRN keys. If all else fails, it
+    constructs a new PRN by appending the 'name' key to the portfolio PRN.
+
+    :param request: The dictionary containing PRN and name information.
+    :type request: dict
+    :return: The extracted or generated app PRN.
+    :rtype: str
     """
-    Inspects the rqeust dictionary and looks for a prn that can be considered a "app" prn.
+    prn = request.get(PRN, "")
+    if validate_app_prn(prn):
+        return prn
 
-    It will inspect "prn" first, and if that is not a app prn, it will generate a app
-    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+    for key in [ARG_APP_PRN, ARG_BRANCH_PRN, ARG_BUILD_PRN]:
+        if key in request:
+            app_prn = extract_app_prn(request[key])
+            if app_prn:
+                return app_prn
 
-    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
-    of the request object. "prn:portfolio:<name>"
-
-    Args:
-        request (dict): The object containing PRN's
-
-    Returns:
-        str: The extracted or generated app prn
-    """
-    if PRN in request and validate_app_prn(request[PRN]):
-        return request[PRN]
-    elif ARG_APP_PRN in request:
-        return extract_app_prn(request[ARG_APP_PRN])
-    elif ARG_BRANCH_PRN in request:
-        return extract_app_prn(request[ARG_BRANCH_PRN])
-    elif ARG_BUILD_PRN in request:
-        return extract_app_prn(request[ARG_BUILD_PRN])
-    else:
-        return "{}:{}".format(request[ARG_PORTFOLIO_PRN], request[ARG_NAME])
+    portfolio_prn = generate_portfolio_prn(request)
+    return f"{portfolio_prn}{DELIMITER}{request.get(ARG_NAME, '')}"
 
 
 def branch_short_name(name: str | None) -> str | None:
-    """
-    Geneerate a short name for a branch based on the name attribute.  The name will be lower case
-    and should contain only letters, numbers, and hyphens.  The name will be truncated to 20 characters.
+    """Generates a sanitized, shortened name for a branch.
 
-    Args:
-        name (str): The name to shorten.  Usually the name of the branch
+    The name is converted to lower case, non-alphanumeric characters (except
+    hyphens) are replaced with hyphens, and it is truncated to 20 characters.
 
-    Returns:
-        str: The shortened name.
+    :param name: The branch name to shorten.
+    :type name: str or None
+    :return: The shortened and sanitized branch name.
+    :rtype: str or None
     """
     if name is None:
         return None
     if not name:
         return V_EMPTY
-    return re.sub(r"[^a-z0-9\\-]", "-", name.lower())[0:20].rstrip("-")
+    return re.sub(r"[^a-z0-9\-]", "-", name.lower())[:20].rstrip("-")
 
 
 def generate_branch_prn(request: dict) -> str:
+    """Generates or extracts a branch-level PRN from a request dictionary.
+
+    It checks for a valid branch PRN in the 'prn' key first. If not found,
+    it attempts to extract it from other PRN keys. If all else fails, it
+
+    constructs a new PRN by appending a shortened 'name' to the app PRN.
+
+    :param request: The dictionary containing PRN and name information.
+    :type request: dict
+    :return: The extracted or generated branch PRN.
+    :rtype: str
     """
-    Inspects the rqeust dictionary and looks for a prn that can be considered a "branch" prn.
+    prn = request.get(PRN, "")
+    if validate_branch_prn(prn):
+        return prn
 
-    It will inspect "prn" first, and if that is not a branch prn, it will generate a branch
-    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+    for key in [ARG_BRANCH_PRN, ARG_BUILD_PRN]:
+        if key in request:
+            branch_prn = extract_branch_prn(request[key])
+            if branch_prn:
+                return branch_prn
 
-    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
-    of the request object. "prn:portfolio:app:<name>"
-
-    Args:
-        request (dict): The object containing PRN's
-
-    Returns:
-        str: The extracted or generated branch prn
-    """
-    if PRN in request and validate_branch_prn(request[PRN]):
-        return request[PRN]
-    elif ARG_BRANCH_PRN in request:
-        return extract_branch_prn(request[ARG_BRANCH_PRN])
-    elif ARG_BUILD_PRN in request:
-        return extract_branch_prn(request[ARG_BUILD_PRN])
-    else:
-        short_name = branch_short_name(request[ARG_NAME])
-        return "{}:{}".format(request[ARG_APP_PRN], short_name)
+    app_prn = generate_app_prn(request)
+    short_name = branch_short_name(request.get(ARG_NAME, ""))
+    return f"{app_prn}{DELIMITER}{short_name}"
 
 
 def generate_build_prn(request: dict) -> str:
+    """Generates or extracts a build-level PRN from a request dictionary.
+
+    It checks for a valid build PRN in the 'prn' key first. If not found,
+    it attempts to extract it from other PRN keys. If all else fails, it
+    constructs a new PRN by appending the 'name' key to the branch PRN.
+
+    :param request: The dictionary containing PRN and name information.
+    :type request: dict
+    :return: The extracted or generated build PRN.
+    :rtype: str
     """
-    Inspects the rqeust dictionary and looks for a prn that can be considered a "build" prn.
+    prn = request.get(PRN, "")
+    if validate_build_prn(prn):
+        return prn
 
-    It will inspect "prn" first, and if that is not a build prn, it will generate a build
-    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+    if ARG_BUILD_PRN in request:
+        build_prn = extract_build_prn(request[ARG_BUILD_PRN])
+        if build_prn:
+            return build_prn
 
-    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
-    of the request object. "prn:portfolio:app:branch:<name>"
-
-    Args:
-        request (dict): The object containing PRN's
-
-    Returns:
-        str: The extracted or generated build prn
-    """
-    if PRN in request and validate_build_prn(request[PRN]):
-        return request[PRN]
-    elif ARG_BUILD_PRN in request:
-        return extract_build_prn(request[ARG_BUILD_PRN])
-    else:
-        return "{}:{}".format(request[ARG_BRANCH_PRN], request[ARG_NAME])
+    branch_prn = generate_branch_prn(request)
+    return f"{branch_prn}{DELIMITER}{request.get(ARG_NAME, '')}"
 
 
 def generate_component_prn(request: dict) -> str:
+    """Generates or extracts a component-level PRN from a request dictionary.
+
+    It checks for a valid component PRN in the 'prn' key first. If not found,
+    it attempts to extract it from other PRN keys. If all else fails, it
+    constructs a new PRN by appending the 'name' key to the build PRN.
+
+    :param request: The dictionary containing PRN and name information.
+    :type request: dict
+    :return: The extracted or generated component PRN.
+    :rtype: str
     """
-    Inspects the rqeust dictionary and looks for a prn that can be considered a "componnent" prn.
+    prn = request.get(PRN, "")
+    if validate_component_prn(prn):
+        return prn
 
-    It will inspect "prn" first, and if that is not a component prn, it will generate a component
-    prn from one of the following keys: "portfolio_prn", "app_prn", "branch_prn", or "build_prn"
+    if ARG_COMPONENT_PRN in request:
+        component_prn = extract_component_prn(request[ARG_COMPONENT_PRN])
+        if component_prn:
+            return component_prn
 
-    If none of the supplied prn's are valid, a PRN will be constructed using the "name" attribute
-    of the request object. "prn:portfolio:app:branch:build:<name>"
-
-    Args:
-        request (dict): The object containing PRN's
-
-    Returns:
-        str: The extracted or generated component prn
-    """
-    if PRN in request and validate_component_prn(request[PRN]):
-        return request[PRN]
-    elif ARG_COMPONENT_PRN in request:
-        return extract_component_prn(request[ARG_COMPONENT_PRN])
-    else:
-        return "{}:{}".format(request[ARG_BUILD_PRN], request[ARG_NAME])
+    build_prn = generate_build_prn(request)
+    return f"{build_prn}{DELIMITER}{request.get(ARG_NAME, '')}"
 
 
 def validate_item_prn(prn: str) -> bool:
-    """
-    Uses the regular express PRN_REGEX to determine if the PRN is valid.
+    """Validates if a string conforms to the general PRN format.
 
-    Args:
-        prn (str): A Pipeline Reference Number
-
-    Returns:
-        bool: Ture if the PRN is valid
+    :param prn: The PRN string to validate.
+    :type prn: str
+    :return: True if the PRN format is valid, otherwise False.
+    :rtype: bool
     """
     return re.fullmatch(PRN_REGEX, prn) is not None
 
 
 def validate_portfolio_prn(prn: str) -> bool:
-    """
-    Uses the regular express PORTFOLIO_PRN_REGEX to determine if the PRN is valid
+    """Validates if a string is a valid portfolio-level PRN.
 
-    Args:
-        prn (str): A Pipeline Reference Number
-
-    Returns:
-        bool: True if the PRN is valid
+    :param prn: The PRN string to validate.
+    :type prn: str
+    :return: True if the PRN is a valid portfolio PRN, otherwise False.
+    :rtype: bool
     """
     return re.fullmatch(PORTFOLIO_PRN_REGEX, prn) is not None
 
 
 def validate_app_prn(prn: str) -> bool:
-    """
-    Uses the regular express APP_PRN_REGEX to determine if the PRN is valid
+    """Validates if a string is a valid app-level PRN.
 
-    Args:
-        prn (str): A Pipeline Reference Number
-
-    Returns:
-        bool: True if the PRN is valid
+    :param prn: The PRN string to validate.
+    :type prn: str
+    :return: True if the PRN is a valid app PRN, otherwise False.
+    :rtype: bool
     """
     return re.fullmatch(APP_PRN_REGEX, prn) is not None
 
 
 def validate_branch_prn(prn: str) -> bool:
-    """
-    Uses the regular express BRANCH_PRN_REGEX to determine if the PRN is valid
+    """Validates if a string is a valid branch-level PRN.
 
-    Args:
-        prn (str): A Pipeline Reference Number
-
-    Returns:
-        bool: True if the PRN is valid
+    :param prn: The PRN string to validate.
+    :type prn: str
+    :return: True if the PRN is a valid branch PRN, otherwise False.
+    :rtype: bool
     """
     return re.fullmatch(BRANCH_PRN_REGEX, prn) is not None
 
 
 def validate_build_prn(prn: str) -> bool:
-    """
-    Uses the regular express BUILD_PRN_REGEX to determine if the PRN is valid
+    """Validates if a string is a valid build-level PRN.
 
-    Args:
-        prn (str): A Pipeline Reference Number
-
-    Returns:
-        bool: True if the PRN is valid
+    :param prn: The PRN string to validate.
+    :type prn: str
+    :return: True if the PRN is a valid build PRN, otherwise False.
+    :rtype: bool
     """
     return re.fullmatch(BUILD_PRN_REGEX, prn) is not None
 
 
 def validate_component_prn(prn: str) -> bool:
-    """
-    Uses the regular express COMPONENT_PRN_REGEX to determine if the PRN is valid
+    """Validates if a string is a valid component-level PRN.
 
-    Args:
-        prn (str): A Pipeline Reference Number
-
-    Returns:
-        bool: True if the PRN is valid
+    :param prn: The PRN string to validate.
+    :type prn: str
+    :return: True if the PRN is a valid component PRN, otherwise False.
+    :rtype: bool
     """
     return re.fullmatch(COMPONENT_PRN_REGEX, prn) is not None

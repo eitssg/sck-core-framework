@@ -247,53 +247,94 @@ class FolderInfo(BaseModel):
 
         return values
 
+    @property
+    def data_path(self) -> str:
+        """
+        Get the storage volume path for the application.
+
+        Returns
+        -------
+        str
+            The storage volume path for the application.
+            - Local mode: volume mount point + bucket_name + key path (without filename)
+            - Service mode: volume prefix + bucket_name + key path (without filename)
+
+        Examples
+        --------
+        Local mode::
+            >>> # volume="/var/data", bucket_name="my-bucket", key="packages/app/main/package.zip"
+            >>> # Returns: "/var/data/my-bucket/packages/app/main"
+
+        Service mode::
+            >>> # volume="s3://", bucket_name="my-bucket", key="packages/app/main/package.zip"
+            >>> # Returns: "s3://my-bucket/packages/app/main"
+        """
+        # Get appropriate separator and volume based on mode
+        if self.mode == V_LOCAL:
+            sep = os.path.sep
+            volume = util.get_storage_volume() or "/"
+        else:
+            sep = "/"
+            volume = "s3://"
+
+        # Extract path components from key (excluding filename)
+        path_parts = self.key.split(sep)[:-1] if self.key else []
+
+        # Build the complete path
+        if self.mode == V_LOCAL:
+            # Local: volume + bucket_name + path_parts
+            root_path = sep.join([volume, self.bucket_name] + path_parts)
+        else:
+            # Service: volume + bucket_name + path_parts
+            root_path = volume + self.bucket_name + (sep + sep.join(path_parts) if path_parts else "")
+
+        return root_path
+
+    @property
+    def temp_dir(self) -> str:
+        """
+        Get the temporary directory for processing the package.
+
+        Returns
+        -------
+        str
+            The temporary directory path
+
+        """
+        return util.get_temp_dir()  # Fixed: missing parentheses for function call
+
     def get_full_path(self) -> str:
         """
         Get the full path to the package file.
-
-        Combines bucket_name and key to create the complete path to the package file.
 
         Returns
         -------
         str
             The full path to the package file.
+            - Local mode: file:// + volume + bucket_name + key
+            - Service mode: s3:// + bucket_name + key
 
         Examples
         --------
-        S3 mode::
-
-            >>> package = PackageDetails(
-            ...     bucket_name="my-bucket",
-            ...     key="packages/ecommerce/web/package.zip",
-            ...     mode="service"
-            ... )
-            >>> print(package.get_full_path())  # s3://my-bucket/packages/ecommerce/web/package.zip
-
         Local mode::
+            >>> # volume="/var/data", bucket_name="my-bucket", key="packages/app/package.zip"
+            >>> # Returns: "file:///var/data/my-bucket/packages/app/package.zip"
 
-            >>> package = PackageDetails(
-            ...     bucket_name="/var/storage",
-            ...     key="packages/ecommerce/web/package.zip",
-            ...     mode="local"
-            ... )
-            >>> print(package.get_full_path())  # file:///var/storage/packages/ecommerce/web/package.zip
-
-            >>> package = PackageDetails(
-            ...     bucket_name="N:\data\storage",
-            ...     key="packages\ecommerce\web\package.zip",
-            ...     mode="local"
-            ... )
-            >>> print(package.get_full_path())  # file://N:\data\storage\packages\ecommerce\web\package.zip
+        Service mode::
+            >>> # bucket_name="my-bucket", key="packages/app/package.zip"
+            >>> # Returns: "s3://my-bucket/packages/app/package.zip"
         """
         if not self.bucket_name or not self.key:
             return ""
 
-        # Use appropriate separator based on mode
         if self.mode == V_LOCAL:
-            separator = os.path.sep
-            return f"file://{self.bucket_name}{separator}{self.key}"
+            sep = os.path.sep
+            volume = util.get_storage_volume() or "/"
+            # Local: file:// + volume + bucket_name + key
+            full_path = f"{volume}{sep}{self.bucket_name}{sep}{self.key}"
+            return f"file://{full_path}"
         else:
-            separator = "/"
+            # Service: s3:// + bucket_name + key (always forward slashes)
             return f"s3://{self.bucket_name}/{self.key}"
 
     def is_local_mode(self) -> bool:
@@ -452,6 +493,49 @@ class PackageDetails(FolderInfo):
     )
 
     @property
+    def data_path(self) -> str:
+        """
+        Get the storage volume path for the application.
+
+        Returns
+        -------
+        str
+            The storage volume path for the application.
+            - Local mode: volume mount point + bucket_name + key path (without filename)
+            - Service mode: volume prefix + bucket_name + key path (without filename)
+
+        Examples
+        --------
+        Local mode::
+            >>> # volume="/var/data", bucket_name="my-bucket", key="packages/app/main/package.zip"
+            >>> # Returns: "/var/data/my-bucket/packages/app/main"
+
+        Service mode::
+            >>> # volume="s3://", bucket_name="my-bucket", key="packages/app/main/package.zip"
+            >>> # Returns: "s3://my-bucket/packages/app/main"
+        """
+        # Get appropriate separator and volume based on mode
+        if self.mode == V_LOCAL:
+            sep = os.path.sep
+            volume = util.get_storage_volume() or "/"
+        else:
+            sep = "/"
+            volume = "s3://"
+
+        # Extract path components from key (excluding filename)
+        path_parts = self.key.split(sep)[:-1] if self.key else []
+
+        # Build the complete path
+        if self.mode == V_LOCAL:
+            # Local: volume + bucket_name + path_parts
+            root_path = sep.join([volume, self.bucket_name] + path_parts)
+        else:
+            # Service: volume + bucket_name + path_parts
+            root_path = volume + self.bucket_name + (sep + sep.join(path_parts) if path_parts else "")
+
+        return root_path
+
+    @property
     def temp_dir(self) -> str:
         """
         Get the temporary directory for processing the package.
@@ -459,10 +543,10 @@ class PackageDetails(FolderInfo):
         Returns
         -------
         str
-            The temporary directory 
+            The temporary directory path
 
         """
-        return util.get_temp_dir
+        return util.get_temp_dir()  # Fixed: missing parentheses for function call
 
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """

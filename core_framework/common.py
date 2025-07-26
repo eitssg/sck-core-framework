@@ -2062,3 +2062,17 @@ def get_cognito_endpoint(default: str = None) -> str | None:
     'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456789'
     """
     return os.getenv(ENV_AWS_ENDPOINT_URL, default)
+
+
+def get_current_timestamp_short() -> str:
+    """
+    Generate a short timestamp string suitable for AWS resource naming.
+
+    Returns a compact timestamp in format: YYYYMMDD-HHMMSS
+    Example: "20250720-143052"
+
+    :return: Short timestamp string
+    :rtype: str
+    """
+
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")

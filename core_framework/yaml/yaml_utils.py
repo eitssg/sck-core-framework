@@ -6,6 +6,7 @@ from ruamel.yaml.nodes import ScalarNode, MappingNode, SequenceNode
 from pathlib import Path
 from datetime import datetime, date, time
 from decimal import Decimal
+import copy
 
 # A list of all the CloudFormation intrinsic function tags
 aws_tags = [
@@ -120,9 +121,7 @@ class CfnYamlConstructor(RoundTripConstructor):
         Handles the !Include tag.
         """
         if not self.root_path:
-            raise ConstructorError(
-                f"Cannot use !Include without a valid base path. File: {node.value}"
-            )
+            raise ConstructorError(f"Cannot use !Include without a valid base path. File: {node.value}")
 
         # Resolve the path relative to the file being parsed
         file_path = self.root_path / self.construct_scalar(node)
@@ -234,7 +233,10 @@ def write_yaml(data: any, stream: IO, yaml_parser: YAML = None) -> None:
     if not yaml_parser:
         yaml_parser = create_yaml_parser()
 
-    yaml_parser.dump(data, stream)
+    # copy the dict to ensure no referfences
+    data_copy = copy.deepcopy(data) if isinstance(data, dict) else data
+
+    yaml_parser.dump(data_copy, stream)
 
 
 def to_yaml(data: any, yaml_parser: YAML = None) -> str:

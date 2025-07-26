@@ -22,7 +22,7 @@ from .package_details import PackageDetails
 from .action_details import ActionDetails
 from .state_details import StateDetails
 
-FLOW_CONTROLS = ["execute", "wait", "success", "failure"]
+FLOW_CONTROLS = ["execute", "success", "failure"]
 
 
 def get_valid_tasks() -> List[str]:
