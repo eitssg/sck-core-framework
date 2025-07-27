@@ -125,7 +125,9 @@ class MagicObject(BaseModel):
                 raise ValueError("Destination Bucket key has not been specified")
 
             if source_bucket != self.bucket_name:
-                raise ValueError(f"Source S3 bucket '{source_bucket}' must be in same bucket as the target '{self.bucket_name}'")
+                raise ValueError(
+                    f"Source S3 bucket '{source_bucket}' must be in same bucket as the target '{self.bucket_name}'"
+                )
 
             source_fn = os.path.join(self.data_path, source_bucket, source_key)
             target_fn = os.path.join(self.data_path, self.bucket_name, self.key)
@@ -141,7 +143,11 @@ class MagicObject(BaseModel):
         except Exception as e:
             self.error = "\n".join([self.error or "", str(e)])
 
-        dt = datetime.fromtimestamp(int(self.version_id)).isoformat() if self.version_id else None
+        dt = (
+            datetime.fromtimestamp(int(self.version_id)).isoformat()
+            if self.version_id
+            else None
+        )
 
         rv = {
             "CopyObjectResult": {

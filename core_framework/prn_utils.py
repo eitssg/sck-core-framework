@@ -17,7 +17,9 @@ PORTFOLIO_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+"
 APP_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
 BRANCH_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
 BUILD_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
-COMPONENT_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
+COMPONENT_PRN_REGEX = (
+    r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
+)
 
 # Constant for the PRN key
 PRN = "prn"

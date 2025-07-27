@@ -154,7 +154,9 @@ class FolderInfo(BaseModel):
             If mode is not 'local' or 'service'.
         """
         if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'")
+            raise ValueError(
+                f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'"
+            )
         return value
 
     version_id: str | None = Field(
@@ -192,7 +194,9 @@ class FolderInfo(BaseModel):
         """
         allowed_types = util.get_valid_mimetypes()
         if value not in allowed_types:
-            raise ValueError(f"ContentType must be one of {allowed_types}, got: {value}")
+            raise ValueError(
+                f"ContentType must be one of {allowed_types}, got: {value}"
+            )
         return value
 
     @model_validator(mode="before")
@@ -286,7 +290,11 @@ class FolderInfo(BaseModel):
             root_path = sep.join([volume, self.bucket_name] + path_parts)
         else:
             # Service: volume + bucket_name + path_parts
-            root_path = volume + self.bucket_name + (sep + sep.join(path_parts) if path_parts else "")
+            root_path = (
+                volume
+                + self.bucket_name
+                + (sep + sep.join(path_parts) if path_parts else "")
+            )
 
         return root_path
 
@@ -483,7 +491,9 @@ class PackageDetails(FolderInfo):
             If compile_mode is not 'full' or 'incremental'.
         """
         if value not in [V_FULL, V_INCREMENTAL, V_EMPTY]:
-            raise ValueError(f"Compile mode must be '{V_FULL}' or 'incremental', got '{value}'")
+            raise ValueError(
+                f"Compile mode must be '{V_FULL}' or 'incremental', got '{value}'"
+            )
         return value
 
     deployspec: DeploySpec | None = Field(
@@ -531,7 +541,11 @@ class PackageDetails(FolderInfo):
             root_path = sep.join([volume, self.bucket_name] + path_parts)
         else:
             # Service: volume + bucket_name + path_parts
-            root_path = volume + self.bucket_name + (sep + sep.join(path_parts) if path_parts else "")
+            root_path = (
+                volume
+                + self.bucket_name
+                + (sep + sep.join(path_parts) if path_parts else "")
+            )
 
         return root_path
 
@@ -615,7 +629,9 @@ class PackageDetails(FolderInfo):
 
         """
 
-        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
+        def _get(
+            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
+        ) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else defualt
 
@@ -640,7 +656,9 @@ class PackageDetails(FolderInfo):
         # Handle bucket_region
         bucket_region = _get("bucket_region", "BucketRegion", util.get_bucket_region())
 
-        bucket_name = _get("bucket_name", "BucketName", util.get_bucket_name(client, bucket_region))
+        bucket_name = _get(
+            "bucket_name", "BucketName", util.get_bucket_name(client, bucket_region)
+        )
 
         mode = _get("mode", "Mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
 
@@ -711,4 +729,7 @@ class PackageDetails(FolderInfo):
         str
             Detailed representation showing key attributes.
         """
-        return f"PackageDetails(client='{self.client}', bucket_name='{self.bucket_name}', " f"key='{self.key}', mode='{self.mode}')"
+        return (
+            f"PackageDetails(client='{self.client}', bucket_name='{self.bucket_name}', "
+            f"key='{self.key}', mode='{self.mode}')"
+        )

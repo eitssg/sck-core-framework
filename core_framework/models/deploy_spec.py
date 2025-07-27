@@ -21,12 +21,12 @@ Creating a DeploySpec with multiple actions::
     >>> from core_framework.models import ActionSpec
     >>> deploy_spec = DeploySpec(actions=[
     ...     ActionSpec(
-    ...         name="create-vpc", 
-    ...         kind="create_stack", 
+    ...         name="create-vpc",
+    ...         kind="create_stack",
     ...         params={"stack_name": "vpc-stack"}),
     ...     ActionSpec(
-    ...         name="create-app", 
-    ...         kind="create_stack", 
+    ...         name="create-app",
+    ...         kind="create_stack",
     ...         params={"stack_name": "app-stack"})
     ... ])
 

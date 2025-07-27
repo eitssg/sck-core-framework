@@ -121,7 +121,9 @@ class CfnYamlConstructor(RoundTripConstructor):
         Handles the !Include tag.
         """
         if not self.root_path:
-            raise ConstructorError(f"Cannot use !Include without a valid base path. File: {node.value}")
+            raise ConstructorError(
+                f"Cannot use !Include without a valid base path. File: {node.value}"
+            )
 
         # Resolve the path relative to the file being parsed
         file_path = self.root_path / self.construct_scalar(node)

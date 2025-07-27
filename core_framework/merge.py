@@ -83,7 +83,9 @@ def deep_merge(
     if not dicts:
         return {}
     first_dict = deep_copy(dicts[0])
-    return deep_merge_in_place(first_dict, *dicts[1:], merge_lists=merge_lists, should_merge=should_merge)
+    return deep_merge_in_place(
+        first_dict, *dicts[1:], merge_lists=merge_lists, should_merge=should_merge
+    )
 
 
 def __deep_merge(
@@ -112,7 +114,11 @@ def __deep_merge(
                     merge_lists=merge_lists,
                     should_merge=should_merge,
                 )
-            elif merge_lists and isinstance(dict1[key], list) and isinstance(dict2[key], list):
+            elif (
+                merge_lists
+                and isinstance(dict1[key], list)
+                and isinstance(dict2[key], list)
+            ):
                 dict1[key].extend(dict2[key])
 
             elif dict1[key] == dict2[key]:

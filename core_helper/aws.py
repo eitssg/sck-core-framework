@@ -31,7 +31,9 @@ store = InMemoryCache()
 RETRY_CONFIG: dict[str, Any] = {"max_attempts": 10}
 
 
-def __transform_keyvalues_to_array(keyvalues: dict[str, str] | None, key_key: str, value_key: str) -> list[dict[str, str]]:
+def __transform_keyvalues_to_array(
+    keyvalues: dict[str, str] | None, key_key: str, value_key: str
+) -> list[dict[str, str]]:
     """
     Transforms a dictionary into a list of key-value pair dictionaries.
 
@@ -197,7 +199,9 @@ def login_to_aws(auth: dict[str, str], **kwargs) -> dict[str, Any] | None:
         For Cognito, provide user_pool_id and client_id in kwargs.
         For IAM users, the function will attempt direct STS authentication.
     """
-    log.trace("Entering login_to_aws", details={"username": auth.get("username", "unknown")})
+    log.trace(
+        "Entering login_to_aws", details={"username": auth.get("username", "unknown")}
+    )
 
     username = auth.get("username")
     password = auth.get("password")
@@ -213,14 +217,18 @@ def login_to_aws(auth: dict[str, str], **kwargs) -> dict[str, Any] | None:
     client_id = kwargs.get("client_id")
 
     if user_pool_id and client_id:
-        log.trace("Using Cognito authentication", details={"user_pool_id": user_pool_id})
+        log.trace(
+            "Using Cognito authentication", details={"user_pool_id": user_pool_id}
+        )
         return _authenticate_with_cognito(auth, user_pool_id, client_id, **kwargs)
     else:
         log.trace("Using direct IAM authentication")
         return _authenticate_with_iam(auth, **kwargs)
 
 
-def _authenticate_with_cognito(auth: dict[str, str], user_pool_id: str, client_id: str, **kwargs) -> dict[str, Any] | None:
+def _authenticate_with_cognito(
+    auth: dict[str, str], user_pool_id: str, client_id: str, **kwargs
+) -> dict[str, Any] | None:
     """
     Authenticates a user using AWS Cognito User Pools.
 
@@ -287,13 +295,21 @@ def _authenticate_with_cognito(auth: dict[str, str], user_pool_id: str, client_i
                 # Get identity ID
                 identity_response = cognito_identity_client.get_id(
                     IdentityPoolId=identity_pool_id,
-                    Logins={f"cognito-idp.{session.region_name}.amazonaws.com/{user_pool_id}": auth_result["IdToken"]},
+                    Logins={
+                        f"cognito-idp.{session.region_name}.amazonaws.com/{user_pool_id}": auth_result[
+                            "IdToken"
+                        ]
+                    },
                 )
 
                 # Get temporary credentials
                 credentials_response = cognito_identity_client.get_credentials_for_identity(
                     IdentityId=identity_response["IdentityId"],
-                    Logins={f"cognito-idp.{session.region_name}.amazonaws.com/{user_pool_id}": auth_result["IdToken"]},
+                    Logins={
+                        f"cognito-idp.{session.region_name}.amazonaws.com/{user_pool_id}": auth_result[
+                            "IdToken"
+                        ]
+                    },
                 )
 
                 credentials = credentials_response["Credentials"]
@@ -305,7 +321,9 @@ def _authenticate_with_cognito(auth: dict[str, str], user_pool_id: str, client_i
                         "Assuming role after Cognito authentication",
                         details={"role": role_arn},
                     )
-                    role_creds = _assume_role_with_credentials(credentials, role_arn, **kwargs)
+                    role_creds = _assume_role_with_credentials(
+                        credentials, role_arn, **kwargs
+                    )
                     if role_creds:
                         credentials = role_creds
 
@@ -411,7 +429,9 @@ def _authenticate_with_iam(auth: dict[str, str], **kwargs) -> dict[str, Any] | N
             )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
-            log.trace("IAM credential validation failed", details={"error_code": error_code})
+            log.trace(
+                "IAM credential validation failed", details={"error_code": error_code}
+            )
 
             if error_code == "InvalidUserID.NotFound":
                 return {"status": "error", "message": "Invalid access key ID"}
@@ -438,7 +458,9 @@ def _authenticate_with_iam(auth: dict[str, str], **kwargs) -> dict[str, Any] | N
                         username = user_arn.split(":user/")[1]
                         account_id = identity.get("Account")
                         mfa_serial = f"arn:aws:iam::{account_id}:mfa/{username}"
-                        log.trace("Inferred MFA serial", details={"mfa_serial": mfa_serial})
+                        log.trace(
+                            "Inferred MFA serial", details={"mfa_serial": mfa_serial}
+                        )
 
                 if not mfa_serial:
                     return {
@@ -446,8 +468,12 @@ def _authenticate_with_iam(auth: dict[str, str], **kwargs) -> dict[str, Any] | N
                         "message": "MFA serial number required when providing MFA code",
                     }
 
-                log.trace("Getting session token with MFA", details={"mfa_serial": mfa_serial})
-                session_response = sts_client.get_session_token(SerialNumber=mfa_serial, TokenCode=mfa_code)
+                log.trace(
+                    "Getting session token with MFA", details={"mfa_serial": mfa_serial}
+                )
+                session_response = sts_client.get_session_token(
+                    SerialNumber=mfa_serial, TokenCode=mfa_code
+                )
             else:
                 # Try without MFA first
                 log.trace("Getting session token without MFA")
@@ -458,7 +484,9 @@ def _authenticate_with_iam(auth: dict[str, str], **kwargs) -> dict[str, Any] | N
 
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
-            log.trace("Session token request failed", details={"error_code": error_code})
+            log.trace(
+                "Session token request failed", details={"error_code": error_code}
+            )
 
             if error_code == "AccessDenied":
                 # This likely means MFA is required
@@ -480,7 +508,9 @@ def _authenticate_with_iam(auth: dict[str, str], **kwargs) -> dict[str, Any] | N
                         if user_arn and ":user/" in user_arn:
                             username = user_arn.split(":user/")[1]
 
-                            mfa_devices = iam_client_instance.list_mfa_devices(UserName=username)
+                            mfa_devices = iam_client_instance.list_mfa_devices(
+                                UserName=username
+                            )
                             if mfa_devices["MFADevices"]:
                                 mfa_device = mfa_devices["MFADevices"][0]
                                 mfa_serial = mfa_device["SerialNumber"]
@@ -534,8 +564,12 @@ def _authenticate_with_iam(auth: dict[str, str], **kwargs) -> dict[str, Any] | N
         # If a role is specified, assume it
         role_arn = kwargs.get("role")
         if role_arn:
-            log.trace("Assuming role after IAM authentication", details={"role": role_arn})
-            role_credentials = _assume_role_with_credentials(final_credentials, role_arn, **kwargs)
+            log.trace(
+                "Assuming role after IAM authentication", details={"role": role_arn}
+            )
+            role_credentials = _assume_role_with_credentials(
+                final_credentials, role_arn, **kwargs
+            )
             if role_credentials:
                 final_credentials = role_credentials
                 log.trace("Role assumption successful")
@@ -574,7 +608,9 @@ def _authenticate_with_iam(auth: dict[str, str], **kwargs) -> dict[str, Any] | N
         return {"status": "error", "message": f"Authentication error: {str(e)}"}
 
 
-def _assume_role_with_credentials(credentials: dict[str, Any], role_arn: str, **kwargs) -> dict[str, Any] | None:
+def _assume_role_with_credentials(
+    credentials: dict[str, Any], role_arn: str, **kwargs
+) -> dict[str, Any] | None:
     """
     Assumes a role using provided credentials.
 
@@ -594,7 +630,9 @@ def _assume_role_with_credentials(credentials: dict[str, Any], role_arn: str, **
             config=__get_client_config(),
         )
 
-        session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-login-{util.get_current_timestamp()}"
+        session_name = (
+            f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-login-{util.get_current_timestamp()}"
+        )
 
         log.trace(
             "Assuming role with credentials",
@@ -614,7 +652,9 @@ def _assume_role_with_credentials(credentials: dict[str, Any], role_arn: str, **
         return result["Credentials"]
 
     except ClientError as e:
-        log.trace("Role assumption failed", details={"role_arn": role_arn, "error": str(e)})
+        log.trace(
+            "Role assumption failed", details={"role_arn": role_arn, "error": str(e)}
+        )
         log.error("Failed to assume role {}: {}", role_arn, e)
         return None
 
@@ -689,7 +729,9 @@ def assume_role(**kwargs) -> dict[str, str] | None:
     try:
         session = get_session(**kwargs)
 
-        session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{util.get_current_timestamp()}"
+        session_name = (
+            f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{util.get_current_timestamp()}"
+        )
         log.debug("Assuming role [{}] with session name [{}]", role_arn, session_name)
         # Call the STS client with the session and role ARN directy instead of sts_client() to avoid recursion
         client = session.client("sts", **kwargs, config=__get_client_config())
@@ -1033,7 +1075,9 @@ def dynamodb_resource(**kwargs) -> Any:
     return get_resource("dynamodb", **kwargs)
 
 
-def invoke_lambda(arn: str, request_payload: dict[str, Any], **kwargs) -> dict[str, Any]:
+def invoke_lambda(
+    arn: str, request_payload: dict[str, Any], **kwargs
+) -> dict[str, Any]:
     """
     Invokes an AWS Lambda function and returns its response.
 
@@ -1047,9 +1091,13 @@ def invoke_lambda(arn: str, request_payload: dict[str, Any], **kwargs) -> dict[s
     """
     kwargs["region"] = kwargs.get("region") or arn.split(":")[3]
     client = get_client("lambda", **kwargs)
-    log.trace("Invoking Lambda", details={"FunctionName": arn, "Payload": request_payload})
+    log.trace(
+        "Invoking Lambda", details={"FunctionName": arn, "Payload": request_payload}
+    )
     try:
-        response = client.invoke(FunctionName=arn, Payload=util.to_json(request_payload))
+        response = client.invoke(
+            FunctionName=arn, Payload=util.to_json(request_payload)
+        )
         payload_bytes = response.get("Payload").read()
         response_payload = util.from_json(payload_bytes.decode("utf-8"))
         status_code = response.get("StatusCode", 0)
@@ -1083,7 +1131,9 @@ def generate_context() -> dict:
     return {"DeliveredBy": "user", "AuthorizationToken": "temp cred auth token id"}
 
 
-def grant_assume_role_permission(user_name: str, role_name: str, account_id: str, **kwargs) -> None:
+def grant_assume_role_permission(
+    user_name: str, role_name: str, account_id: str, **kwargs
+) -> None:
     """
     Grants a user permission to assume a specific role.
 
@@ -1102,13 +1152,19 @@ def grant_assume_role_permission(user_name: str, role_name: str, account_id: str
     policy_name = "AssumeRolePolicy"
     client = iam_client(**kwargs)
     try:
-        existing_policy = client.get_user_policy(UserName=user_name, PolicyName=policy_name)
+        existing_policy = client.get_user_policy(
+            UserName=user_name, PolicyName=policy_name
+        )
         policy_document = existing_policy["PolicyDocument"]
     except client.exceptions.NoSuchEntityException:
         policy_document = {"Version": "2012-10-17", "Statement": []}
 
     assume_role_statement = next(
-        (stmt for stmt in policy_document["Statement"] if stmt.get("Action") == "sts:AssumeRole"),
+        (
+            stmt
+            for stmt in policy_document["Statement"]
+            if stmt.get("Action") == "sts:AssumeRole"
+        ),
         None,
     )
     if not assume_role_statement:
@@ -1132,7 +1188,11 @@ def grant_assume_role_permission(user_name: str, role_name: str, account_id: str
     role = client.get_role(RoleName=role_name)
     trust_policy = role["Role"]["AssumeRolePolicyDocument"]
     user_arn = f"arn:aws:iam::{account_id}:user/{user_name}"
-    if not any(stmt["Principal"].get("AWS") == user_arn for stmt in trust_policy["Statement"] if stmt["Effect"] == "Allow"):
+    if not any(
+        stmt["Principal"].get("AWS") == user_arn
+        for stmt in trust_policy["Statement"]
+        if stmt["Effect"] == "Allow"
+    ):
         trust_policy["Statement"].append(
             {
                 "Effect": "Allow",
@@ -1140,10 +1200,14 @@ def grant_assume_role_permission(user_name: str, role_name: str, account_id: str
                 "Action": "sts:AssumeRole",
             }
         )
-        client.update_assume_role_policy(RoleName=role_name, PolicyDocument=util.to_json(trust_policy))
+        client.update_assume_role_policy(
+            RoleName=role_name, PolicyDocument=util.to_json(trust_policy)
+        )
 
 
-def revoke_assume_role_permission(user_name: str, role_name: str, account_id: str, **kwargs) -> None:
+def revoke_assume_role_permission(
+    user_name: str, role_name: str, account_id: str, **kwargs
+) -> None:
     """
     Revokes a user's permission to assume a specific role.
 
@@ -1166,10 +1230,16 @@ def revoke_assume_role_permission(user_name: str, role_name: str, account_id: st
         response = client.get_user_policy(UserName=user_name, PolicyName=policy_name)
         policy_document = response["PolicyDocument"]
         assume_role_statement = next(
-            (stmt for stmt in policy_document["Statement"] if stmt.get("Action") == "sts:AssumeRole"),
+            (
+                stmt
+                for stmt in policy_document["Statement"]
+                if stmt.get("Action") == "sts:AssumeRole"
+            ),
             None,
         )
-        if assume_role_statement and role_arn in assume_role_statement.get("Resource", []):
+        if assume_role_statement and role_arn in assume_role_statement.get(
+            "Resource", []
+        ):
             assume_role_statement["Resource"].remove(role_arn)
             if not assume_role_statement["Resource"]:
                 policy_document["Statement"].remove(assume_role_statement)
@@ -1194,9 +1264,15 @@ def revoke_assume_role_permission(user_name: str, role_name: str, account_id: st
         trust_policy = role["Role"]["AssumeRolePolicyDocument"]
         user_arn = f"arn:aws:iam::{account_id}:user/{user_name}"
         original_statement_count = len(trust_policy["Statement"])
-        trust_policy["Statement"] = [stmt for stmt in trust_policy["Statement"] if stmt.get("Principal", {}).get("AWS") != user_arn]
+        trust_policy["Statement"] = [
+            stmt
+            for stmt in trust_policy["Statement"]
+            if stmt.get("Principal", {}).get("AWS") != user_arn
+        ]
         if len(trust_policy["Statement"]) < original_statement_count:
-            client.update_assume_role_policy(RoleName=role_name, PolicyDocument=util.to_json(trust_policy))
+            client.update_assume_role_policy(
+                RoleName=role_name, PolicyDocument=util.to_json(trust_policy)
+            )
     except client.exceptions.NoSuchEntityException:
         log.debug("Role {} not found, nothing to update in trust policy.", role_name)
     except Exception as e:

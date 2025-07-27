@@ -363,7 +363,9 @@ def log(level: int, message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.log(level, message, *args, **kwargs)
 
 
@@ -381,7 +383,9 @@ def msg(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.msg(message, *args, **kwargs)
 
 
@@ -399,7 +403,9 @@ def trace(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.trace(message, *args, **kwargs)
 
 
@@ -417,7 +423,9 @@ def debug(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.debug(message, *args, **kwargs)
 
 
@@ -435,7 +443,9 @@ def critical(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.critical(message, *args, **kwargs)
 
 
@@ -453,7 +463,9 @@ def fatal(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.fatal(message, *args, **kwargs)
 
 
@@ -471,7 +483,9 @@ def error(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.error(message, *args, **kwargs)
 
 
@@ -489,7 +503,9 @@ def info(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.info(message, *args, **kwargs)
 
 
@@ -507,7 +523,9 @@ def warn(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.warning(message, *args, **kwargs)
 
 
@@ -525,7 +543,9 @@ def warning(message: str | dict, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
     logger.warning(message, *args, **kwargs)
 
 
@@ -545,7 +565,9 @@ def status(code: str | int, reason: str, *args, **kwargs):
     :type kwargs: dict
     """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger = getLogger(
+        get_logger_identity(module=module_name, function=function_name, **kwargs)
+    )
 
     reason = "" if reason is None else reason
 

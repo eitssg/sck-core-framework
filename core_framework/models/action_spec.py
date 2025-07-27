@@ -195,7 +195,8 @@ class ActionSpec(BaseModel):
 
             if label_value and not name_value:
                 warnings.warn(
-                    "The 'label' field is deprecated and will be removed in a future version. " "Please use 'name' instead.",
+                    "The 'label' field is deprecated and will be removed in a future version. "
+                    "Please use 'name' instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -219,7 +220,8 @@ class ActionSpec(BaseModel):
 
             if type_value and not kind_value:
                 warnings.warn(
-                    "The 'type' field is deprecated and will be removed in a future version. " "Please use 'kind' instead.",
+                    "The 'type' field is deprecated and will be removed in a future version. "
+                    "Please use 'kind' instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -268,9 +270,13 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(f"All items in depends_on must be strings, got {type(item)}")
+                    raise ValueError(
+                        f"All items in depends_on must be strings, got {type(item)}"
+                    )
             return value
-        raise ValueError(f"Invalid depends_on value: {value}. Must be a string or a list of strings")
+        raise ValueError(
+            f"Invalid depends_on value: {value}. Must be a string or a list of strings"
+        )
 
     @field_validator("kind", mode="before")
     @classmethod
@@ -355,7 +361,9 @@ class ActionSpec(BaseModel):
         if value.startswith("-") or value.endswith("-"):
             raise ValueError(f"Name '{value}' cannot start or end with a hyphen")
         if len(value) > 63:  # AWS resource name limit
-            raise ValueError(f"Name '{value}' is too long. Maximum length is 63 characters.")
+            raise ValueError(
+                f"Name '{value}' is too long. Maximum length is 63 characters."
+            )
         return value
 
     @field_validator("before", "after", mode="before")
@@ -388,7 +396,9 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(f"All items in list must be strings, got {type(item)}")
+                    raise ValueError(
+                        f"All items in list must be strings, got {type(item)}"
+                    )
             return value
         raise ValueError("Must be a string or a list of strings")
 
@@ -599,7 +609,10 @@ class ActionSpec(BaseModel):
             if hasattr(value, "model_dump"):
                 value = value.model_dump(exclude_none=exclude_none, by_alias=by_alias)
             elif isinstance(value, list) and value and hasattr(value[0], "model_dump"):
-                value = [item.model_dump(exclude_none=exclude_none, by_alias=by_alias) for item in value]
+                value = [
+                    item.model_dump(exclude_none=exclude_none, by_alias=by_alias)
+                    for item in value
+                ]
 
             out[key] = value
         return out
@@ -613,7 +626,9 @@ class ActionSpec(BaseModel):
         str
             Human-readable string representation showing key attributes.
         """
-        return f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
+        return (
+            f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
+        )
 
     def __repr__(self) -> str:
         """
