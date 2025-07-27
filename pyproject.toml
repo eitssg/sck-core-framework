@@ -4,7 +4,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
 name = "sck-core-framework"
-version = "0.0.6"
+version = "0.0.7"
 description = "Core-Framework for Core-Automation"
 authors = ["James Barwick <jbarwic@me.com>"]
 license = "GPL-3.0-only"
