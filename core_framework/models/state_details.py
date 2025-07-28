@@ -181,9 +181,7 @@ class StateDetails(BaseModel):
         """
         allowed_types = util.get_valid_mimetypes()
         if value not in allowed_types:
-            raise ValueError(
-                f"ContentType must be one of {allowed_types}, got: {value}"
-            )
+            raise ValueError(f"ContentType must be one of {allowed_types}, got: {value}")
         return value
 
     @property
@@ -253,9 +251,7 @@ class StateDetails(BaseModel):
             If mode is not 'local' or 'service'.
         """
         if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(
-                f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'"
-            )
+            raise ValueError(f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'")
         return value
 
     @field_validator("key")
@@ -296,6 +292,7 @@ class StateDetails(BaseModel):
         Set the key path based on deployment details and filename.
 
         Generates the key path using the deployment details hierarchy and the specified filename.
+
         The path separators will use the OS-appropriate separator based on the current mode.
 
         Parameters
@@ -314,13 +311,11 @@ class StateDetails(BaseModel):
             >>> state = StateDetails(mode="local")
             >>> state.set_key(dd, "deploy.state")
             >>> print(state.key)  # artefacts/ecommerce/web/main/1.0.0/deploy.state (Unix)
-            >>> # or artefacts\ecommerce\web\main\1.0.0\deploy.state (Windows)
+            >>> # or p:\\artefacts\\ecommerce\\web\\main\\1.0.0\\deploy.state (Windows)
         """
         # Get the key from deployment details with appropriate separator for mode
         s3_mode = self.mode == V_SERVICE
-        self.key = deployment_details.get_object_key(
-            OBJ_ARTEFACTS, filename, s3=s3_mode
-        )
+        self.key = deployment_details.get_object_key(OBJ_ARTEFACTS, filename, s3=s3_mode)
 
     def get_name(self) -> str:
         """
@@ -385,7 +380,7 @@ class StateDetails(BaseModel):
             ...     mode="local"
             ... )
             >>> print(state.get_full_path())  # /var/storage/artefacts/ecommerce/web/deploy.state (Unix)
-            >>> # or /var/storage\artefacts\ecommerce\web\deploy.state (Windows)
+            >>> # or p:\\storage\\artefacts\\ecommerce\\web\\deploy.state (Windows)
         """
         if not self.bucket_name or not self.key:
             return ""
@@ -450,16 +445,12 @@ class StateDetails(BaseModel):
                 client = util.get_client()
                 values["client"] = client
 
-            region = values.get("bucket_region", None) or values.get(
-                "BucketRegion", None
-            )
+            region = values.get("bucket_region", None) or values.get("BucketRegion", None)
             if not region:
                 region = util.get_artefact_bucket_region()
                 values["bucket_region"] = region
 
-            bucket_name = values.get("bucket_name", None) or values.get(
-                "BucketName", None
-            )
+            bucket_name = values.get("bucket_name", None) or values.get("BucketName", None)
             if not bucket_name:
                 bucket_name = util.get_artefact_bucket_name(client, region)
                 values["bucket_name"] = bucket_name
@@ -565,9 +556,7 @@ class StateDetails(BaseModel):
             - Key path separators are automatically normalized for the chosen mode
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else defualt
 
@@ -594,9 +583,7 @@ class StateDetails(BaseModel):
 
             key = dd.get_object_key(OBJ_ARTEFACTS, state_file)
 
-        bucket_region = _get(
-            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
-        )
+        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
 
         bucket_name = _get(
             "bucket_name",
@@ -662,10 +649,7 @@ class StateDetails(BaseModel):
         str
             Detailed representation showing key attributes.
         """
-        return (
-            f"StateDetails(client='{self.client}', bucket_name='{self.bucket_name}', "
-            f"key='{self.key}', mode='{self.mode}')"
-        )
+        return f"StateDetails(client='{self.client}', bucket_name='{self.bucket_name}', " f"key='{self.key}', mode='{self.mode}')"
 
     def __setattr__(self, name: str, value: Any) -> None:
         """
