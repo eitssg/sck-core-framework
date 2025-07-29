@@ -62,7 +62,9 @@ class Jinja2Renderer:
         """
         return self.env.from_string(string).render(context)
 
-    def render_object(self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]) -> list[Any] | dict[str, Any] | str:
+    def render_object(
+        self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]
+    ) -> list[Any] | dict[str, Any] | str:
         """
         Render a dictionary using the provided context.
 
@@ -93,7 +95,9 @@ class Jinja2Renderer:
             rendered_json = self.render_json(json_data, context)
             return json.loads(rendered_json)
         else:
-            raise TypeError("Unsupported data type for rendering: {}".format(type(data)))
+            raise TypeError(
+                "Unsupported data type for rendering: {}".format(type(data))
+            )
 
     def render_json(self, json_data: str, context: dict[str, Any]) -> dict | None:
         """
@@ -156,7 +160,9 @@ class Jinja2Renderer:
             renderer_path = renderer_path.replace("\\", "/")
 
             # Load and render the files
-            log.debug("Rendering file '{}' with short_path '{}'", renderer_path, short_path)
+            log.debug(
+                "Rendering file '{}' with short_path '{}'", renderer_path, short_path
+            )
 
             rendered_template = self.render_file(renderer_path, context)
 
