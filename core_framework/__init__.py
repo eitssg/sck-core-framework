@@ -102,7 +102,7 @@ from .yaml.yaml_utils import (
 )
 
 # retrieve the version of the package dynamically
-__version__ = "0.0.9"
+__version__ = "0.0.10"
 
 # import everything from prn_utils
 from .prn_utils import (
