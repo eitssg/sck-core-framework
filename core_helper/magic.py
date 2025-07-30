@@ -125,9 +125,7 @@ class MagicObject(BaseModel):
                 raise ValueError("Destination Bucket key has not been specified")
 
             if source_bucket != self.bucket_name:
-                raise ValueError(
-                    f"Source S3 bucket '{source_bucket}' must be in same bucket as the target '{self.bucket_name}'"
-                )
+                raise ValueError(f"Source S3 bucket '{source_bucket}' must be in same bucket as the target '{self.bucket_name}'")
 
             source_fn = os.path.join(self.data_path, source_bucket, source_key)
             target_fn = os.path.join(self.data_path, self.bucket_name, self.key)
@@ -143,11 +141,7 @@ class MagicObject(BaseModel):
         except Exception as e:
             self.error = "\n".join([self.error or "", str(e)])
 
-        dt = (
-            datetime.fromtimestamp(int(self.version_id)).isoformat()
-            if self.version_id
-            else None
-        )
+        dt = datetime.fromtimestamp(int(self.version_id)).isoformat() if self.version_id else None
 
         rv = {
             "CopyObjectResult": {
@@ -370,20 +364,22 @@ class MagicS3Client(BaseModel):
         return bucket
 
     @staticmethod
-    def get_client(Region: str, DataPath: str | None = None) -> Any:
+    def get_client(Region: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
         """Gets an S3 client, which can be a real boto3 client or a MagicS3Client.
 
         The selection is based on the ``is_use_s3()`` configuration.
 
         :param Region: The AWS region for the client.
         :type Region: str
+        :param RoleArn: The ARN of the role to assume for the client. Defaults to None.
+        :type RoleArn: str or None, optional
         :param DataPath: The local storage path if not using S3. Defaults to None.
         :type DataPath: str or None, optional
         :return: A boto3 S3 client or a MagicS3Client instance.
         :rtype: Any
         """
         if is_use_s3():
-            client = aws.s3_client(region=Region)
+            client = aws.s3_client(region=Region, role_arn=RoleArn)
         else:
             client = MagicS3Client(Region=Region, DataPath=DataPath)
 

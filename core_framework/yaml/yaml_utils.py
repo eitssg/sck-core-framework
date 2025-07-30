@@ -121,9 +121,7 @@ class CfnYamlConstructor(RoundTripConstructor):
         Handles the !Include tag.
         """
         if not self.root_path:
-            raise ConstructorError(
-                f"Cannot use !Include without a valid base path. File: {node.value}"
-            )
+            raise ConstructorError(f"Cannot use !Include without a valid base path. File: {node.value}")
 
         # Resolve the path relative to the file being parsed
         file_path = self.root_path / self.construct_scalar(node)
@@ -147,13 +145,19 @@ def create_yaml_parser() -> YAML:
         A configured YAML instance.
     """
     yaml = YAML(typ="rt")  # 'rt' for round-trip, preserves comments and formatting
-    yaml.constructor_class = CfnYamlConstructor
+    yaml.Constructor = CfnYamlConstructor
     yaml.preserve_quotes = True
     yaml.allow_duplicate_keys = False  # Fail on duplicate keys
     yaml.explicit_start = False  # Always start with '---'
     yaml.explicit_end = False  # Do not end with '...'
+    yaml.default_flow_style = False  # Use block style by default
+    yaml.allow_unicode = True  # Allow unicode characters
+    yaml.encoding = "utf-8"  # Use UTF-8 encoding for input/output
+
     # Set indentation for clean output
     yaml.indent(mapping=2, sequence=4, offset=2)
+
+    yaml.representer.ignore_aliases = lambda *args: True  # Ignore aliases
 
     # Add the ISO 8601 date constructor and representer
     # This overrides the default string constructor to attempt date parsing
@@ -235,10 +239,7 @@ def write_yaml(data: any, stream: IO, yaml_parser: YAML = None) -> None:
     if not yaml_parser:
         yaml_parser = create_yaml_parser()
 
-    # copy the dict to ensure no referfences
-    data_copy = copy.deepcopy(data) if isinstance(data, dict) else data
-
-    yaml_parser.dump(data_copy, stream)
+    yaml_parser.dump(data, stream)
 
 
 def to_yaml(data: any, yaml_parser: YAML = None) -> str:
