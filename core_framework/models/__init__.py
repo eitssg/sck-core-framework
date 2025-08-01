@@ -8,7 +8,7 @@ from .package_details import PackageDetails
 from .action_details import ActionDetails
 from .state_details import StateDetails
 from .deploy_spec import DeploySpec
-from .action_spec import ActionSpec
+from .action_spec import ActionSpec, ActionParams
 
 from .models import (
     get_artefacts_path,
@@ -30,6 +30,7 @@ __all__ = [
     "StateDetails",
     "DeploySpec",
     "ActionSpec",
+    "ActionParams",
     "get_artefacts_path",
     "get_packages_path",
     "get_files_path",

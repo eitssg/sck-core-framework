@@ -34,6 +34,21 @@ from pydantic import (
 )
 
 
+class ActionParams(BaseModel):
+
+    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
+
+    account: str = Field(..., alias="Account", description="Account where this action is to take place")
+    region: str = Field(..., alias="Region", description="Region were this action is to take place")
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        if "exclude_none" not in kwargs:
+            kwargs["exclude_none"] = True
+        if "by_alias" not in kwargs:
+            kwargs["by_alias"] = True
+        return super().model_dump(**kwargs)
+
+
 class ActionSpec(BaseModel):
     """
     The ActionSpec class defines an "action" or "task" that Core Automation will perform when deploying infrastructure to your Cloud.
@@ -151,19 +166,16 @@ class ActionSpec(BaseModel):
     
     **Naming Convention:**
     
-    - Use snake_case format (e.g., ``create_stack``, ``delete_user``, ``put_event``)
-    - Maps to action classes: ``CreateStackAction``, ``DeleteUserAction``, ``PutEventAction``
-    - Legacy ``aws.`` prefixes are automatically stripped for backward compatibility
+    - The name is "AWS::ActionName", "RDS::ActionName", "KMS::ActionName", etc.
     
     **Common Examples:**
-    
-    - ``"create_stack"`` - Creates AWS CloudFormation stacks
-    - ``"delete_stack"`` - Deletes AWS CloudFormation stacks  
-    - ``"put_event"`` - Records events in the database
-    - ``"get_stack_references"`` - Checks stack export dependencies
-    - ``"create_user"`` - Creates IAM users
-    - ``"assign_permissions"`` - Assigns IAM permissions
-    
+
+    - ``"AWS::CreateStack"`` - Creates AWS CloudFormation stacks
+    - ``"AWS::DeleteStack"`` - Deletes AWS CloudFormation stacks
+    - ``"AWS::PutEvent"`` - Records events in the database
+    - ``"AWS::GetStackReferences"`` - Checks stack export dependencies
+    - ``"AWS::PutUser"`` - Creates IAM users
+
     **Action Discovery:**
     
     The core-execute framework uses this value to dynamically load and instantiate
@@ -1342,4 +1354,4 @@ class ActionSpec(BaseModel):
         str
             Detailed representation for debugging showing name, kind, scope, and dependencies.
         """
-        return f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}', depends_on={self.depends_on})"
+        return f"ActionSpec(Kind='{self.kind}',Name='{self.name}')"

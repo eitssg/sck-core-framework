@@ -340,7 +340,7 @@ class MagicS3Client(BaseModel):
         return MagicBucket(Bucket=bucket_name, DataPath=self.data_path)
 
     @staticmethod
-    def get_bucket(Region: str, BucketName: str, DataPath: str | None = None) -> Any:
+    def get_bucket(Region: str, BucketName: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
         """Gets a Bucket object, which can be a real S3 Bucket or a MagicBucket.
 
         The selection is based on the ``is_use_s3()`` configuration.
@@ -355,7 +355,7 @@ class MagicS3Client(BaseModel):
         :rtype: Any
         """
         if is_use_s3():
-            s3 = aws.s3_resource(region=Region)
+            s3 = aws.s3_resource(region=Region, role_arn=RoleArn)
             bucket = s3.Bucket(BucketName)
         else:
             local = MagicS3Client(Region=Region, DataPath=DataPath)
