@@ -23,6 +23,51 @@ from core_framework.common import (
 import core_helper.aws as aws
 
 
+class FileStreamingBody:
+    """Custom streaming body that mimics boto3's StreamingBody."""
+
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        self._file = None
+        self._closed = False
+
+    def read(self, amt: int = None) -> bytes:
+        """Read up to amt bytes from the stream."""
+        if self._closed:
+            raise ValueError("I/O operation on closed file.")
+
+        if self._file is None:
+            self._file = open(self.file_path, "rb")
+
+        try:
+            return self._file.read(amt)
+        except Exception:
+            self.close()
+            raise
+
+    def close(self):
+        """Close the file handle."""
+        if self._file and not self._closed:
+            self._file.close()
+            self._file = None
+            self._closed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        """Ensure file is closed when object is garbage collected."""
+        self.close()
+
+    @property
+    def closed(self) -> bool:
+        """Check if the stream is closed."""
+        return self._closed
+
+
 class MagicObject(BaseModel):
     """Emulates an S3 Object to allow local filesystem storage via the S3 API.
 
@@ -51,6 +96,7 @@ class MagicObject(BaseModel):
     content_type: str | None = Field(default=None, alias="ContentType")
     etag: str | None = Field(default=None, alias="ETag")
     error: str | None = Field(default=None, alias="Error")
+    body: Any | None = Field(default=None, alias="Body")
 
     def head_object(self, **kwargs) -> Self:
         """Emulates the S3 head_object() API method to get object metadata.
@@ -216,6 +262,8 @@ class MagicObject(BaseModel):
             elif isinstance(body, bytes):
                 with open(fn, "wb") as file:
                     file.write(body)
+            else:
+                raise ValueError("Body must be a file-like object, string, or bytes")
 
             self.head_object()
 
@@ -223,6 +271,33 @@ class MagicObject(BaseModel):
             self.error = "\n".join([self.error or "", str(e)])
 
         return self
+
+    def get_object(self, **kwargs) -> dict:
+        """Emulates the S3 get_object() method to retrieve an object from the local filesystem.
+
+        :param kwargs: Keyword arguments, expects 'Key'.
+        :return: A dictionary containing the object's metadata and body.
+        :rtype: dict
+        """
+        try:
+            self.key = kwargs.get("Key", self.key)
+            if not self.key:
+                raise ValueError("Key is required")
+
+            key = os.path.join(self.data_path, self.bucket_name, self.key)
+
+            if not os.path.exists(key):
+                raise FileNotFoundError(f"Object {self.key} does not exist in bucket {self.bucket_name}")
+
+            # the get_object method returns a stream in the Body field
+            self.body = FileStreamingBody(key)
+
+            self.head_object()
+
+        except Exception as e:
+            self.error = "\n".join([self.error or "", str(e)])
+
+        return self.model_dump(exclude_none=True, by_alias=True)
 
 
 class MagicBucket(BaseModel):
@@ -246,7 +321,7 @@ class MagicBucket(BaseModel):
         """
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
-        return obj.head_object(**kwargs).model_dump(exclude_none=True)
+        return obj.head_object(**kwargs).model_dump(exclude_none=True, by_alias=True)
 
     def download_fileobj(self, **kwargs) -> dict:
         """Emulates the S3 download_fileobj() method.
@@ -257,7 +332,7 @@ class MagicBucket(BaseModel):
         """
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
-        return obj.download_fileobj(**kwargs).model_dump(exclude_none=True)
+        return obj.download_fileobj(**kwargs).model_dump(exclude_none=True, by_alias=True)
 
     def put_object(self, **kwargs) -> MagicObject:
         """Emulates the S3 put_object() method.
@@ -269,6 +344,17 @@ class MagicBucket(BaseModel):
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
         return obj.put_object(**kwargs)
+
+    def get_object(self, **kwargs) -> dict:
+        """Emulates the S3 get_object() method to retrieve an object.
+
+        :param kwargs: Keyword arguments passed to the MagicObject.
+        :return: A dictionary of the object's metadata.
+        :rtype: dict
+        """
+        key = kwargs.pop("Key", None)
+        obj = self.Object(key)
+        return obj.get_object(**kwargs)
 
     def Object(self, key: str | None) -> MagicObject:
         """Emulates the S3 Bucket.Object() method to return a MagicObject.
@@ -384,3 +470,56 @@ class MagicS3Client(BaseModel):
             client = MagicS3Client(Region=Region, DataPath=DataPath)
 
         return client
+
+
+class SeekableStreamWrapper:
+    """Wrapper that makes a streaming body seekable by buffering chunks."""
+
+    def __init__(self, stream, chunk_size: int = 8192):
+        self.stream = stream
+        self.chunk_size = chunk_size
+        self.buffer = bytearray()
+        self.position = 0
+        self.eof_reached = False
+
+    def read(self, size: int = -1) -> bytes:
+        # Ensure we have enough data buffered
+        if size == -1:
+            self._read_all()
+            result = bytes(self.buffer[self.position :])
+            self.position = len(self.buffer)
+        else:
+            self._ensure_buffered(self.position + size)
+            end_pos = min(self.position + size, len(self.buffer))
+            result = bytes(self.buffer[self.position : end_pos])
+            self.position = end_pos
+
+        return result
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        if whence == 0:  # SEEK_SET
+            self.position = offset
+        elif whence == 1:  # SEEK_CUR
+            self.position += offset
+        elif whence == 2:  # SEEK_END
+            self._read_all()
+            self.position = len(self.buffer) + offset
+
+        self.position = max(0, min(self.position, len(self.buffer)))
+        return self.position
+
+    def _ensure_buffered(self, target_size: int):
+        while len(self.buffer) < target_size and not self.eof_reached:
+            chunk = self.stream.read(self.chunk_size)
+            if not chunk:
+                self.eof_reached = True
+                break
+            self.buffer.extend(chunk)
+
+    def _read_all(self):
+        while not self.eof_reached:
+            chunk = self.stream.read(self.chunk_size)
+            if not chunk:
+                self.eof_reached = True
+                break
+            self.buffer.extend(chunk)

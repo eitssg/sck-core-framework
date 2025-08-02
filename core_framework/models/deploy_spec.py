@@ -128,8 +128,8 @@ class DeploySpec(BaseModel):
         """
         if isinstance(values, dict):
             # Handle action_specs -> actions deprecation
-            action_specs_value = values.get("action_specs")
-            actions_value = values.get("actions") or values.get("Actions")
+            action_specs_value = values.pop("action_specs", None)
+            actions_value = values.pop("actions", None) or values.pop("Actions", None)
 
             if action_specs_value and not actions_value:
                 warnings.warn(
@@ -138,15 +138,17 @@ class DeploySpec(BaseModel):
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                values["actions"] = action_specs_value
-                values["Actions"] = action_specs_value
-                # Remove the deprecated field
-                values.pop("action_specs", None)
+
+                actions_value = action_specs_value
+
             elif action_specs_value and actions_value:
                 raise ValueError(
                     "Conflicting values: both 'action_specs' and 'actions' provided. "
                     "Please use only 'actions' as 'action_specs' is deprecated."
                 )
+
+            values["actions"] = actions_value
+
         return values
 
     @model_validator(mode="after")
@@ -181,9 +183,7 @@ class DeploySpec(BaseModel):
         names = []
         for action in self.actions:
 
-            stack_name = action.params.get(
-                "stack_name", action.params.get("StackName", None)
-            )
+            stack_name = action.params.get("stack_name") or action.params.get("StackName")
 
             # Only do this if a stack name is provided.
             if not stack_name:
@@ -268,9 +268,7 @@ class DeploySpec(BaseModel):
         return util.to_json(self.model_dump())
 
     @classmethod
-    def from_stream(
-        cls, stream: TextIO | str, mimetype: str = "application/yaml"
-    ) -> "DeploySpec":
+    def from_stream(cls, stream: TextIO | str, mimetype: str = "application/yaml") -> "DeploySpec":
         """
         Load a DeploySpec from a stream or string with specified mimetype.
 
@@ -325,9 +323,7 @@ class DeploySpec(BaseModel):
             return cls.from_json(stream)
         else:
             supported_types = yaml_types + json_types
-            raise ValueError(
-                f"Unsupported mimetype: {mimetype}. Supported types: {supported_types}"
-            )
+            raise ValueError(f"Unsupported mimetype: {mimetype}. Supported types: {supported_types}")
 
     @classmethod
     def from_yaml(cls, stream: TextIO | str) -> "DeploySpec":

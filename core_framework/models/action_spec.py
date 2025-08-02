@@ -185,6 +185,7 @@ class ActionSpec(BaseModel):
     )
 
     depends_on: list[str] = Field(
+        default=[],
         alias="DependsOn",
         description="""List of action names that must complete successfully before this action can execute.
 
@@ -219,7 +220,6 @@ class ActionSpec(BaseModel):
     - Keep dependency chains as short as possible for better parallelization
     - Use explicit dependencies rather than relying on execution order
     - Consider using ``before``/``after`` for simple ordering without failure propagation""",
-        default_factory=list,
     )
 
     params: dict[str, Any] = Field(
@@ -861,8 +861,8 @@ class ActionSpec(BaseModel):
         """
         if isinstance(values, dict):
             # Handle label -> name deprecation
-            label_value = values.get("label") or values.get("Label")
-            name_value = values.get("name") or values.get("Name")
+            label_value = values.pop("label", None) or values.pop("Label", None)
+            name_value = values.pop("name", None) or values.pop("Name", None)
 
             if label_value and not name_value:
                 warnings.warn(
@@ -870,8 +870,7 @@ class ActionSpec(BaseModel):
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                values["name"] = label_value
-                values["Name"] = label_value
+                name_value = label_value
             elif label_value and name_value:
                 if label_value != name_value:
                     raise ValueError(
@@ -884,9 +883,11 @@ class ActionSpec(BaseModel):
                     stacklevel=2,
                 )
 
+            values["name"] = name_value
+
             # Handle type -> kind deprecation
-            type_value = values.get("type") or values.get("Type")
-            kind_value = values.get("kind") or values.get("Kind")
+            type_value = values.pop("type", None) or values.pop("Type", None)
+            kind_value = values.pop("kind", None) or values.pop("Kind", None)
 
             if type_value and not kind_value:
                 warnings.warn(
@@ -894,8 +895,7 @@ class ActionSpec(BaseModel):
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                values["kind"] = type_value
-                values["Kind"] = type_value
+                kind_value = type_value
             elif type_value and kind_value:
                 if type_value != kind_value:
                     raise ValueError(
@@ -907,6 +907,9 @@ class ActionSpec(BaseModel):
                     DeprecationWarning,
                     stacklevel=2,
                 )
+
+            values["kind"] = kind_value
+
         return values
 
     @field_validator("depends_on", mode="before")
@@ -932,6 +935,8 @@ class ActionSpec(BaseModel):
             If any item in a list is not a string.
         """
         if value is None:
+            return []
+        if value == "null":
             return []
         if isinstance(value, str):
             return [value]

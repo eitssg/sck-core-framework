@@ -42,14 +42,13 @@ Creating from arguments with automatic defaults::
     >>> package = PackageDetails.from_arguments(deployment_details=dd)
 """
 
-from typing import Any
-import os
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
+from pydantic import Field, field_validator
 
 import core_framework as util
 
 from .deployment_details import DeploymentDetails
 from .deploy_spec import DeploySpec
+from .file_details import FileDetails
 
 from core_framework.constants import (
     V_FULL,
@@ -62,333 +61,7 @@ from core_framework.constants import (
 )
 
 
-class FolderInfo(BaseModel):
-    """FolderInfo is a model that contains information about a folder witin the context of the core model."""
-
-    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
-
-    client: str = Field(
-        alias="Client",
-        description="The client identifier for the deployment",
-        default=V_EMPTY,
-    )
-
-    bucket_region: str = Field(
-        alias="BucketRegion",
-        description="The region of the bucket where packages are stored (S3 mode only)",
-        default=V_EMPTY,
-    )
-
-    bucket_name: str = Field(
-        alias="BucketName",
-        description="The S3 bucket name or root directory path where packages are stored",
-        default=V_EMPTY,
-    )
-
-    key: str = Field(
-        alias="Key",
-        description="The full path to the package file relative to bucket_name",
-        default=V_EMPTY,
-    )
-
-    @field_validator("key")
-    @classmethod
-    def validate_key(cls, value: str) -> str:
-        """
-        Validate and normalize the key path based on storage mode.
-
-        Parameters
-        ----------
-        value : str
-            The key path to validate.
-
-        Returns
-        -------
-        str
-            The validated and normalized key path.
-
-        Notes
-        -----
-        - For S3 mode: removes leading slashes and normalizes to forward slashes
-        - For local mode: normalizes to OS-appropriate path separators
-        - Validates that the path is not empty when provided
-        """
-        if not value:
-            return value
-
-        # Remove leading slashes for consistency
-        if value.startswith("/"):
-            value = value.lstrip("/")
-        if value.startswith("\\"):
-            value = value.lstrip("\\")
-
-        # Note: We can't access self.mode here in a field validator
-        # So we'll normalize the path separators in the model_validator instead
-        return value
-
-    mode: str = Field(
-        alias="Mode",
-        description="The storage mode: 'local' for filesystem or 'service' for S3",
-        default=V_EMPTY,
-    )
-
-    @field_validator("mode")
-    @classmethod
-    def validate_mode(cls, value: str) -> str:
-        """
-        Validate that mode is either 'local' or 'service'.
-
-        Parameters
-        ----------
-        value : str
-            The mode value to validate.
-
-        Returns
-        -------
-        str
-            The validated mode value.
-
-        Raises
-        ------
-        ValueError
-            If mode is not 'local' or 'service'.
-        """
-        if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(
-                f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'"
-            )
-        return value
-
-    version_id: str | None = Field(
-        alias="VersionId",
-        description="The version ID of the package file (S3 only)",
-        default=None,
-    )
-
-    content_type: str | None = Field(
-        alias="ContentType",
-        description="The MIME type of the package file",
-        default="application/zip",
-    )
-
-    @field_validator("content_type")
-    @classmethod
-    def validate_content_type(cls, value: str) -> str:
-        """
-        Validate that content_type is a valid YAML or JSON MIME type.
-
-        Parameters
-        ----------
-        value : str
-            The content_type value to validate
-
-        Returns
-        -------
-        str
-            The validated content_type value
-
-        Raises
-        ------
-        ValueError
-            If content_type is not a supported MIME type
-        """
-        allowed_types = util.get_valid_mimetypes()
-        if value not in allowed_types:
-            raise ValueError(
-                f"ContentType must be one of {allowed_types}, got: {value}"
-            )
-        return value
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_before(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """
-        Validate and populate missing fields before model creation.
-
-        This validator ensures that required fields are properly populated by applying
-        intelligent defaults when values are missing.
-
-        Parameters
-        ----------
-        values : Any
-            The input values for model creation. Expected to be a dict for processing,
-            but other types are passed through unchanged.
-
-        Returns
-        -------
-        Any
-            The validated and potentially modified values.
-
-        Notes
-        -----
-        Side Effects:
-            - Populates missing client with util.get_client()
-            - Populates missing bucket_region with util.get_bucket_region()
-            - Populates missing bucket_name with util.get_bucket_name()
-        """
-        if isinstance(values, dict):
-            # Set client if not provided
-            client = values.get("Client") or values.get("client")
-
-            if not client:
-                client = util.get_client()
-                values["client"] = client
-
-            # Set bucket region if not provided
-            region = values.get("BucketRegion") or values.get("bucket_region")
-            if not region:
-                region = util.get_bucket_region()
-                values["bucket_region"] = region
-
-            # Set bucket name if not provided
-            bucket_name = values.get("BucketName") or values.get("bucket_name")
-            if not bucket_name:
-                bucket_name = util.get_bucket_name(client, region)
-                values["bucket_name"] = bucket_name
-
-            if not values.get("Mode") and not values.get("mode"):
-                values["mode"] = V_LOCAL if util.is_local_mode() else V_SERVICE
-
-        return values
-
-    @property
-    def data_path(self) -> str:
-        """
-        Get the storage volume path for the application.
-
-        Returns
-        -------
-        str
-            The storage volume path for the application.
-            - Local mode: volume mount point + bucket_name + key path (without filename)
-            - Service mode: volume prefix + bucket_name + key path (without filename)
-
-        Examples
-        --------
-        Local mode::
-            >>> # volume="/var/data", bucket_name="my-bucket", key="packages/app/main/package.zip"
-            >>> # Returns: "/var/data/my-bucket/packages/app/main"
-
-        Service mode::
-            >>> # volume="s3://", bucket_name="my-bucket", key="packages/app/main/package.zip"
-            >>> # Returns: "s3://my-bucket/packages/app/main"
-        """
-        # Get appropriate separator and volume based on mode
-        if self.mode == V_LOCAL:
-            sep = os.path.sep
-            volume = util.get_storage_volume() or "/"
-        else:
-            sep = "/"
-            volume = "s3://"
-
-        # Extract path components from key (excluding filename)
-        path_parts = self.key.split(sep)[:-1] if self.key else []
-
-        # Build the complete path
-        if self.mode == V_LOCAL:
-            # Local: volume + bucket_name + path_parts
-            root_path = sep.join([volume, self.bucket_name] + path_parts)
-        else:
-            # Service: volume + bucket_name + path_parts
-            root_path = (
-                volume
-                + self.bucket_name
-                + (sep + sep.join(path_parts) if path_parts else "")
-            )
-
-        return root_path
-
-    @property
-    def temp_dir(self) -> str:
-        """
-        Get the temporary directory for processing the package.
-
-        Returns
-        -------
-        str
-            The temporary directory path
-
-        """
-        return util.get_temp_dir()  # Fixed: missing parentheses for function call
-
-    def get_full_path(self) -> str:
-        """
-        Get the full path to the package file.
-
-        Returns
-        -------
-        str
-            The full path to the package file.
-            - Local mode: file:// + volume + bucket_name + key
-            - Service mode: s3:// + bucket_name + key
-
-        Examples
-        --------
-        Local mode::
-            >>> # volume="/var/data", bucket_name="my-bucket", key="packages/app/package.zip"
-            >>> # Returns: "file:///var/data/my-bucket/packages/app/package.zip"
-
-        Service mode::
-            >>> # bucket_name="my-bucket", key="packages/app/package.zip"
-            >>> # Returns: "s3://my-bucket/packages/app/package.zip"
-        """
-        if not self.bucket_name or not self.key:
-            return ""
-
-        if self.mode == V_LOCAL:
-            sep = os.path.sep
-            volume = util.get_storage_volume() or "/"
-            # Local: file:// + volume + bucket_name + key
-            full_path = f"{volume}{sep}{self.bucket_name}{sep}{self.key}"
-            return f"file://{full_path}"
-        else:
-            # Service: s3:// + bucket_name + key (always forward slashes)
-            return f"s3://{self.bucket_name}/{self.key}"
-
-    def is_local_mode(self) -> bool:
-        """
-        Check if the package is in local storage mode.
-
-        Returns
-        -------
-        bool
-            True if mode is local, False if mode is service.
-
-        Examples
-        --------
-        ::
-
-            >>> package = PackageDetails(mode="local")
-            >>> print(package.is_local_mode())  # True
-
-            >>> package = PackageDetails(mode="service")
-            >>> print(package.is_local_mode())  # False
-        """
-        return self.mode == V_LOCAL
-
-    def is_service_mode(self) -> bool:
-        """
-        Check if the package is in service (S3) storage mode.
-
-        Returns
-        -------
-        bool
-            True if mode is service, False if mode is local.
-
-        Examples
-        --------
-        ::
-
-            >>> package = PackageDetails(mode="service")
-            >>> print(package.is_service_mode())  # True
-
-            >>> package = PackageDetails(mode="local")
-            >>> print(package.is_service_mode())  # False
-        """
-        return self.mode == V_SERVICE
-
-
-class PackageDetails(FolderInfo):
+class PackageDetails(FileDetails):
     """
     PackageDetails is a model that contains all information needed to locate and process a package.
 
@@ -428,6 +101,23 @@ class PackageDetails(FolderInfo):
     temp_dir : str
         The temporary directory to use for processing the package.
 
+    Methods
+    -------
+    set_key(deployment_details, filename)
+        Set the key path based on deployment details and filename.
+    from_arguments(**kwargs)
+        Create a PackageDetails instance from keyword arguments with intelligent defaults.
+    get_full_path()
+        Get the full path to the package file (inherited from FileDetails).
+    get_name()
+        Get the filename from the key path (inherited from FileDetails).
+    is_local_mode()
+        Check if the package is in local storage mode (inherited from FileDetails).
+    is_service_mode()
+        Check if the package is in service (S3) storage mode (inherited from FileDetails).
+    model_dump(**kwargs)
+        Override to exclude None values by default in serialization (inherited from FileDetails).
+
     Examples
     --------
     S3 storage mode::
@@ -449,11 +139,18 @@ class PackageDetails(FolderInfo):
         ...     mode="local"
         ... )
 
+    Create with factory method and auto-generated key::
+
+        >>> from core_framework.models.deployment_details import DeploymentDetails
+        >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+        >>> package = PackageDetails.from_arguments(deployment_details=dd)
+        >>> print(package.key)  # "packages/ecommerce/web/main/1.0.0/package.zip"
+
     With deployment specification::
 
         >>> from core_framework.models.deploy_spec import DeploySpec
         >>> from core_framework.models.action_spec import ActionSpec
-        >>> action = ActionSpec(name="deploy", kind="create_stack", params={"stack_name": "web"})
+        >>> action = ActionSpec(label="deploy", type="create_stack", params={"stack_name": "web"})
         >>> deploy_spec = DeploySpec(actions=[action])
         >>> package = PackageDetails(
         ...     client="my-client",
@@ -462,12 +159,6 @@ class PackageDetails(FolderInfo):
         ...     deployspec=deploy_spec
         ... )
     """
-
-    compile_mode: str = Field(
-        alias="CompileMode",
-        description="The compile mode: 'full' or 'incremental'",
-        default=V_FULL,
-    )
 
     @field_validator("compile_mode")
     @classmethod
@@ -489,84 +180,30 @@ class PackageDetails(FolderInfo):
         ------
         ValueError
             If compile_mode is not 'full' or 'incremental'.
-        """
-        if value not in [V_FULL, V_INCREMENTAL, V_EMPTY]:
-            raise ValueError(
-                f"Compile mode must be '{V_FULL}' or 'incremental', got '{value}'"
-            )
-        return value
-
-    deployspec: DeploySpec | None = Field(
-        alias="DeploySpec",
-        description="Optional DeploySpec object containing deployment actions",
-        default=None,
-    )
-
-    @property
-    def data_path(self) -> str:
-        """
-        Get the storage volume path for the application.
-
-        Returns
-        -------
-        str
-            The storage volume path for the application.
-            - Local mode: volume mount point + bucket_name + key path (without filename)
-            - Service mode: volume prefix + bucket_name + key path (without filename)
 
         Examples
         --------
-        Local mode::
-            >>> # volume="/var/data", bucket_name="my-bucket", key="packages/app/main/package.zip"
-            >>> # Returns: "/var/data/my-bucket/packages/app/main"
+        ::
 
-        Service mode::
-            >>> # volume="s3://", bucket_name="my-bucket", key="packages/app/main/package.zip"
-            >>> # Returns: "s3://my-bucket/packages/app/main"
+            >>> PackageDetails.validate_compile_mode("full")
+            'full'
+
+            >>> PackageDetails.validate_compile_mode("incremental")
+            'incremental'
+
+            >>> PackageDetails.validate_compile_mode("invalid")
+            ValueError: Compile mode must be 'full' or 'incremental', got 'invalid'
         """
-        # Get appropriate separator and volume based on mode
-        if self.mode == V_LOCAL:
-            sep = os.path.sep
-            volume = util.get_storage_volume() or "/"
-        else:
-            sep = "/"
-            volume = "s3://"
-
-        # Extract path components from key (excluding filename)
-        path_parts = self.key.split(sep)[:-1] if self.key else []
-
-        # Build the complete path
-        if self.mode == V_LOCAL:
-            # Local: volume + bucket_name + path_parts
-            root_path = sep.join([volume, self.bucket_name] + path_parts)
-        else:
-            # Service: volume + bucket_name + path_parts
-            root_path = (
-                volume
-                + self.bucket_name
-                + (sep + sep.join(path_parts) if path_parts else "")
-            )
-
-        return root_path
-
-    @property
-    def temp_dir(self) -> str:
-        """
-        Get the temporary directory for processing the package.
-
-        Returns
-        -------
-        str
-            The temporary directory path
-
-        """
-        return util.get_temp_dir()  # Fixed: missing parentheses for function call
+        if value not in [V_FULL, V_INCREMENTAL, V_EMPTY]:
+            raise ValueError(f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'")
+        return value
 
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """
         Set the key path based on deployment details and filename.
 
         Generates the key path using the deployment details hierarchy and the specified filename.
+        The path format will be: packages/{portfolio}/{app}/{branch}/{build}/{filename}
 
         Parameters
         ----------
@@ -581,7 +218,7 @@ class PackageDetails(FolderInfo):
 
             >>> from core_framework.models.deployment_details import DeploymentDetails
             >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-            >>> package = PackageDetails()
+            >>> package = PackageDetails(client="test", bucket_name="test-bucket")
             >>> package.set_key(dd, "package.zip")
             >>> print(package.key)  # packages/ecommerce/web/main/1.0.0/package.zip
         """
@@ -594,46 +231,125 @@ class PackageDetails(FolderInfo):
 
         This factory method provides a flexible way to create PackageDetails instances
         by accepting various parameter combinations and applying intelligent defaults.
+        It can generate package keys automatically from deployment details and supports
+        both CamelCase and snake_case parameter names for compatibility.
 
         Parameters
         ----------
         **kwargs : dict
-            Keyword arguments that can include:
-                - client/Client (str): Client identifier
-                - key/Key/package_key/PackageKey (str): Package key path
-                - package_file/PackageFile (str): Package filename (default: package.zip)
-                - deployment_details/DeploymentDetails (DeploymentDetails): Deployment context
-                - bucket_name/BucketName (str): Bucket name or root path
-                - bucket_region/BucketRegion (str): Bucket region (S3 only)
-                - mode/Mode (str): Storage mode (local/service)
-                - content_type/ContentType (str): MIME type
-                - version_id/VersionId (str): S3 version ID
-                - deployspec/DeploySpec (DeploySpec|dict|list): Deployment specification
-                - compile_mode/CompileMode (str): Compile mode (full/incremental)
+            Keyword arguments that can include any of the following:
+
+            Core Parameters:
+                client/Client (str): Client identifier. Defaults to util.get_client().
+                key/Key (str): Package key path. If not provided, will be generated.
+                package_file/PackageFile (str): Package filename. Defaults to "package.zip".
+                mode/Mode (str): Storage mode ('local' or 'service').
+                               Defaults to 'local' if util.is_local_mode() else 'service'.
+
+            Storage Parameters:
+                bucket_name/BucketName (str): Bucket name or root directory path.
+                                            Defaults to util.get_bucket_name().
+                bucket_region/BucketRegion (str): Bucket region (S3 only).
+                                                Defaults to util.get_bucket_region().
+                content_type/ContentType (str): MIME type. Defaults to 'application/zip'.
+                version_id/VersionId (str): S3 version ID (service mode only).
+
+            Package Parameters:
+                compile_mode/CompileMode (str): Compile mode ('full' or 'incremental').
+                                              Defaults to 'full'.
+                deployspec/DeploySpec (DeploySpec | dict | list): Deployment specification.
+                                     Can be a DeploySpec instance, dict, or list of actions.
+                                     Defaults to empty DeploySpec if not provided.
+
+            Key Generation Parameters (used when key is not provided):
+                deployment_details/DeploymentDetails (DeploymentDetails | dict):
+                    Deployment context for generating key path. Can be a DeploymentDetails
+                    instance or dict. If not provided, will attempt to create from other kwargs.
+
+            DeploymentDetails Parameters (used when deployment_details is not provided):
+                portfolio/Portfolio (str): Portfolio name.
+                app/App (str): Application name.
+                build/Build (str): Build version.
+                branch/Branch (str): Branch name (defaults to 'main').
 
         Returns
         -------
         PackageDetails
-            A new PackageDetails instance with populated fields.
+            A new PackageDetails instance with populated fields and intelligent defaults.
 
         Raises
         ------
         ValueError
-            If deployment_details cannot be created from provided arguments.
+            If required parameters are missing or invalid for key generation.
 
         Examples
         --------
         Create with explicit key::
 
-            >>> package = PackageDetails.from_arguments(**command_line_args)
+            >>> package = PackageDetails.from_arguments(
+            ...     client="my-client",
+            ...     key="packages/ecommerce/web/main/1.0.0/package.zip",
+            ...     mode="service"
+            ... )
+            >>> print(package.key)  # packages/ecommerce/web/main/1.0.0/package.zip
 
+        Create from deployment details::
+
+            >>> from core_framework.models.deployment_details import DeploymentDetails
+            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+            >>> package = PackageDetails.from_arguments(deployment_details=dd)
+            >>> print(package.key)  # packages/ecommerce/web/main/1.0.0/package.zip
+
+        Create with minimal arguments (auto-generates DeploymentDetails)::
+
+            >>> package = PackageDetails.from_arguments(
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     build="1.0.0"
+            ... )
+            >>> print(package.key)  # packages/ecommerce/web/main/1.0.0/package.zip
+
+        Create with deployment specification::
+
+            >>> from core_framework.models.deploy_spec import DeploySpec
+            >>> actions = [{"label": "deploy", "type": "create_stack", "params": {}}]
+            >>> package = PackageDetails.from_arguments(
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     build="1.0.0",
+            ...     deployspec=actions
+            ... )
+            >>> print(len(package.deployspec.actions))  # 1
+
+        Create with command line arguments::
+
+            >>> # Assuming command_line_args contains portfolio, app, build
+            >>> package = PackageDetails.from_arguments(**command_line_args)
+            >>> print(package.key)  # packages/{portfolio}/{app}/main/{build}/package.zip
+
+        Notes
+        -----
+        Key Generation Logic:
+            1. If 'key' is provided, it's used directly
+            2. If deployment_details is provided, key is generated from it + package_file
+            3. If deployment_details is not provided, it's created from kwargs
+            4. Final key format: packages/{portfolio}/{app}/{branch}/{build}/{package_file}
+
+        Parameter Aliases:
+            This method accepts both CamelCase and snake_case parameter names for
+            compatibility (e.g., both 'bucket_name' and 'BucketName' are accepted).
+
+        DeploySpec Handling:
+            The deployspec parameter can be:
+            - DeploySpec instance: used directly
+            - dict: converted to DeploySpec
+            - list: treated as actions list and wrapped in DeploySpec
+            - None: creates empty DeploySpec with no actions
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
-            return value if value or can_be_empty else defualt
+            return value if value or can_be_empty else default
 
         # Get other parameters with fallbacks
         client = _get("client", "Client", util.get_client())
@@ -643,6 +359,7 @@ class PackageDetails(FolderInfo):
 
         # Get key from various possible parameter names
         key = _get("key", "Key", V_EMPTY)
+
         if not key:
             dd = _get("deployment_details", "DeploymentDetails", None)
             if isinstance(dd, dict):
@@ -657,18 +374,19 @@ class PackageDetails(FolderInfo):
         bucket_region = _get("bucket_region", "BucketRegion", util.get_bucket_region())
 
         bucket_name = _get(
-            "bucket_name", "BucketName", util.get_bucket_name(client, bucket_region)
+            "bucket_name",
+            "BucketName",
+            util.get_bucket_name(client, bucket_region),
         )
 
         mode = _get("mode", "Mode", V_LOCAL if util.is_local_mode() else V_SERVICE)
 
-        # Ensure compile_mode is set, default to full if not provided
-        compile_mode = _get("compile_mode", "CompileMode", V_FULL)
-
         content_type = _get("content_type", "ContentType", "application/zip")
 
-        # Handle version_id
         version_id = _get("version_id", "VersionId", None)
+
+        # Ensure compile_mode is set, default to full if not provided
+        compile_mode = _get("compile_mode", "CompileMode", V_FULL)
 
         # Handle deployspec parameter
         deployspec = _get("deployspec", "DeploySpec", None)
@@ -680,33 +398,12 @@ class PackageDetails(FolderInfo):
             bucket_name=bucket_name,
             bucket_region=bucket_region,
             key=key,
-            mode=mode,
             version_id=version_id,
             content_type=content_type,
+            mode=mode,
             compile_mode=compile_mode,
             deployspec=deployspec,
         )
-
-    def model_dump(self, **kwargs) -> dict:
-        """
-        Override to exclude None values by default.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments passed to the parent model_dump method.
-            All standard Pydantic model_dump parameters are supported.
-
-        Returns
-        -------
-        dict
-            Dictionary representation of the model with None values excluded by default.
-        """
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
-        if "by_alias" not in kwargs:
-            kwargs["by_alias"] = True
-        return super().model_dump(**kwargs)
 
     def __str__(self) -> str:
         """
@@ -715,10 +412,21 @@ class PackageDetails(FolderInfo):
         Returns
         -------
         str
-            String showing the package location and mode.
+            String showing the package filename, storage mode, and location.
+
+        Examples
+        --------
+        ::
+
+            >>> package = PackageDetails(
+            ...     bucket_name="my-bucket",
+            ...     key="packages/app/main/1.0.0/package.zip",
+            ...     mode="service"
+            ... )
+            >>> str(package)
+            'PackageDetails(service: my-bucket/packages/app/main/1.0.0/package.zip)'
         """
-        name = self.get_name()
-        return f"PackageDetails({name}, mode={self.mode})"
+        return f"PackageDetails({self.mode}: {self.bucket_name}/{self.key})"
 
     def __repr__(self) -> str:
         """
@@ -727,9 +435,14 @@ class PackageDetails(FolderInfo):
         Returns
         -------
         str
-            Detailed representation showing key attributes.
+            Detailed representation showing key attributes for debugging.
+
+        Examples
+        --------
+        ::
+
+            >>> package = PackageDetails(bucket_name="my-bucket", key="packages/app/package.zip")
+            >>> repr(package)
+            "PackageDetails(bucket_name='my-bucket', key='packages/app/package.zip')"
         """
-        return (
-            f"PackageDetails(client='{self.client}', bucket_name='{self.bucket_name}', "
-            f"key='{self.key}', mode='{self.mode}')"
-        )
+        return f"PackageDetails(bucket_name='{self.bucket_name}', key='{self.key}')"

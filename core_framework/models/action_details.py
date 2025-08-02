@@ -39,15 +39,13 @@ not by the ActionDetails instance itself.
 
 """Defines the class ActionDetails that provide information about where ActionSpec files are stored in S3 (or local filesystem)."""
 
-from typing import Any, Self
-from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
-
 import core_framework as util
 from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
 from .deployment_details import DeploymentDetails
+from .file_details import FileDetails
 
 
-class ActionDetails(BaseModel):
+class ActionDetails(FileDetails):
     """
     ActionDetails: The details of the action location in S3 or local filesystem.
 
@@ -91,218 +89,6 @@ class ActionDetails(BaseModel):
 
         >>> details.set_key(deployment_details, "custom.actions")
     """
-
-    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
-
-    client: str = Field(
-        alias="Client",
-        description="The client to use for the action",
-        default=V_EMPTY,
-    )
-    bucket_name: str = Field(
-        alias="BucketName",
-        description="The name of the S3 bucket where the action file is stored, or base directory path for local mode",
-        default=V_EMPTY,
-    )
-    bucket_region: str = Field(
-        alias="BucketRegion",
-        description="The region of the S3 bucket where the action file is stored (unused in local mode)",
-        default=V_EMPTY,
-    )
-    key: str = Field(
-        alias="Key",
-        description="The key prefix where the action file is stored in s3, or relative path for local mode. Usually in the artefacts folder",
-        default=V_EMPTY,
-    )
-    version_id: str | None = Field(
-        alias="VersionId",
-        description="The version of the action file (S3 only)",
-        default=None,
-    )
-    content_type: str = Field(
-        alias="ContentType",
-        description="The content type of the action file such as 'application/json' or 'application/x-yaml'",
-        default="application/x-yaml",
-    )
-
-    @field_validator("content_type")
-    @classmethod
-    def validate_content_type(cls, value: str) -> str:
-        """
-        Validate that content_type is a valid YAML or JSON MIME type.
-
-        Parameters
-        ----------
-        value : str
-            The content_type value to validate
-
-        Returns
-        -------
-        str
-            The validated content_type value
-
-        Raises
-        ------
-        ValueError
-            If content_type is not a supported MIME type
-        """
-        allowed_types = util.get_valid_mimetypes()
-        if value not in allowed_types:
-            raise ValueError(
-                f"ContentType must be one of {allowed_types}, got: {value}"
-            )
-        return value
-
-    mode: str = Field(
-        alias="Mode",
-        description="The storage mode - either V_LOCAL for local filesystem or V_SERVICE for S3 storage",
-        default=V_EMPTY,
-    )
-
-    @field_validator("mode")
-    @classmethod
-    def validate_mode(cls, value: str) -> str:
-        """
-        Validate that mode is one of the allowed values.
-
-        Parameters
-        ----------
-        value : str
-            The mode value to validate
-
-        Returns
-        -------
-        str
-            The validated mode value
-
-        Raises
-        ------
-        ValueError
-            If mode is not V_LOCAL or V_SERVICE
-        """
-        valid_modes = [V_LOCAL, V_SERVICE]
-        if value not in valid_modes:
-            raise ValueError(f"Mode must be one of {valid_modes}, got: {value}")
-        return value
-
-    @property
-    def data_path(self) -> str:
-        """
-        Get the storage volume path for local mode.
-
-        Returns
-        -------
-        str
-            The base storage directory path. Only used in local mode.
-            Returns empty string or current directory in S3 mode.
-        """
-        return util.get_storage_volume()
-
-    @property
-    def temp_dir(self) -> str:
-        """
-        Get the temporary directory for the application.
-
-        Returns
-        -------
-        str
-            Path to the temporary directory used for file operations.
-        """
-        return util.get_temp_dir()
-
-    @property
-    def s3_uri(self) -> str:
-        """
-        Generate the complete S3 URI for the action file.
-
-        Returns
-        -------
-        str
-            Complete S3 URI in format 's3://bucket/key' or
-            's3://bucket/key?versionId=version' if version_id is present.
-
-        Examples
-        --------
-        ::
-
-            >>> details = ActionDetails(bucket_name="my-bucket", key="path/file.actions")
-            >>> print(details.s3_uri)
-            's3://my-bucket/path/file.actions?versionId=1234567890abcdef'
-        """
-        base_uri = f"s3://{self.bucket_name}/{self.key}"
-        if self.version_id:
-            base_uri += f"?versionId={self.version_id}"
-        return base_uri
-
-    def is_s3_mode(self) -> bool:
-        """
-        Check if the instance is configured for S3 storage mode.
-
-        Returns
-        -------
-        bool
-            True if using S3 storage (V_SERVICE), False if using local filesystem.
-        """
-        return self.mode == V_SERVICE
-
-    def is_local_mode(self) -> bool:
-        """
-        Check if the instance is configured for local filesystem mode.
-
-        Returns
-        -------
-        bool
-            True if using local filesystem (V_LOCAL), False if using S3 storage.
-        """
-        return self.mode == V_LOCAL
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_mode_before(cls, values: dict) -> dict:
-        """
-        Validate that the mode is consistent with other field requirements.
-
-        This validator ensures that S3-specific fields are properly set when
-        using S3 mode, and provides warnings for inconsistent configurations.
-        It also sets the default bucket_name if not provided, as it depends
-        on other fields (client, region) that must be resolved first.
-
-        Parameters
-        ----------
-        value : dict
-            The raw input values for the ActionDetails instance
-
-        Returns
-        -------
-        dict
-            The validated values
-
-        Raises
-        ------
-        ValueError
-            If mode-specific requirements are not met
-        """
-        if isinstance(values, dict):
-            # Set default bucket_name if not provided, using resolved client and region
-            client = values.get("client") or values.get("Client")
-            if not client:
-                client = util.get_client()
-                values["client"] = client
-
-            region = values.get("bucket_region") or values.get("BucketRegion")
-            if not region:
-                region = util.get_artefact_bucket_region()
-                values["bucket_region"] = region
-
-            bucket_name = values.get("bucket_name") or values.get("BucketName")
-            if not bucket_name:
-                bucket_name = util.get_artefact_bucket_name(client, region)
-                values["bucket_name"] = bucket_name
-
-            if not values.get("Mode") and not values.get("mode"):
-                values["mode"] = V_LOCAL if util.is_local_mode() else V_SERVICE
-
-        return values
 
     def set_key(self, dd: DeploymentDetails, filename: str) -> None:
         """
@@ -375,9 +161,7 @@ class ActionDetails(BaseModel):
 
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else defualt
 
@@ -386,10 +170,14 @@ class ActionDetails(BaseModel):
 
         # Handle key generation from task/action_file
         key = _get("key", "Key", None)
-        if not key:
-            task = _get("task", "Task", "deploy")
 
-            action_file = _get("action_file", "ActionFile", f"{task.lower()}.actions")
+        if not key:
+
+            action_file = _get("action_file", "ActionFile", None)
+
+            if not action_file:
+                task = _get("task", "Task", "deploy")
+                action_file = f"{task}.actions"
 
             dd = _get("deployment_details", "DeploymentDetails", None)
             if isinstance(dd, dict):
@@ -401,9 +189,7 @@ class ActionDetails(BaseModel):
             key = dd.get_object_key(OBJ_ARTEFACTS, action_file)
 
         # Bucket region must be populated before bucket_name
-        bucket_region = _get(
-            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
-        )
+        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
 
         # Bucket name must alos be populated before creating ActionDetails
         bucket_name = _get(
@@ -428,38 +214,6 @@ class ActionDetails(BaseModel):
             mode=mode,
         )
 
-    def model_dump(self, **kwargs) -> dict:
-        """
-        Override to exclude None values by default.
-
-        This method customizes the default serialization behavior to exclude
-        None values unless explicitly requested.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments that are passed to the parent model_dump method.
-            All standard Pydantic model_dump parameters are supported.
-
-        Returns
-        -------
-        dict
-            Dictionary representation of the model with None values excluded by default.
-
-        Examples
-        --------
-        ::
-
-            >>> details = ActionDetails(client="test", version_id=None)
-            >>> result = details.model_dump()
-            >>> # version_id will not be in the result dict
-        """
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
-        if "by_alias" not in kwargs:
-            kwargs["by_alias"] = True
-        return super().model_dump(**kwargs)
-
     def __str__(self) -> str:
         """
         Return a human-readable string representation.
@@ -469,8 +223,7 @@ class ActionDetails(BaseModel):
         str
             String showing the storage mode and key information.
         """
-        mode_str = "S3" if self.is_s3_mode() else "Local"
-        return f"ActionDetails({mode_str}: {self.bucket_name}/{self.key})"
+        return f"ActionDetails({self.mode}: {self.bucket_name}/{self.key})"
 
     def __repr__(self) -> str:
         """
@@ -481,10 +234,4 @@ class ActionDetails(BaseModel):
         str
             Detailed representation showing all key attributes.
         """
-        return (
-            f"ActionDetails(client='{self.client}', "
-            f"bucket_name='{self.bucket_name}', "
-            f"bucket_region='{self.bucket_region}', "
-            f"key='{self.key}', "
-            f"mode='{self.mode}')"
-        )
+        return f"ActionDetails(bucket_name='{self.bucket_name}', key='{self.key}')"

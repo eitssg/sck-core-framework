@@ -40,16 +40,13 @@ Creating from arguments with automatic defaults::
     >>> state = StateDetails.from_arguments(deployment_details=dd, task="deploy")
 """
 
-from typing import Any
-import os
-from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
-
 import core_framework as util
 from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
 from .deployment_details import DeploymentDetails
+from .file_details import FileDetails
 
 
-class StateDetails(BaseModel):
+class StateDetails(FileDetails):
     """
     StateDetails provides information about the current state of the deployment.
 
@@ -82,8 +79,25 @@ class StateDetails(BaseModel):
     ----------
     data_path : str
         The storage volume path for the application. Used for local mode only.
+        (Inherited from FileDetails)
     temp_dir : str
         The temporary directory to use for processing state files.
+        (Inherited from FileDetails)
+
+    Methods
+    -------
+    set_key(deployment_details, filename)
+        Set the key path based on deployment details and filename.
+    from_arguments(**kwargs)
+        Create a StateDetails instance from keyword arguments with intelligent defaults.
+    get_full_path()
+        Get the full path to the state file (inherited from FileDetails).
+    get_name()
+        Get the filename from the key path (inherited from FileDetails).
+    is_local_mode()
+        Check if the state is in local storage mode (inherited from FileDetails).
+    is_service_mode()
+        Check if the state is in service (S3) storage mode (inherited from FileDetails).
 
     Examples
     --------
@@ -114,189 +128,11 @@ class StateDetails(BaseModel):
         >>> print(state.key)  # artefacts/ecommerce/web/main/1.0.0/deploy.state
     """
 
-    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
-
-    client: str = Field(
-        alias="Client",
-        description="The client identifier for the deployment",
-        default=V_EMPTY,
-    )
-
-    bucket_name: str = Field(
-        alias="BucketName",
-        description="The S3 bucket name or root directory path where state files are stored",
-        default=V_EMPTY,
-    )
-
-    bucket_region: str = Field(
-        alias="BucketRegion",
-        description="The region of the S3 bucket where state files are stored (S3 mode only)",
-        default=V_EMPTY,
-    )
-
-    key: str = Field(
-        alias="Key",
-        description="The full path to the state file relative to bucket_name",
-        default=V_EMPTY,
-    )
-
-    mode: str = Field(
-        alias="Mode",
-        description="The storage mode: 'local' for filesystem or 'service' for S3",
-        default=V_EMPTY,
-    )
-
-    version_id: str | None = Field(
-        alias="VersionId",
-        description="The version ID of the state file (S3 only)",
-        default=None,
-    )
-
-    content_type: str = Field(
-        alias="ContentType",
-        description="The MIME type of the state file",
-        default="application/x-yaml",
-    )
-
-    @field_validator("content_type")
-    @classmethod
-    def validate_content_type(cls, value: str) -> str:
-        """
-        Validate that content_type is a valid YAML or JSON MIME type.
-
-        Parameters
-        ----------
-        value : str
-            The content_type value to validate
-
-        Returns
-        -------
-        str
-            The validated content_type value
-
-        Raises
-        ------
-        ValueError
-            If content_type is not a supported MIME type
-        """
-        allowed_types = util.get_valid_mimetypes()
-        if value not in allowed_types:
-            raise ValueError(
-                f"ContentType must be one of {allowed_types}, got: {value}"
-            )
-        return value
-
-    @property
-    def data_path(self) -> str:
-        """
-        Get the storage volume path for the application.
-
-        Used for local mode only. Returns the storage volume path from utility functions.
-        For service mode, this returns an empty string.
-
-        Returns
-        -------
-        str
-            The storage volume path for local mode, empty string for service mode.
-
-        Examples
-        --------
-        ::
-
-            >>> state = StateDetails(mode="local")
-            >>> path = state.data_path
-            >>> print(path)  # /var/local/storage (example)
-        """
-        return util.get_storage_volume()
-
-    @property
-    def temp_dir(self) -> str:
-        """
-        Get the temporary directory for processing state files.
-
-        Returns the system temporary directory path from utility functions.
-
-        Returns
-        -------
-        str
-            The temporary directory path.
-
-        Examples
-        --------
-        ::
-
-            >>> state = StateDetails()
-            >>> temp_path = state.temp_dir
-            >>> print(temp_path)  # /tmp (example)
-        """
-        return util.get_temp_dir()
-
-    @field_validator("mode")
-    @classmethod
-    def validate_mode(cls, value: str) -> str:
-        """
-        Validate that mode is either 'local' or 'service'.
-
-        Parameters
-        ----------
-        value : str
-            The mode value to validate.
-
-        Returns
-        -------
-        str
-            The validated mode value.
-
-        Raises
-        ------
-        ValueError
-            If mode is not 'local' or 'service'.
-        """
-        if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(
-                f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'"
-            )
-        return value
-
-    @field_validator("key")
-    @classmethod
-    def validate_key(cls, value: str) -> str:
-        """
-        Validate and normalize the key path.
-
-        Parameters
-        ----------
-        value : str
-            The key path to validate.
-
-        Returns
-        -------
-        str
-            The validated and normalized key path.
-
-        Notes
-        -----
-        - Removes leading slashes for consistency
-        - Path separator normalization is handled in the model validator
-          after mode is available
-        """
-        if not value:
-            return value
-
-        # Remove leading slashes for consistency
-        if value.startswith("/"):
-            value = value.lstrip("/")
-        if value.startswith("\\"):
-            value = value.lstrip("\\")
-
-        return value
-
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """
         Set the key path based on deployment details and filename.
 
         Generates the key path using the deployment details hierarchy and the specified filename.
-
         The path separators will use the OS-appropriate separator based on the current mode.
 
         Parameters
@@ -312,166 +148,17 @@ class StateDetails(BaseModel):
 
             >>> from core_framework.models.deployment_details import DeploymentDetails
             >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-            >>> state = StateDetails(mode="local")
+            >>> state = StateDetails(client="test", bucket_name="test-bucket", mode="local")
             >>> state.set_key(dd, "deploy.state")
             >>> print(state.key)  # artefacts/ecommerce/web/main/1.0.0/deploy.state (Unix)
-            >>> # or p:\\artefacts\\ecommerce\\web\\main\\1.0.0\\deploy.state (Windows)
+            >>> # or artefacts\\ecommerce\\web\\main\\1.0.0\\deploy.state (Windows)
         """
         # Get the key from deployment details with appropriate separator for mode
         s3_mode = self.mode == V_SERVICE
-        self.key = deployment_details.get_object_key(
-            OBJ_ARTEFACTS, filename, s3=s3_mode
-        )
-
-    def get_name(self) -> str:
-        """
-        Get the filename from the key path.
-
-        Extracts the filename from the full key path, handling both local and S3 paths.
-
-        Returns
-        -------
-        str
-            The filename from the key path, or empty string if no key is set.
-
-        Examples
-        --------
-        ::
-
-            >>> state = StateDetails(key="artefacts/ecommerce/web/main/1.0.0/deploy.state")
-            >>> print(state.get_name())  # deploy.state
-
-            >>> state = StateDetails(key="")
-            >>> print(state.get_name())  # ""
-        """
-        if not self.key:
-            return ""
-
-        # Try both separators since key might contain either depending on how it was set
-        if "/" in self.key:
-            return self.key.rsplit("/", 1)[-1]
-        elif os.path.sep in self.key:
-            return self.key.rsplit(os.path.sep, 1)[-1]
-        else:
-            # No separators found, return the key itself
-            return self.key
-
-    def get_full_path(self) -> str:
-        """
-        Get the full path to the state file.
-
-        Combines bucket_name and key to create the complete path to the state file.
-
-        Returns
-        -------
-        str
-            The full path to the state file.
-
-        Examples
-        --------
-        S3 mode::
-
-            >>> state = StateDetails(
-            ...     bucket_name="my-bucket",
-            ...     key="artefacts/ecommerce/web/deploy.state",
-            ...     mode="service"
-            ... )
-            >>> print(state.get_full_path())  # my-bucket/artefacts/ecommerce/web/deploy.state
-
-        Local mode::
-
-            >>> state = StateDetails(
-            ...     bucket_name="/var/storage",
-            ...     key="artefacts/ecommerce/web/deploy.state",
-            ...     mode="local"
-            ... )
-            >>> print(state.get_full_path())  # /var/storage/artefacts/ecommerce/web/deploy.state (Unix)
-            >>> # or p:\\storage\\artefacts\\ecommerce\\web\\deploy.state (Windows)
-        """
-        if not self.bucket_name or not self.key:
-            return ""
-
-        if self.mode == V_LOCAL:
-            # For local mode, use OS-specific path separator
-            separator = os.path.sep
-            return f"file://{self.bucket_name}{separator}{self.key}"
-        else:
-            # For service mode, use forward slash as S3 uses it
-            return f"s3://{self.bucket_name}/{self.key}"
-
-    def is_local_mode(self) -> bool:
-        """
-        Check if the state file is in local storage mode.
-
-        Returns
-        -------
-        bool
-            True if mode is local, False if mode is service.
-
-        Examples
-        --------
-        ::
-
-            >>> state = StateDetails(mode="local")
-            >>> print(state.is_local_mode())  # True
-
-            >>> state = StateDetails(mode="service")
-            >>> print(state.is_local_mode())  # False
-        """
-        return self.mode == V_LOCAL
-
-    def is_service_mode(self) -> bool:
-        """
-        Check if the state file is in service (S3) storage mode.
-
-        Returns
-        -------
-        bool
-            True if mode is service, False if mode is local.
-
-        Examples
-        --------
-        ::
-
-            >>> state = StateDetails(mode="service")
-            >>> print(state.is_service_mode())  # True
-
-            >>> state = StateDetails(mode="local")
-            >>> print(state.is_service_mode())  # False
-        """
-        return self.mode == V_SERVICE
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_model_before(cls, values: dict[str, Any]) -> dict[str, Any]:
-
-        if isinstance(values, dict):
-            client = values.get("client", None) or values.get("Client", None)
-            if not client:
-                client = util.get_client()
-                values["client"] = client
-
-            region = values.get("bucket_region", None) or values.get(
-                "BucketRegion", None
-            )
-            if not region:
-                region = util.get_artefact_bucket_region()
-                values["bucket_region"] = region
-
-            bucket_name = values.get("bucket_name", None) or values.get(
-                "BucketName", None
-            )
-            if not bucket_name:
-                bucket_name = util.get_artefact_bucket_name(client, region)
-                values["bucket_name"] = bucket_name
-
-            if not values.get("Mode") and not values.get("mode"):
-                values["mode"] = V_LOCAL if util.is_local_mode() else V_SERVICE
-
-        return values
+        self.key = super().set_key(deployment_details.get_object_key(OBJ_ARTEFACTS, filename, s3=s3_mode))
 
     @classmethod
-    def from_arguments(cls, **kwargs: Any) -> "StateDetails":
+    def from_arguments(cls, **kwargs) -> "StateDetails":
         """
         Create a StateDetails instance from keyword arguments.
 
@@ -535,6 +222,7 @@ class StateDetails(BaseModel):
 
         Create from task and deployment details::
 
+            >>> from core_framework.models.deployment_details import DeploymentDetails
             >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
             >>> state = StateDetails.from_arguments(
             ...     deployment_details=dd,
@@ -544,8 +232,19 @@ class StateDetails(BaseModel):
 
         Create with minimal arguments (auto-generates DeploymentDetails)::
 
-            >>> state = StateDetails.from_arguments(**command_line_args)
+            >>> state = StateDetails.from_arguments(
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     build="1.0.0",
+            ...     task="deploy"
+            ... )
             >>> print(state.key)  # artefacts/ecommerce/web/main/1.0.0/deploy.state
+
+        Create with command line arguments::
+
+            >>> # Assuming command_line_args contains portfolio, app, build, task
+            >>> state = StateDetails.from_arguments(**command_line_args)
+            >>> print(state.key)  # artefacts/{portfolio}/{app}/main/{build}/{task}.state
 
         Notes
         -----
@@ -566,11 +265,9 @@ class StateDetails(BaseModel):
             - Key path separators are automatically normalized for the chosen mode
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
-            return value if value or can_be_empty else defualt
+            return value if value or can_be_empty else default
 
         client = _get("client", "Client", util.get_client())
 
@@ -579,25 +276,23 @@ class StateDetails(BaseModel):
 
         # Generate key from task and deployment details if not provided
         if not key:
-            state_file = _get("state_file", "StateFile", "deploy.state")
 
-            task = _get("task", "Task", None)
+            state_file = _get("state_file", "StateFile", None)
 
-            if task and state_file is None:
+            if not state_file:
+                task = _get("task", "Task", "deploy")
                 state_file = f"{task}.state"
 
             dd = _get("deployment_details", "DeploymentDetails", None)
-
             if isinstance(dd, dict):
                 dd = DeploymentDetails(**dd)
             elif not isinstance(dd, DeploymentDetails):
                 dd = DeploymentDetails.from_arguments(**kwargs)
 
-            key = dd.get_object_key(OBJ_ARTEFACTS, state_file)
+            if dd:
+                key = dd.get_object_key(OBJ_ARTEFACTS, state_file)
 
-        bucket_region = _get(
-            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
-        )
+        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
 
         bucket_name = _get(
             "bucket_name",
@@ -616,31 +311,10 @@ class StateDetails(BaseModel):
             bucket_name=bucket_name,
             bucket_region=bucket_region,
             key=key,
-            mode=mode,
             version_id=version_id,
             content_type=content_type,
+            mode=mode,
         )
-
-    def model_dump(self, **kwargs) -> dict:
-        """
-        Override to exclude None values by default.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments passed to the parent model_dump method.
-            All standard Pydantic model_dump parameters are supported.
-
-        Returns
-        -------
-        dict
-            Dictionary representation of the model with None values excluded by default.
-        """
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
-        if "by_alias" not in kwargs:
-            kwargs["by_alias"] = True
-        return super().model_dump(**kwargs)
 
     def __str__(self) -> str:
         """
@@ -650,9 +324,16 @@ class StateDetails(BaseModel):
         -------
         str
             String showing the state file name and mode.
+
+        Examples
+        --------
+        ::
+
+            >>> state = StateDetails(client="test", bucket_name="bucket", key="deploy.state")
+            >>> str(state)
+            'StateDetails(deploy.state, mode=local)'
         """
-        name = self.get_name() or "state"
-        return f"StateDetails({name}, mode={self.mode})"
+        return f"StateDetails({self.mode}: {self.bucket_name}/{self.key})"
 
     def __repr__(self) -> str:
         """
@@ -662,32 +343,6 @@ class StateDetails(BaseModel):
         -------
         str
             Detailed representation showing key attributes.
+
         """
-        return (
-            f"StateDetails(client='{self.client}', bucket_name='{self.bucket_name}', "
-            f"key='{self.key}', mode='{self.mode}')"
-        )
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        """
-        Custom setter to handle mode changes and update key path separators.
-
-        Parameters
-        ----------
-        name : str
-            The attribute name being set.
-        value : Any
-            The value being assigned to the attribute.
-
-        Notes
-        -----
-        When mode is changed after instantiation, the key path separators
-        are automatically updated to match the new mode.
-        """
-        # Call the parent setter first
-        super().__setattr__(name, value)
-
-        # If mode was changed, update key path separators
-        if name == "mode" and hasattr(self, "key") and self.key:
-            # Use the centralized normalization method
-            super().__setattr__("key", self._normalize_key_for_mode(self.key, value))
+        return f"StateDetails(bucket_name='{self.bucket_name}', key='{self.key}')"
