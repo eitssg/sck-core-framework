@@ -431,14 +431,10 @@ class DeploymentDetails(BaseModel):
 
         Environment variable ENV_SCOPE can override this logic.
         """
-        return DeploymentDetails.get_scope_from(
-            self.portfolio, self.app, self.branch, self.build
-        )
+        return DeploymentDetails.get_scope_from(self.portfolio, self.app, self.branch, self.build)
 
     @staticmethod
-    def get_scope_from(
-        portfolio: str | None, app: str | None, branch: str | None, build: str | None
-    ) -> str:
+    def get_scope_from(portfolio: str | None, app: str | None, branch: str | None, build: str | None) -> str:
         """
         Determine the standard scope based on provided deployment fields.
 
@@ -553,9 +549,7 @@ class DeploymentDetails(BaseModel):
             ... )
         """
 
-        def _get(
-            key1: str, key2: str, defualt: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else defualt
 
@@ -576,18 +570,14 @@ class DeploymentDetails(BaseModel):
             branch = _get("branch", "Branch", util.get_branch(), True)
 
             # If supplied a branch short name, use it.  Otherwise, generate from branch.
-            branch_short_name = _get(
-                "branch_short_name", "BranchShortName", util.branch_short_name(branch)
-            )
+            branch_short_name = _get("branch_short_name", "BranchShortName", util.branch_short_name(branch))
 
             # You are allow to set build to None or empty string.  Only call for default if not provided.
             build = _get("build", "Build", util.get_build(), True)
 
             component = _get("component", "Component", None)
 
-        scope = _get(
-            "scope", "Scope", cls.get_scope_from(portfolio, app, branch, build)
-        )
+        scope = _get("scope", "Scope", cls.get_scope_from(portfolio, app, branch, build))
 
         return cls(
             client=client,
@@ -634,8 +624,8 @@ class DeploymentDetails(BaseModel):
         """
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True
-        if "exclude_unset" not in kwargs:
-            kwargs["exclude_unset"] = True
+        if "by_alias" not in kwargs:
+            kwargs["by_alias"] = True
         return super().model_dump(**kwargs)
 
     def get_object_key(

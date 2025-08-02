@@ -42,7 +42,7 @@ Creating from arguments with automatic defaults::
     >>> package = PackageDetails.from_arguments(deployment_details=dd)
 """
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 import core_framework as util
 
@@ -160,6 +160,12 @@ class PackageDetails(FileDetails):
         ... )
     """
 
+    compile_mode: str = Field(
+        alias="CompileMode",
+        description="The compile mode: 'full' or 'incremental'",
+        default=V_FULL,
+    )
+
     @field_validator("compile_mode")
     @classmethod
     def validate_compile_mode(cls, value: str) -> str:
@@ -198,6 +204,10 @@ class PackageDetails(FileDetails):
             raise ValueError(f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'")
         return value
 
+    deployspec: DeploySpec | None = Field(
+        ..., alias="DeploySpec", description="Deployment specification containing actions", default_factory=lambda: list()
+    )
+
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """
         Set the key path based on deployment details and filename.
@@ -222,7 +232,7 @@ class PackageDetails(FileDetails):
             >>> package.set_key(dd, "package.zip")
             >>> print(package.key)  # packages/ecommerce/web/main/1.0.0/package.zip
         """
-        self.key = deployment_details.get_object_key(OBJ_PACKAGES, filename)
+        super().set_key(deployment_details.get_object_key(OBJ_PACKAGES, filename))
 
     @classmethod
     def from_arguments(cls, **kwargs) -> "PackageDetails":
@@ -391,7 +401,7 @@ class PackageDetails(FileDetails):
         # Handle deployspec parameter
         deployspec = _get("deployspec", "DeploySpec", None)
         if deployspec is None:
-            deployspec = DeploySpec(actions=[])
+            deployspec = DeploySpec(Actions=[])
 
         return cls(
             client=client,

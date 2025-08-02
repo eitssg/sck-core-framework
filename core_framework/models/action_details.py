@@ -39,6 +39,8 @@ not by the ActionDetails instance itself.
 
 """Defines the class ActionDetails that provide information about where ActionSpec files are stored in S3 (or local filesystem)."""
 
+from pydantic import model_validator
+
 import core_framework as util
 from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
 from .deployment_details import DeploymentDetails
@@ -117,7 +119,7 @@ class ActionDetails(FileDetails):
             >>> details.set_key(deployment_details, "deploy.actions")
             >>> print(details.key)  # Will be something like "client/env/deploy.actions"
         """
-        self.key = dd.get_object_key(OBJ_ARTEFACTS, filename)
+        super().set_key(dd.get_object_key(OBJ_ARTEFACTS, filename))
 
     @classmethod
     def from_arguments(cls, **kwargs) -> "ActionDetails":

@@ -1,13 +1,12 @@
 """This module provides the TaskPayload class that is used throughout Core-Automation to identify the operating Task to perform."""
 
-from typing import Self, Any, Optional, List
+from typing import Self, Any, List
 from pydantic import (
     BaseModel,
-    Field,
     ConfigDict,
+    Field,
     model_validator,
     field_validator,
-    ValidationError,
 )
 
 import core_framework as util
@@ -203,9 +202,7 @@ class TaskPayload(BaseModel):
         """
         valid_tasks = get_valid_tasks()
         if value not in valid_tasks:
-            raise ValueError(
-                f"Task must be one of {', '.join(valid_tasks)}, got '{value}'"
-            )
+            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{value}'")
         return value
 
     @model_validator(mode="before")
@@ -256,15 +253,11 @@ class TaskPayload(BaseModel):
 
             fc = values.get("FlowControl", values.get("flow_control"))
             if fc and fc not in FLOW_CONTROLS:
-                raise ValueError(
-                    f"FlowControl must be one of {', '.join(FLOW_CONTROLS)}, got '{fc}'"
-                )
+                raise ValueError(f"FlowControl must be one of {', '.join(FLOW_CONTROLS)}, got '{fc}'")
 
             typ = values.get("Type", values.get("type", V_PIPELINE))
             if typ and typ not in [V_PIPELINE, V_DEPLOYSPEC]:
-                raise ValueError(
-                    f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'"
-                )
+                raise ValueError(f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'")
 
         return values
 
@@ -294,15 +287,18 @@ class TaskPayload(BaseModel):
         if self.package:
             # force any supplied client in package to be the same as the task client
             self.package.client = self.client
-            self.package.set_key(self.deployment_details, "package.zip")
+            if not self.package.key:
+                self.package.set_key(self.deployment_details, "package.zip")
         if self.actions:
             # force any supplied client in actions to be the same as the task client
             self.actions.client = self.client
-            self.actions.set_key(self.deployment_details, self.task + ".actions")
+            if not self.actions.key:
+                self.actions.set_key(self.deployment_details, self.task + ".actions")
         if self.state:
             # force any supplied client in state to be the same as the task client
             self.state.client = self.client
-            self.state.set_key(self.deployment_details, self.task + ".state")
+            if not self.state.key:
+                self.state.set_key(self.deployment_details, self.task + ".state")
 
         return self
 
@@ -399,9 +395,7 @@ class TaskPayload(BaseModel):
         # Validate task value early
         valid_tasks = get_valid_tasks()
         if task not in valid_tasks:
-            raise ValueError(
-                f"Task must be one of {', '.join(valid_tasks)}, got '{task}'"
-            )
+            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{task}'")
 
         # Handle deployment details
         dd = _get("deployment_details", "DeploymentDetails", None)
@@ -432,9 +426,7 @@ class TaskPayload(BaseModel):
         elif not isinstance(st, StateDetails):
             st = StateDetails.from_arguments(**kwargs)
 
-        typ = _get(
-            "type", "Type", _get("automation_type", "AutomationType", V_PIPELINE)
-        )
+        typ = _get("type", "Type", _get("automation_type", "AutomationType", V_PIPELINE))
 
         force = _get("force", "Force", False)
 

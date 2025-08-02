@@ -59,9 +59,7 @@ from core_framework.constants import (
 
 
 @pass_context
-def filter_aws_tags(
-    render_context: Context, scope: str, component_name: str | None = None
-) -> list[dict]:
+def filter_aws_tags(render_context: Context, scope: str, component_name: str | None = None) -> list[dict]:
     """
     Create a list of AWS tags from the render context and scope.
 
@@ -73,9 +71,7 @@ def filter_aws_tags(
     """
     tags_hash = filter_tags(render_context, scope, component_name)
 
-    items: list[dict] = [
-        {"Key": key, "Value": value} for key, value in tags_hash.items()
-    ]
+    items: list[dict] = [{"Key": key, "Value": value} for key, value in tags_hash.items()]
 
     return items
 
@@ -96,9 +92,7 @@ def filter_docker_image(render_context: Context, object: Any) -> str | None:
         return None
 
     if "Fn::Pipeline::DockerImage" not in object:
-        raise jinja2.exceptions.UndefinedError(
-            "Must specify Fn::Pipeline::DockerImage lookup"
-        )
+        raise jinja2.exceptions.UndefinedError("Must specify Fn::Pipeline::DockerImage lookup")
 
     portfolio = facts.get(DD_PORTFOLIO, "")
     app = facts.get(DD_APP, "")
@@ -177,19 +171,11 @@ def filter_extract(object: Any, path: str, default: str = "_error_") -> str:
     :return: The extracted value or the default value.
     :raises jinja2.exceptions.UndefinedError: If the path does not exist and default is "_error_".
     """
-    value = (
-        None
-        if object is None or isinstance(object, jinja2.Undefined)
-        else jmespath.search(path, object)
-    )
+    value = None if object is None or isinstance(object, jinja2.Undefined) else jmespath.search(path, object)
 
     if value is None:
         if default == "_error_":
-            raise jinja2.exceptions.UndefinedError(
-                "Filter_extract: Error during value extraction - no attribute '{}'".format(
-                    path
-                )
-            )
+            raise jinja2.exceptions.UndefinedError("Filter_extract: Error during value extraction - no attribute '{}'".format(path))
         value = default
 
     return value
@@ -336,9 +322,7 @@ def filter_image_name(o: dict) -> str:
     lookup_values: dict | None = o.get("Fn::Pipeline::ImageId", None)
 
     if not lookup_values or not isinstance(lookup_values, dict):
-        raise jinja2.exceptions.UndefinedError(
-            "Must specify Fn::Pipeline::ImageId lookup dictionary"
-        )
+        raise jinja2.exceptions.UndefinedError("Must specify Fn::Pipeline::ImageId lookup dictionary")
 
     return lookup_values.get("Name", "")
 
@@ -387,11 +371,7 @@ def filter_ip_rules(  # noqa C901
 
             if security_source in security_aliases:
                 # Source is an alias in facts
-                sources = [
-                    o
-                    for o in security_aliases.get(security_source, None)
-                    if isinstance(o, dict)
-                ]
+                sources = [o for o in security_aliases.get(security_source, None) if isinstance(o, dict)]
             elif security_source in app:
                 # Source is component
                 sources = [
@@ -434,9 +414,7 @@ def filter_ip_rules(  # noqa C901
             )
 
             # Filter security rule source_types
-            sources = [
-                source for source in sources if source.get("Type", "") in source_types
-            ]
+            sources = [source for source in sources if source.get("Type", "") in source_types]
 
             for source in sources:
                 if source_only or source.get("Type", "") == ST_SECURITY_GROUP:
@@ -447,9 +425,7 @@ def filter_ip_rules(  # noqa C901
                     for allow in filter_ensure_list(security_rule.get("Allow", [])):
                         if not isinstance(allow, str):
                             continue
-                        security_rules.append(
-                            {**source, **filter_parse_port_spec(allow)}
-                        )
+                        security_rules.append({**source, **filter_parse_port_spec(allow)})
 
     return security_rules
 
@@ -459,25 +435,97 @@ def filter_lookup(render_context: Context, path: str, default: str = "_error_") 
     """
     Look up a value in the render context using the specified path.
 
+    Example
+    -------
+
+    >>> context = {"a": {"b/e": {"c": "my-value"}}}
+    ... template: "The value is: {{ a.b/e.c | lookup }}"
+    >>> returns "The value is: my-value"
+
     :param render_context: The Jinja2 context containing the facts and other variables.
     :param path: The path to look up in the render context.
     :param default: The default value to return if the path does not exist.
     :return: The value found at the specified path or the default value.
     :raises jinja2.exceptions.UndefinedError: If the path does not exist and default is "_error_".
     """
+    context_data = render_context.parent
 
-    value = jmespath.search(path, render_context.parent)
+    value = _navigate_path(context_data, path)
 
     if value is None:
         if default == "_error_":
-            raise jinja2.exceptions.UndefinedError(
-                "Filter_lookup: Error during value lookup - no attribute '{}'".format(
-                    path
-                )
-            )
+            raise jinja2.exceptions.UndefinedError("Filter_lookup: Error during value lookup - no attribute '{}'".format(path))
         return default
 
     return value
+
+
+def _navigate_path(data: Any, path: str) -> Any:
+    """
+    Recursively navigate through nested data using dot-separated path.
+    Supports array indexing with [n] syntax and property names with forward slashes.
+
+    :param data: The current data object to navigate
+    :param path: The remaining path to navigate (dot-separated with optional array indices)
+    :return: The value at the path, or None if not found
+    """
+    if not path:
+        return data
+
+    if not isinstance(data, (dict, list)):
+        return None
+
+    # Split on the first dot to get the current segment and remaining path
+    if "." in path:
+        current_segment, remaining_path = path.split(".", 1)
+    else:
+        current_segment = path
+        remaining_path = ""
+
+    # Handle array indexing: items[1] -> key="items", index=1
+    if "[" in current_segment and current_segment.endswith("]"):
+        # Extract the key and index
+        key_part, index_part = current_segment.split("[", 1)
+        index_str = index_part.rstrip("]")
+
+        try:
+            index = int(index_str)
+        except ValueError:
+            return None  # Invalid index
+
+        # Navigate to the array first
+        if isinstance(data, dict):
+            if key_part not in data:
+                return None
+            array_data = data[key_part]
+        else:
+            return None  # Can't use key on non-dict
+
+        # Check if it's actually a list and index is valid
+        if not isinstance(array_data, list) or index >= len(array_data) or index < 0:
+            return None
+
+        # Get the item at the index
+        current_value = array_data[index]
+
+    else:
+        # Regular property access (handles keys with forward slashes)
+        if isinstance(data, dict):
+            if current_segment not in data:
+                return None
+            current_value = data[current_segment]
+        elif isinstance(data, list):
+            # If we're trying to access a property on a list, that's invalid
+            return None
+        else:
+            return None
+
+    # If no remaining path, return the current value
+    if not remaining_path:
+        return current_value
+
+    # Recursively navigate the remaining path
+    return _navigate_path(current_value, remaining_path)
 
 
 def filter_min_int(*values) -> Any | None:
@@ -528,14 +576,10 @@ def filter_output_name(render_context: Context, o: dict) -> str | None:
     build = facts.get(DD_BUILD, "")
 
     if lifecycle_scope == SCOPE_BUILD:
-        result = "-".join(
-            [portfolio, app, branch, build, component_name, f"pointers:{output_name}"]
-        )
+        result = "-".join([portfolio, app, branch, build, component_name, f"pointers:{output_name}"])
         return result
 
-    raise NotImplementedError(
-        "Filter_output_name: Only build scope supported at this time. Add 'release' scope later."
-    )
+    raise NotImplementedError("Filter_output_name: Only build scope supported at this time. Add 'release' scope later.")
 
 
 def filter_parse_port_spec(port_spec: str) -> dict:
@@ -611,19 +655,13 @@ def filter_parse_port_spec(port_spec: str) -> dict:
             to_port = "65535"
 
     if protocol != "ICMP" and (int(from_port) < 0 or int(to_port) < 0):
-        raise jinja2.exceptions.UndefinedError(
-            "Filter_parse_port_spec: Port numbers must be non-negative integers."
-        )
+        raise jinja2.exceptions.UndefinedError("Filter_parse_port_spec: Port numbers must be non-negative integers.")
 
     if int(from_port) > int(to_port):
-        raise jinja2.exceptions.UndefinedError(
-            "Filter_parse_port_spec: FromPort cannot be greater than ToPort."
-        )
+        raise jinja2.exceptions.UndefinedError("Filter_parse_port_spec: FromPort cannot be greater than ToPort.")
 
     if int(from_port) > 65535 or int(to_port) > 65535:
-        raise jinja2.exceptions.UndefinedError(
-            "Filter_parse_port_spec: FromPort and ToPort cannot greater than 65535."
-        )
+        raise jinja2.exceptions.UndefinedError("Filter_parse_port_spec: FromPort and ToPort cannot greater than 65535.")
 
     return {"Protocol": protocol, "FromPort": from_port, "ToPort": to_port}
 
@@ -746,9 +784,7 @@ def filter_format_date(value: Any, f: str = "%d-%b-%y") -> str:
             try:
                 date_to_format = date.fromisoformat(value)
             except ValueError:
-                raise jinja2.exceptions.FilterArgumentError(
-                    f"Invalid date string '{value}'. Expected 'now' or a valid ISO date."
-                )
+                raise jinja2.exceptions.FilterArgumentError(f"Invalid date string '{value}'. Expected 'now' or a valid ISO date.")
     else:
         # Fallback to today() if the provided value is not a valid date object
         if not hasattr(date_to_format, "strftime"):
@@ -768,9 +804,7 @@ def filter_rstrip(value: str, chars: str) -> str:
     return value.rstrip(chars)
 
 
-def filter_shorten_unique(
-    value: str, limit: int, unique_length: int = 0, charset: str | None = None
-):
+def filter_shorten_unique(value: str, limit: int, unique_length: int = 0, charset: str | None = None):
     """
     Shorten a string to a specified limit and append a unique string of a given length.
 
@@ -795,9 +829,7 @@ def filter_shorten_unique(
 
 
 @pass_context
-def filter_snapshot_id(
-    render_context: Context, snapshot_spec: dict, component_type: str
-) -> dict | None:
+def filter_snapshot_id(render_context: Context, snapshot_spec: dict, component_type: str) -> dict | None:
     """
     Retrieve the snapshot identifier from the render context based on the provided snapshot specification and component type.
 
@@ -814,17 +846,13 @@ def filter_snapshot_id(
 
     snapshot_id: dict | None = snapshot_spec.get("Fn::Pipeline::SnapshotId", {})
     if not isinstance(snapshot_id, dict):
-        raise jinja2.exceptions.UndefinedError(
-            'Must specify {"Fn::Pipeline::SnapshotId": {}} dictionary for lookup'
-        )
+        raise jinja2.exceptions.UndefinedError('Must specify {"Fn::Pipeline::SnapshotId": {}} dictionary for lookup')
 
     snapshot_alias_name = snapshot_id.get("Name", "unsepcified")
 
     context_snapshot_aliases = facts.get(CTX_SNAPSHOT_ALIASES, {})
     if not isinstance(context_snapshot_aliases, dict):
-        raise jinja2.exceptions.UndefinedError(
-            "Invalid snapshot aliases defined in context"
-        )
+        raise jinja2.exceptions.UndefinedError("Invalid snapshot aliases defined in context")
 
     account_aliases = facts.get(CTX_ACCOUNT_ALIASES, {})
     if not isinstance(account_aliases, dict):
@@ -854,9 +882,7 @@ def filter_snapshot_id(
 
 
 @pass_context
-def filter_snapshot_name(
-    render_context: Context, snapshot_spec: dict, component_type: str
-) -> str | None:
+def filter_snapshot_name(render_context: Context, snapshot_spec: dict, component_type: str) -> str | None:
     """
     Retrieve the snapshot name from the render context based on the provided snapshot specification and component type.
 
@@ -873,9 +899,7 @@ def filter_snapshot_name(
 
     snapshot_id: dict | None = snapshot_spec.get("Fn::Pipeline::SnapshotId")
     if not isinstance(snapshot_id, dict):
-        raise jinja2.exceptions.FilterArgumentError(
-            "Must specify Fn::Pipeline::SnapshotId lookup in the snapshot_spec parameter"
-        )
+        raise jinja2.exceptions.FilterArgumentError("Must specify Fn::Pipeline::SnapshotId lookup in the snapshot_spec parameter")
 
     snapshot_alias_name = snapshot_id.get("Name")
     if not snapshot_alias_name:
@@ -899,9 +923,7 @@ def filter_snapshot_name(
     return snapshot_details.get("SnapshotIdentifier")
 
 
-def filter_split_cidr(
-    cidr: str, allowed_prefix_lengths: list[int] = [8, 16, 24, 32]
-) -> list[str]:
+def filter_split_cidr(cidr: str, allowed_prefix_lengths: list[int] = [8, 16, 24, 32]) -> list[str]:
     """
     Split a CIDR into subnets based on allowed prefix lengths.
 
@@ -914,9 +936,7 @@ def filter_split_cidr(
     try:
         ip = netaddr.IPNetwork(cidr)
     except Exception as e:
-        raise jinja2.exceptions.FilterArgumentError(
-            "Invalid CIDR '{}' - {}".format(cidr, str(e))
-        )
+        raise jinja2.exceptions.FilterArgumentError("Invalid CIDR '{}' - {}".format(cidr, str(e)))
 
     # Do not split if CIDR already has an allowed prefix length
     if ip.prefixlen in allowed_prefix_lengths:
@@ -949,15 +969,11 @@ def filter_subnet_network_zone(data: Any, default: str = "private") -> str:
         return default
 
     if not isinstance(data, dict):
-        raise jinja2.exceptions.FilterArgumentError(
-            "Filter_subnet_network_zone: Object must be a dictionary"
-        )
+        raise jinja2.exceptions.FilterArgumentError("Filter_subnet_network_zone: Object must be a dictionary")
 
     subnets = data.get("Fn::Pipeline::SubnetId", {})
     if not isinstance(subnets, dict):
-        raise jinja2.exceptions.FilterArgumentError(
-            "Filter_subnet_network_zone: Fn::Pipeline::SubnetId must be a dictionary"
-        )
+        raise jinja2.exceptions.FilterArgumentError("Filter_subnet_network_zone: Fn::Pipeline::SubnetId must be a dictionary")
     return subnets.get("NetworkZone", default)
 
 
@@ -974,23 +990,17 @@ def filter_subnet_az_index(data: Any, default: int = 0) -> int:
         return default
 
     if not isinstance(data, dict):
-        raise jinja2.exceptions.FilterArgumentError(
-            "Filter_subnet_az_index: Object must be a dictionary"
-        )
+        raise jinja2.exceptions.FilterArgumentError("Filter_subnet_az_index: Object must be a dictionary")
 
     subnets = data.get("Fn::Pipeline::SubnetId", {})
     if not isinstance(subnets, dict):
-        raise jinja2.exceptions.FilterArgumentError(
-            "Filter_subnet_az_index: Fn::Pipeline::SubnetId must be a dictionary"
-        )
+        raise jinja2.exceptions.FilterArgumentError("Filter_subnet_az_index: Fn::Pipeline::SubnetId must be a dictionary")
 
     return subnets.get("AzIndex", default)
 
 
 @pass_context
-def filter_tags(
-    render_context: Context, scope: str | None = None, component_name: str | None = None
-) -> dict:
+def filter_tags(render_context: Context, scope: str | None = None, component_name: str | None = None) -> dict:
     """
     Create the standard tags from the context and component name.
     This is a Jija2 filter and the render_context is the variables passed to jinja2
@@ -1087,9 +1097,7 @@ def filter_to_json(data: Any) -> Any:
     try:
         return util.to_json(data)
     except Exception as e:
-        raise jinja2.exceptions.UndefinedError(
-            "Error converting data to JSON: {}".format(str(e))
-        ) from e
+        raise jinja2.exceptions.UndefinedError("Error converting data to JSON: {}".format(str(e))) from e
 
 
 def filter_to_yaml(data: Any) -> Any:
@@ -1115,9 +1123,7 @@ def filter_to_yaml(data: Any) -> Any:
         dumped = util.to_yaml(data)
         return dumped.rstrip("\n")
     except Exception as e:
-        raise jinja2.exceptions.UndefinedError(
-            "Error converting data to YAML: {}".format(str(e))
-        ) from e
+        raise jinja2.exceptions.UndefinedError("Error converting data to YAML: {}".format(str(e))) from e
 
 
 def __file_url(facts: dict, pipeline_file_spec: dict) -> Any:
@@ -1129,9 +1135,7 @@ def __file_url(facts: dict, pipeline_file_spec: dict) -> Any:
     :return: The generated file URL or the original pipeline file specification if not a Fn::Pipeline::FileUrl.
     :raises jinja2.exceptions.UndefinedError: If the scope in Fn::Pipeline::FileUrl is unknown.
     """
-    pipeline_file_url: dict | None = pipeline_file_spec.get(
-        "Fn::Pipeline::FileUrl", None
-    )
+    pipeline_file_url: dict | None = pipeline_file_spec.get("Fn::Pipeline::FileUrl", None)
 
     if pipeline_file_url:
 
@@ -1140,29 +1144,17 @@ def __file_url(facts: dict, pipeline_file_spec: dict) -> Any:
         bucket_url = facts.get(CTX_FILES_BUCKET_URL, "")
 
         if scope == SCOPE_SHARED:
-            url = "{}/{}/{}".format(
-                bucket_url, facts.get(CTX_SHARED_FILES_PREFIX, ""), name
-            )
+            url = "{}/{}/{}".format(bucket_url, facts.get(CTX_SHARED_FILES_PREFIX, ""), name)
         elif scope == SCOPE_PORTFOLIO:
-            url = "{}/{}/{}".format(
-                bucket_url, facts.get(CTX_PORTFOLIO_FILES_PREFIX, ""), name
-            )
+            url = "{}/{}/{}".format(bucket_url, facts.get(CTX_PORTFOLIO_FILES_PREFIX, ""), name)
         elif scope == SCOPE_APP:
-            url = "{}/{}/{}".format(
-                bucket_url, facts.get(CTX_APP_FILES_PREFIX, ""), name
-            )
+            url = "{}/{}/{}".format(bucket_url, facts.get(CTX_APP_FILES_PREFIX, ""), name)
         elif scope == SCOPE_BRANCH:
-            url = "{}/{}/{}".format(
-                bucket_url, facts.get(CTX_BRANCH_FILES_PREFIX, ""), name
-            )
+            url = "{}/{}/{}".format(bucket_url, facts.get(CTX_BRANCH_FILES_PREFIX, ""), name)
         elif scope == SCOPE_BUILD:
-            url = "{}/{}/{}".format(
-                bucket_url, facts.get(CTX_BUILD_FILES_PREFIX, ""), name
-            )
+            url = "{}/{}/{}".format(bucket_url, facts.get(CTX_BUILD_FILES_PREFIX, ""), name)
         else:
-            raise jinja2.exceptions.UndefinedError(
-                "Unknown value '{}' for Fn::Pipeline::FileUrl Scope".format(scope)
-            )
+            raise jinja2.exceptions.UndefinedError("Unknown value '{}' for Fn::Pipeline::FileUrl Scope".format(scope))
         return url
 
     # if not a Fn::Pipeline::FileUrl, return the original object unchanged
@@ -1192,9 +1184,7 @@ def __format_arn(
         return f"arn:aws:{service}:{region}:{account_id}:{resource}"
 
 
-def __create_resource_arn(
-    group: str, region: str, account_id: str, base_resource_name_hyphenated: str
-) -> str:
+def __create_resource_arn(group: str, region: str, account_id: str, base_resource_name_hyphenated: str) -> str:
     """
     Create a standard ARN for the specified AWS service group, region, account ID, and base resource name.
 

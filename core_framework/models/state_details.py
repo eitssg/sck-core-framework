@@ -40,6 +40,8 @@ Creating from arguments with automatic defaults::
     >>> state = StateDetails.from_arguments(deployment_details=dd, task="deploy")
 """
 
+from pydantic import model_validator
+
 import core_framework as util
 from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
 from .deployment_details import DeploymentDetails
@@ -154,8 +156,7 @@ class StateDetails(FileDetails):
             >>> # or artefacts\\ecommerce\\web\\main\\1.0.0\\deploy.state (Windows)
         """
         # Get the key from deployment details with appropriate separator for mode
-        s3_mode = self.mode == V_SERVICE
-        self.key = super().set_key(deployment_details.get_object_key(OBJ_ARTEFACTS, filename, s3=s3_mode))
+        super().set_key(deployment_details.get_object_key(OBJ_ARTEFACTS, filename))
 
     @classmethod
     def from_arguments(cls, **kwargs) -> "StateDetails":

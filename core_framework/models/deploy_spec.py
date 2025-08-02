@@ -90,9 +90,9 @@ class DeploySpec(BaseModel):
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     actions: list[ActionSpec] = Field(
+        default_factory=list,
         alias="Actions",
         description="A list of ActionSpec objects defining the actions to be performed",
-        default_factory=list,
     )
 
     @model_validator(mode="before")
@@ -128,24 +128,15 @@ class DeploySpec(BaseModel):
         """
         if isinstance(values, dict):
             # Handle action_specs -> actions deprecation
-            action_specs_value = values.pop("action_specs", None)
-            actions_value = values.pop("actions", None) or values.pop("Actions", None)
-
-            if action_specs_value and not actions_value:
-                warnings.warn(
-                    "The 'action_specs' field is deprecated and will be removed in a future version. "
-                    "Please use 'actions' instead.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-
-                actions_value = action_specs_value
-
-            elif action_specs_value and actions_value:
-                raise ValueError(
-                    "Conflicting values: both 'action_specs' and 'actions' provided. "
-                    "Please use only 'actions' as 'action_specs' is deprecated."
-                )
+            actions_value = values.pop("Actions", None)
+            if actions_value is None:
+                actions_value = values.pop("actions", None)
+            if actions_value is None:
+                actions_value = values.pop("ActionSpecs", None)
+            if actions_value is None:
+                actions_value = values.pop("action_specs", None)
+            if actions_value is None:
+                actions_value = []
 
             values["actions"] = actions_value
 
@@ -237,7 +228,7 @@ class DeploySpec(BaseModel):
                 Kind: create_stack
                 ...
         """
-        return util.to_yaml()
+        return util.to_yaml(self.model_dump())
 
     def to_json(self) -> str:
         """

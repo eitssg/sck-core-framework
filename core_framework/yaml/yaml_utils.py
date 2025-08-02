@@ -1,7 +1,10 @@
 from typing import IO
 import io
 from ruamel.yaml import YAML
+from ruamel.yaml.emitter import RoundTripEmitter
 from ruamel.yaml.constructor import ConstructorError, RoundTripConstructor
+from ruamel.yaml.representer import RoundTripRepresenter
+from ruamel.yaml.dumper import RoundTripDumper
 from ruamel.yaml.nodes import ScalarNode, MappingNode, SequenceNode
 from pathlib import Path
 from datetime import datetime, date, time
@@ -239,7 +242,21 @@ def write_yaml(data: any, stream: IO, yaml_parser: YAML = None) -> None:
     if not yaml_parser:
         yaml_parser = create_yaml_parser()
 
-    yaml_parser.dump(data, stream)
+    if isinstance(data, list):
+        yaml_parser.dump(data, stream, transform=lambda s: strip_root_indent(s, yaml_parser.sequence_dash_offset))
+    else:
+        yaml_parser.dump(data, stream)
+
+
+def strip_root_indent(stream, indent_size=2):
+    lines = stream.splitlines(True)
+    stripped_lines = []
+    for line in lines:
+        if line.startswith(" " * indent_size):
+            stripped_lines.append(line[indent_size:])
+        else:
+            stripped_lines.append(line)
+    return "".join(stripped_lines)
 
 
 def to_yaml(data: any, yaml_parser: YAML = None) -> str:
