@@ -257,7 +257,7 @@ class FileDetails(BaseModel):
     content_type: str | None = Field(
         alias="ContentType",
         description="The MIME type of the package file",
-        default="application/zip",
+        default="application/octet-stream",
     )
 
     @field_validator("content_type")

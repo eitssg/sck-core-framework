@@ -92,6 +92,15 @@ class ActionDetails(FileDetails):
         >>> details.set_key(deployment_details, "custom.actions")
     """
 
+    @model_validator(mode="before")
+    def validate_model_before(cls, values: dict) -> dict:
+        if isinstance(values, dict):
+            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
+            if not content_type:
+                content_type = "application/yaml"
+            values["content_type"] = content_type
+        return values
+
     def set_key(self, dd: DeploymentDetails, filename: str) -> None:
         """
         Set the key based on deployment details and filename.

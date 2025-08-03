@@ -242,9 +242,7 @@ def split_portfolio(
     raise ValueError('Portfolio should have 1 to 4 segments separated by a dash "-"')
 
 
-def split_branch(
-    branch: str, default_region_alias: str | None = None
-) -> tuple[str, str | None]:
+def split_branch(branch: str, default_region_alias: str | None = None) -> tuple[str, str | None]:
     """
     Split the branch into the environment and data_center parts.
 
@@ -474,9 +472,7 @@ def get_ui_bucket_name(client: str | None = None) -> str:
     return os.environ.get(ENV_UI_BUCKET_NAME, V_EMPTY) or get_bucket_name(client)
 
 
-def get_artefact_bucket_name(
-    client: str | None = None, region: str | None = None
-) -> str:
+def get_artefact_bucket_name(client: str | None = None, region: str | None = None) -> str:
     """
     Get the bucket name for artefacts from environment variable ARTEFACT_BUCKET_NAME.
 
@@ -499,9 +495,7 @@ def get_artefact_bucket_name(
     >>> get_artefact_bucket_name("myclient", "us-east-1")
     'myclient-artefacts-us-east-1'
     """
-    return os.environ.get(ENV_ARTEFACT_BUCKET_NAME, V_EMPTY) or get_bucket_name(
-        client, region
-    )
+    return os.environ.get(ENV_ARTEFACT_BUCKET_NAME, V_EMPTY) or get_bucket_name(client, region)
 
 
 def get_artefact_bucket_region() -> str:
@@ -702,9 +696,7 @@ def get_provisioning_role_arn(account: str | None = None) -> str:
     if account is None:
         account = get_automation_account() or V_EMPTY
 
-    return "arn:aws:iam::{}:role/{}{}".format(
-        account, scope_prefix, CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE
-    )
+    return "arn:aws:iam::{}:role/{}{}".format(account, scope_prefix, CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE)
 
 
 def get_automation_api_role_arn(account: str | None = None, write: bool = False) -> str:
@@ -741,13 +733,9 @@ def get_automation_api_role_arn(account: str | None = None, write: bool = False)
         return None
 
     if write:
-        return "arn:aws:iam::{}:role/{}{}".format(
-            account, scope_prefix, CORE_AUTOMATION_API_WRITE_ROLE
-        )
+        return "arn:aws:iam::{}:role/{}{}".format(account, scope_prefix, CORE_AUTOMATION_API_WRITE_ROLE)
 
-    return "arn:aws:iam::{}:role/{}{}".format(
-        account, scope_prefix, CORE_AUTOMATION_API_READ_ROLE
-    )
+    return "arn:aws:iam::{}:role/{}{}".format(account, scope_prefix, CORE_AUTOMATION_API_READ_ROLE)
 
 
 def get_organization_id() -> str | None:
@@ -1776,6 +1764,7 @@ def get_valid_mimetypes() -> list[str]:
         "application/zip",
         "application/x-zip",
         "application/x-zip-compressed",
+        "application/octet-stream",
     ]
 
 

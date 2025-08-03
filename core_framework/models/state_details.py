@@ -130,6 +130,15 @@ class StateDetails(FileDetails):
         >>> print(state.key)  # artefacts/ecommerce/web/main/1.0.0/deploy.state
     """
 
+    @model_validator(mode="before")
+    def validate_model_before(cls, values: dict) -> dict:
+        if isinstance(values, dict):
+            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
+            if not content_type:
+                content_type = "application/yaml"
+            values["content_type"] = content_type
+        return values
+
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """
         Set the key path based on deployment details and filename.

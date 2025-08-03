@@ -299,6 +299,32 @@ class MagicObject(BaseModel):
 
         return self.model_dump(exclude_none=True, by_alias=True)
 
+    def delete_object(self, **kwargs) -> Self:
+        """Emulates the S3 delete_object() method to delete an object from the local filesystem.
+
+        :param kwargs: Keyword arguments, expects 'Key'.
+        :return: The instance of the object after deletion.
+        :rtype: Self
+        """
+        try:
+            self.key = kwargs.get("Key", self.key)
+            if not self.key:
+                raise ValueError("Key is required")
+
+            key = os.path.join(self.data_path, self.bucket_name, self.key)
+
+            if os.path.exists(key):
+                os.remove(key)
+                self.version_id = None
+                self.etag = None
+            else:
+                raise FileNotFoundError(f"Object {self.key} does not exist in bucket {self.bucket_name}")
+
+        except Exception as e:
+            self.error = "\n".join([self.error or "", str(e)])
+
+        return self
+
 
 class MagicBucket(BaseModel):
     """Emulates an S3 Bucket to allow local filesystem storage via the S3 API.
@@ -355,6 +381,17 @@ class MagicBucket(BaseModel):
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
         return obj.get_object(**kwargs)
+
+    def delete_object(self, **kwargs) -> dict:
+        """Emulates the S3 delete_object() method to delete an object.
+
+        :param kwargs: Keyword arguments passed to the MagicObject.
+        :return: A dictionary indicating the result of the delete operation.
+        :rtype: dict
+        """
+        key = kwargs.pop("Key", None)
+        obj = self.Object(key)
+        return obj.delete_object(**kwargs).model_dump(exclude_none=True, by_alias=True)
 
     def Object(self, key: str | None) -> MagicObject:
         """Emulates the S3 Bucket.Object() method to return a MagicObject.
@@ -414,6 +451,17 @@ class MagicS3Client(BaseModel):
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
         return bucket.put_object(**kwargs)
+
+    def delete_object(self, **kwargs) -> dict:
+        """Emulates the S3 client.delete_object() method.
+
+        :param kwargs: Keyword arguments, expects 'Bucket' and 'Key'.
+        :return: A dictionary indicating the result of the delete operation.
+        :rtype: dict
+        """
+        bucket_name = kwargs.pop("Bucket", None)
+        bucket = self.Bucket(bucket_name)
+        return bucket.delete_object(**kwargs)
 
     def Bucket(self, bucket_name: str) -> MagicBucket:
         """Emulates the S3 client.Bucket() method to return a MagicBucket.

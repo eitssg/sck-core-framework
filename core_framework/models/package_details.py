@@ -205,8 +205,17 @@ class PackageDetails(FileDetails):
         return value
 
     deployspec: DeploySpec | None = Field(
-        ..., alias="DeploySpec", description="Deployment specification containing actions", default_factory=lambda: list()
+        alias="DeploySpec", description="Deployment specification containing actions", default=None
     )
+
+    @model_validator(mode="before")
+    def validate_model_before(cls, values: dict) -> dict:
+        if isinstance(values, dict):
+            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
+            if not content_type:
+                content_type = "application/zip"
+            values["content_type"] = content_type
+        return values
 
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """
@@ -400,8 +409,6 @@ class PackageDetails(FileDetails):
 
         # Handle deployspec parameter
         deployspec = _get("deployspec", "DeploySpec", None)
-        if deployspec is None:
-            deployspec = DeploySpec(Actions=[])
 
         return cls(
             client=client,

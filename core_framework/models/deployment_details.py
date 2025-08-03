@@ -326,7 +326,7 @@ class DeploymentDetails(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_incoming(cls, values: dict) -> dict:
+    def validate_model_before(cls, values: dict) -> dict:
         """
         Validate and populate missing fields before model creation.
 
@@ -352,19 +352,22 @@ class DeploymentDetails(BaseModel):
         """
         if isinstance(values, dict):
             # Set client if not provided
-            if not values.get("Client") and not values.get("client"):
-                values["client"] = util.get_client()
+            client = values.pop("client", None) or values.pop("Client", None)
+            if not client:
+                client = util.get_client()
+            values["client"] = client
 
             # Generate branch_short_name from branch
-            branch = values.get("Branch", values.get("branch", None))
-            if branch:
+            branch = values.get("Branch", None) or values.get("branch", None)
+            branch_short_name = values.get("BranchShortName", None) or values.get("branch_short_name", None)
+            if not branch_short_name:
                 values["branch_short_name"] = util.branch_short_name(branch)
-            else:
-                values["branch_short_name"] = branch  # branch might be V_EMPTY
 
             # Set delivered_by if not provided
-            if not values.get("DeliveredBy") and not values.get("delivered_by"):
+            delivered_by = values.get("DeliveredBy", None) or values.get("delivered_by", None)
+            if not delivered_by:
                 values["delivered_by"] = util.get_delivered_by()
+            values["delivered_by"] = delivered_by
 
         return values
 

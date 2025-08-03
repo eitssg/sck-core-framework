@@ -227,9 +227,9 @@ class TaskPayload(BaseModel):
             If FlowControl or Type values are invalid
         """
         if isinstance(values, dict):
-            client = values.get("Client", values.get("client", V_EMPTY))
+            client = values.get("Client") or values.get("client") or util.get_client()
 
-            dd = values.get("DeploymentDetails", values.get("deployment_details", None))
+            dd = values.get("DeploymentDetails", None) or values.get("deployment_details", None)
 
             if isinstance(dd, dict):
                 dd = DeploymentDetails(**dd)
@@ -238,10 +238,7 @@ class TaskPayload(BaseModel):
                 dd = DeploymentDetails(client=client)
 
             # If we supplied a client, then push it to deployment details
-            if client:
-                dd.client = client
-            else:
-                client = dd.client
+            dd.client = client
 
             # These lines are ESSENTIAL - they ensure client is passed to nested objects
             if not (values.get("Package") or values.get("package")):
@@ -301,6 +298,31 @@ class TaskPayload(BaseModel):
                 self.state.set_key(self.deployment_details, self.task + ".state")
 
         return self
+
+    def set_task(self, task: str, reset_keys: bool = True) -> None:
+        """
+        Set the task for this TaskPayload.
+
+        This method is used to set the task value and ensure it is valid.
+
+        Parameters
+        ----------
+        task : str
+            The task to set. Must be one of: package, upload, compile, plan, deploy, apply, release, teardown
+
+        Raises
+        ------
+        ValueError
+            If the task is not one of the valid values
+        """
+        self.task = task
+        if reset_keys:
+            if self.package:
+                self.package.set_key(self.deployment_details, "package.zip")
+            if self.actions:
+                self.actions.set_key(self.deployment_details, self.task + ".actions")
+            if self.state:
+                self.state.set_key(self.deployment_details, self.task + ".state")
 
     @staticmethod
     def from_arguments(**kwargs: Any) -> "TaskPayload":

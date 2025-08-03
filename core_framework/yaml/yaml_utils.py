@@ -74,6 +74,11 @@ def __represent_smart_str(dumper, data):
     Quotes are added if the string could be interpreted as a number,
     boolean, or null, or if it contains special YAML characters.
     """
+
+    if "\n" in data:
+        # Use literal block scalar style for multiline strings
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+
     # This is a list of strings that look like booleans or null in YAML 1.1/1.2
     ambiguous_strings = ["true", "false", "yes", "no", "on", "off", "null"]
 
@@ -91,6 +96,10 @@ def __represent_smart_str(dumper, data):
     # Let ruamel decide the best style (plain, literal, etc.) for all other strings.
     # It will handle special characters correctly.
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+def __represent_none(dumper, data):
+    return dumper.represent_scalar("tag:yaml.org,2002:null", "")  # Empty instead of 'null'
 
 
 class CfnYamlConstructor(RoundTripConstructor):
@@ -162,9 +171,12 @@ def create_yaml_parser() -> YAML:
 
     yaml.representer.ignore_aliases = lambda *args: True  # Ignore aliases
 
+    yaml.representer.add_representer(type(None), __represent_none)
+
     # Add the ISO 8601 date constructor and representer
     # This overrides the default string constructor to attempt date parsing
     yaml.constructor.add_constructor("tag:yaml.org,2002:str", __iso8601_constructor)
+
     yaml.representer.add_representer(datetime, __iso8601_representer)
     yaml.representer.add_representer(date, __iso8601_representer)
     yaml.representer.add_representer(time, __iso8601_representer)
