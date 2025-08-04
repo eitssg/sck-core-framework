@@ -4,7 +4,8 @@ This module allows for transparently switching between using AWS S3 and a local
 filesystem for object storage, which is useful for development and testing.
 """
 
-from typing import Any, Self, IO
+from typing import Any, Self
+
 import os
 import shutil
 import mimetypes
@@ -24,7 +25,20 @@ import core_helper.aws as aws
 
 
 class FileStreamingBody:
-    """Custom streaming body that mimics boto3's StreamingBody."""
+    """
+    Custom streaming body that mimics boto3's StreamingBody.
+
+    Provides a file-like interface for reading files with proper resource management.
+    Used as a replacement for boto3's StreamingBody when using local filesystem storage.
+
+    :param file_path: Path to the file to be streamed
+    :type file_path: str
+
+    Example:
+        >>> stream = FileStreamingBody("/path/to/file.txt")
+        >>> data = stream.read(1024)
+        >>> stream.close()
+    """
 
     def __init__(self, file_path: str):
         self.file_path = file_path
@@ -32,7 +46,15 @@ class FileStreamingBody:
         self._closed = False
 
     def read(self, amt: int = None) -> bytes:
-        """Read up to amt bytes from the stream."""
+        """
+        Read up to amt bytes from the stream.
+
+        :param amt: Maximum number of bytes to read. If None, read entire file.
+        :type amt: int, optional
+        :returns: The bytes read from the file
+        :rtype: bytes
+        :raises ValueError: If the stream is closed
+        """
         if self._closed:
             raise ValueError("I/O operation on closed file.")
 
@@ -46,7 +68,11 @@ class FileStreamingBody:
             raise
 
     def close(self):
-        """Close the file handle."""
+        """
+        Close the file handle and release resources.
+
+        Once closed, the stream cannot be used for further operations.
+        """
         if self._file and not self._closed:
             self._file.close()
             self._file = None
@@ -64,7 +90,12 @@ class FileStreamingBody:
 
     @property
     def closed(self) -> bool:
-        """Check if the stream is closed."""
+        """
+        Check if the stream is closed.
+
+        :returns: True if the stream is closed, False otherwise
+        :rtype: bool
+        """
         return self._closed
 
 
@@ -99,10 +130,17 @@ class MagicObject(BaseModel):
     body: Any | None = Field(default=None, alias="Body")
 
     def head_object(self, **kwargs) -> Self:
-        """Emulates the S3 head_object() API method to get object metadata.
+        """
+        Emulates the S3 head_object() API method to get object metadata.
 
-        :param kwargs: Keyword arguments, expects 'Key'.
-        :return: The instance of the object with populated metadata.
+        Retrieves metadata for an object without downloading the object content.
+        Populates version_id, etag, and content_type attributes.
+
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Key: The key of the object to get metadata for
+        :type Key: str
+        :returns: The instance of the object with populated metadata
         :rtype: Self
         """
         try:
@@ -128,13 +166,16 @@ class MagicObject(BaseModel):
         return self
 
     def generate_file_hash(self, file_path: str, hash_algorithm: str = "sha256") -> str:
-        """Generates a hash of a file.
+        """
+        Generates a hash of a file.
+
+        Reads the file in chunks to efficiently compute hash for large files.
 
         :param file_path: The path to the file.
         :type file_path: str
         :param hash_algorithm: The hash algorithm to use (default: 'sha256').
         :type hash_algorithm: str, optional
-        :return: The hexadecimal hash of the file.
+        :returns: The hexadecimal hash of the file
         :rtype: str
         """
         hash_func = hashlib.new(hash_algorithm)
@@ -146,12 +187,23 @@ class MagicObject(BaseModel):
         return hash_func.hexdigest()
 
     def copy_from(self, **kwargs) -> dict:  # noqa: C901
-        """Emulates the S3 copy_from() method to copy an object on the local filesystem.
+        """
+        Emulates the S3 copy_from() method to copy an object on the local filesystem.
 
-        :param kwargs: Keyword arguments, expects 'CopySource'.
-                       'CopySource' is a dict with 'Bucket' and 'Key'.
-        :return: A dictionary emulating the S3 CopyObjectResult.
-        :rtype: dict
+        Copies an object from one location to another within the same bucket.
+
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key CopySource: Dictionary containing source bucket and key information
+        :type CopySource: dict
+        :key CopySource['Bucket']: The source bucket name
+        :type CopySource['Bucket']: str
+        :key CopySource['Key']: The source object key
+        :type CopySource['Key']: str
+        :returns: A dictionary emulating the S3 CopyObjectResult
+                        'CopySource' is a dict with 'Bucket' and 'Key'.
+         :return: A dictionary emulating the S3 CopyObjectResult.
+         :rtype: dict
         """
         try:
             source = kwargs.get("CopySource", None)
@@ -203,11 +255,20 @@ class MagicObject(BaseModel):
         return rv
 
     def download_fileobj(self, **kwargs) -> Self:
-        """Emulates the S3 download_fileobj() method to download from the local filesystem.
+        """
+        Emulates the S3 download_fileobj() method to download from the local filesystem.
 
-        :param kwargs: Keyword arguments, expects 'Key' and 'Fileobj'.
-        :return: The instance of the object.
-        :rtype: Self
+        Downloads object content to a file-like object.
+
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Key: The key of the object to download
+        :type Key: str
+        :key Fileobj: File-like object to write the downloaded content to
+        :type Fileobj: IO
+        :returns: The instance of the object
+         :return: The instance of the object.
+         :rtype: Self
         """
         try:
             self.key = kwargs.get("Key", self.key)
@@ -233,33 +294,79 @@ class MagicObject(BaseModel):
         return self
 
     def put_object(self, **kwargs) -> Self:
-        """Emulates the S3 put_object() method to store a file on the local filesystem.
+        """
+        Emulates the S3 put_object() method to store a file on the local filesystem.
 
-        :param kwargs: Keyword arguments, expects 'Key' and 'Body'.
-        :return: The instance of the object.
-        :rtype: Self
+        Stores content to the local filesystem, supporting multiple input types:
+        file paths, file-like objects, strings, and bytes.
+
+        :param kwargs: Keyword arguments for the put operation
+        :type kwargs: dict
+        :key Key: The key (path) of the object within the bucket
+        :type Key: str
+        :key Body: The content to store - can be file-like object, string, or bytes
+        :type Body: IO | str | bytes
+        :key Filename: Alternative to Body - path to a local file to upload
+        :type Filename: str
+        :returns: The instance of the object
+         :return: The instance of the object.
+         :rtype: Self
+         :raises ValueError: If Key or Body is missing, or Body type is unsupported
+
+        Example:
+            >>> obj = MagicObject(bucket_name="test-bucket")
+            >>> obj.put_object(Key="myfile.txt", Body="Hello World")
+            >>>
+            >>> # With file object
+            >>> with open("local.txt", "rb") as f:
+            ...     obj.put_object(Key="remote.txt", Body=f)
+            >>>
+            >>> # With bytes
+            >>> obj.put_object(Key="data.bin", Body=b"binary data")
+            >>>
+            >>> # With filename
+            >>> obj.put_object(Key="uploaded.zip", Filename="/path/to/local.zip")
         """
         try:
             self.key = kwargs.get("Key", self.key)
             if not self.key:
                 raise ValueError("Key is required")
 
+            # Check for Filename pa`rameter (used by MagicBucket)
+            filename = kwargs.get("Filename")
+            if filename:
+                # Direct file copy for Filename parameter
+                fn = os.path.join(self.data_path, self.bucket_name, self.key)
+                dirname = os.path.dirname(fn)
+                os.makedirs(dirname, exist_ok=True)
+                shutil.copy2(filename, fn)  # Preserves metadata
+                self.head_object()
+                return self
+
             body = kwargs.get("Body")
             if body is None:
-                raise ValueError("Body is required")
+                raise ValueError("Either Body or Filename is required")
 
             fn = os.path.join(self.data_path, self.bucket_name, self.key)
-
             dirname = os.path.dirname(fn)
             os.makedirs(dirname, exist_ok=True)
 
-            if isinstance(body, IO):
-                with open(fn, "wb") as file:
-                    shutil.copyfileobj(body, file)
+            # Check for file-like objects using hasattr instead of isinstance
+            if hasattr(body, "read") and hasattr(body, "seek"):
+                # File-like object (includes BufferedReader, IO streams, etc.)
+                try:
+                    with open(fn, "wb") as file:
+                        shutil.copyfileobj(body, file)
+                finally:
+                    # Safely close the body if it has a close method
+                    if hasattr(body, "close"):
+                        body.close()
             elif isinstance(body, str):
+                # String content
                 with open(fn, "w", encoding="utf-8") as file:
                     file.write(body)
             elif isinstance(body, bytes):
+                # Binary content
                 with open(fn, "wb") as file:
                     file.write(body)
             else:
@@ -273,11 +380,18 @@ class MagicObject(BaseModel):
         return self
 
     def get_object(self, **kwargs) -> dict:
-        """Emulates the S3 get_object() method to retrieve an object from the local filesystem.
+        """
+        Emulates the S3 get_object() method to retrieve an object from the local filesystem.
 
-        :param kwargs: Keyword arguments, expects 'Key'.
-        :return: A dictionary containing the object's metadata and body.
-        :rtype: dict
+        Retrieves object content and metadata, returning a streaming body for the content.
+
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Key: The key of the object to retrieve
+        :type Key: str
+        :returns: A dictionary containing the object's metadata and body
+         :return: A dictionary containing the object's metadata and body.
+         :rtype: dict
         """
         try:
             self.key = kwargs.get("Key", self.key)
@@ -300,11 +414,18 @@ class MagicObject(BaseModel):
         return self.model_dump(exclude_none=True, by_alias=True)
 
     def delete_object(self, **kwargs) -> Self:
-        """Emulates the S3 delete_object() method to delete an object from the local filesystem.
+        """
+        Emulates the S3 delete_object() method to delete an object from the local filesystem.
 
-        :param kwargs: Keyword arguments, expects 'Key'.
-        :return: The instance of the object after deletion.
-        :rtype: Self
+        Removes the object file from the local filesystem and clears metadata.
+
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Key: The key of the object to delete
+        :type Key: str
+        :returns: The instance of the object after deletion
+         :return: The instance of the object after deletion.
+         :rtype: Self
         """
         try:
             self.key = kwargs.get("Key", self.key)
@@ -339,10 +460,14 @@ class MagicBucket(BaseModel):
     data_path: str | None = Field(default_factory=get_storage_volume, alias="DataPath")
 
     def head_object(self, **kwargs) -> dict:
-        """Emulates the S3 head_object() method to get object metadata.
+        """
+        Emulates the S3 head_object() method to get object metadata.
 
-        :param kwargs: Keyword arguments passed to the MagicObject.
-        :return: A dictionary of the object's metadata.
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Key: The key of the object to get metadata for
+        :type Key: str
+        :returns: A dictionary of the object's metadata
         :rtype: dict
         """
         key = kwargs.pop("Key", None)
@@ -350,32 +475,51 @@ class MagicBucket(BaseModel):
         return obj.head_object(**kwargs).model_dump(exclude_none=True, by_alias=True)
 
     def download_fileobj(self, **kwargs) -> dict:
-        """Emulates the S3 download_fileobj() method.
+        """
+        Emulates the S3 download_fileobj() method.
 
-        :param kwargs: Keyword arguments passed to the MagicObject.
-        :return: A dictionary of the object's metadata after download.
-        :rtype: dict
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Key: The key of the object to download
+        :type Key: str
+        :key Fileobj: File-like object to write the downloaded content to
+        :type Fileobj: IO
+        :returns: A dictionary of the object's metadata after download
+
+         :param kwargs: Keyword arguments passed to the MagicObject.
+         :return: A dictionary of the object's metadata after download.
+         :rtype: dict
         """
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
         return obj.download_fileobj(**kwargs).model_dump(exclude_none=True, by_alias=True)
 
     def put_object(self, **kwargs) -> MagicObject:
-        """Emulates the S3 put_object() method.
+        """
+        Emulates the S3 put_object() method.
 
-        :param kwargs: Keyword arguments passed to the MagicObject.
-        :return: The MagicObject instance after the put operation.
+        :param kwargs: Keyword arguments passed to the MagicObject
+        :type kwargs: dict
+        :key Key: The key (path) of the object within the bucket
+        :type Key: str
+        :key Body: The content to store - can be file-like object, string, or bytes
+        :type Body: IO | str | bytes
+        :key Filename: Alternative to Body - path to a local file to upload
+        :type Filename: str
+        :returns: The MagicObject instance after the put operation
         :rtype: MagicObject
+        :raises ValueError: If Key or Body is missing, or Body type is unsupported
         """
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
         return obj.put_object(**kwargs)
 
     def get_object(self, **kwargs) -> dict:
-        """Emulates the S3 get_object() method to retrieve an object.
+        """
+        Emulates the S3 get_object() method to retrieve an object.
 
         :param kwargs: Keyword arguments passed to the MagicObject.
-        :return: A dictionary of the object's metadata.
+        :return: A dictionary of the object's metadata and streaming body
         :rtype: dict
         """
         key = kwargs.pop("Key", None)
@@ -383,7 +527,8 @@ class MagicBucket(BaseModel):
         return obj.get_object(**kwargs)
 
     def delete_object(self, **kwargs) -> dict:
-        """Emulates the S3 delete_object() method to delete an object.
+        """
+        Emulates the S3 delete_object() method to delete an object.
 
         :param kwargs: Keyword arguments passed to the MagicObject.
         :return: A dictionary indicating the result of the delete operation.
@@ -410,54 +555,92 @@ class MagicBucket(BaseModel):
 class MagicS3Client(BaseModel):
     """Emulates an S3 client to allow local filesystem storage via the S3 API.
 
-    :ivar region_name: The AWS region.
-    :vartype region_name: str
+    :ivar region: The AWS region.
+    :vartype region: str
     :ivar data_path: The root directory for local storage.
     :vartype data_path: str | None
     """
 
-    region_name: str = Field(default_factory=get_region, alias="Region")
-    data_path: str | None = Field(alias="DataPath", default=None)
+    region: str = Field(default_factory=get_region, alias="Region", description="The AWS region for the client.")
+    role_arn: str | None = Field(default=None, alias="RoleArn", description="The ARN of the role to assume for the client.")
+    data_path: str | None = Field(alias="DataPath", default=None, description="The local storage path if not using S3.")
 
     def head_object(self, **kwargs) -> dict:
-        """Emulates the S3 client.head_object() method.
+        """
+        Emulates the S3 client.head_object() method.
 
-        :param kwargs: Keyword arguments, expects 'Bucket' and 'Key'.
-        :return: A dictionary of the object's metadata.
-        :rtype: dict
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Bucket: The name of the bucket
+        :type Bucket: str
+        :key Key: The key of the object to get metadata for
+        :type Key: str
+        :returns: A dictionary of the object's metadata
+         :param kwargs: Keyword arguments, expects 'Bucket' and 'Key'.
+         :return: A dictionary of the object's metadata.
+         :rtype: dict
         """
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
         return bucket.head_object(**kwargs)
 
     def download_fileobj(self, **kwargs) -> dict:
-        """Emulates the S3 client.download_fileobj() method.
+        """
+        Emulates the S3 client.download_fileobj() method.
 
-        :param kwargs: Keyword arguments, expects 'Bucket', 'Key', and 'Fileobj'.
-        :return: A dictionary of the object's metadata after download.
-        :rtype: dict
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Bucket: The name of the bucket
+        :type Bucket: str
+        :key Key: The key of the object to download
+        :type Key: str
+        :key Fileobj: File-like object to write the downloaded content to
+        :type Fileobj: IO
+        :returns: A dictionary of the object's metadata after download
+         :param kwargs: Keyword arguments, expects 'Bucket', 'Key', and 'Fileobj'.
+         :return: A dictionary of the object's metadata after download.
+         :rtype: dict
         """
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
         return bucket.download_fileobj(**kwargs)
 
     def put_object(self, **kwargs) -> MagicObject:
-        """Emulates the S3 client.put_object() method.
+        """
+        Emulates the S3 client.put_object() method.
 
-        :param kwargs: Keyword arguments, expects 'Bucket', 'Key', and 'Body'.
-        :return: The MagicObject instance after the put operation.
+        :param kwargs: Keyword arguments for the put operation
+        :type kwargs: dict
+        :key Bucket: The name of the bucket (extracted and used to get bucket instance)
+        :type Bucket: str
+        :key Key: The key (path) of the object within the bucket
+        :type Key: str
+        :key Body: The content to store - can be file-like object, string, or bytes
+        :type Body: IO | str | bytes
+        :key Filename: Alternative to Body - path to a local file to upload
+        :type Filename: str
+        :returns: The MagicObject instance after the put operation
         :rtype: MagicObject
+        :raises ValueError: If required parameters are missing or Body type is unsupported
         """
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
         return bucket.put_object(**kwargs)
 
     def delete_object(self, **kwargs) -> dict:
-        """Emulates the S3 client.delete_object() method.
+        """
+        Emulates the S3 client.delete_object() method.
 
-        :param kwargs: Keyword arguments, expects 'Bucket' and 'Key'.
-        :return: A dictionary indicating the result of the delete operation.
-        :rtype: dict
+        :param kwargs: Keyword arguments
+        :type kwargs: dict
+        :key Bucket: The name of the bucket
+        :type Bucket: str
+        :key Key: The key of the object to delete
+        :type Key: str
+        :returns: A dictionary indicating the result of the delete operation
+         :param kwargs: Keyword arguments, expects 'Bucket' and 'Key'.
+         :return: A dictionary indicating the result of the delete operation.
+         :rtype: dict
         """
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
@@ -475,53 +658,74 @@ class MagicS3Client(BaseModel):
 
     @staticmethod
     def get_bucket(Region: str, BucketName: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
-        """Gets a Bucket object, which can be a real S3 Bucket or a MagicBucket.
+        """
+        Gets a Bucket object, which can be a real S3 Bucket or a MagicBucket.
 
         The selection is based on the ``is_use_s3()`` configuration.
 
-        :param Region: The AWS region of the bucket.
+        :param Region: The AWS region of the bucket
         :type Region: str
-        :param BucketName: The name of the bucket.
+        :param BucketName: The name of the bucket
         :type BucketName: str
-        :param DataPath: The local storage path if not using S3. Defaults to None.
+        :param RoleArn: The ARN of the role to assume for the client
+        :type RoleArn: str, optional
+        :param DataPath: The local storage path if not using S3
         :type DataPath: str or None, optional
-        :return: An S3 Bucket or a MagicBucket instance.
+        :returns: An S3 Bucket or a MagicBucket instance
         :rtype: Any
         """
+
         if is_use_s3():
             s3 = aws.s3_resource(region=Region, role_arn=RoleArn)
             bucket = s3.Bucket(BucketName)
         else:
-            local = MagicS3Client(Region=Region, DataPath=DataPath)
+            local = MagicS3Client(Region=Region, RoleArn=RoleArn, DataPath=DataPath)
             bucket = local.Bucket(BucketName)
 
         return bucket
 
     @staticmethod
     def get_client(Region: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
-        """Gets an S3 client, which can be a real boto3 client or a MagicS3Client.
+        """
+        Gets an S3 client, which can be a real boto3 client or a MagicS3Client.
 
         The selection is based on the ``is_use_s3()`` configuration.
 
-        :param Region: The AWS region for the client.
+        :param Region: The AWS region for the client
         :type Region: str
-        :param RoleArn: The ARN of the role to assume for the client. Defaults to None.
+        :param RoleArn: The ARN of the role to assume for the client
         :type RoleArn: str or None, optional
-        :param DataPath: The local storage path if not using S3. Defaults to None.
+        :param DataPath: The local storage path if not using S3
         :type DataPath: str or None, optional
-        :return: A boto3 S3 client or a MagicS3Client instance.
+        :returns: A boto3 S3 client or a MagicS3Client instance
         :rtype: Any
         """
         if is_use_s3():
             client = aws.s3_client(region=Region, role_arn=RoleArn)
         else:
-            client = MagicS3Client(Region=Region, DataPath=DataPath)
+            client = MagicS3Client(Region=Region, RoleArn=RoleArn, DataPath=DataPath)
 
         return client
 
 
 class SeekableStreamWrapper:
-    """Wrapper that makes a streaming body seekable by buffering chunks."""
+    """
+    Wrapper that makes a streaming body seekable by buffering chunks.
+
+    Provides seek functionality for non-seekable streams by buffering content
+    as it's read. Useful for making streaming responses seekable for processing.
+
+    :param stream: The original stream to wrap
+    :type stream: IO
+    :param chunk_size: Size of chunks to read when buffering
+    :type chunk_size: int
+
+    Example:
+        >>> wrapper = SeekableStreamWrapper(some_stream, chunk_size=4096)
+        >>> data = wrapper.read(100)
+        >>> wrapper.seek(0)  # Reset to beginning
+        >>> data_again = wrapper.read(100)
+    """
 
     def __init__(self, stream, chunk_size: int = 8192):
         self.stream = stream
@@ -531,6 +735,14 @@ class SeekableStreamWrapper:
         self.eof_reached = False
 
     def read(self, size: int = -1) -> bytes:
+        """
+        Read up to size bytes from the wrapped stream.
+
+        :param size: Number of bytes to read. If -1, read all remaining data.
+        :type size: int
+        :returns: The bytes read from the stream
+        :rtype: bytes
+        """
         # Ensure we have enough data buffered
         if size == -1:
             self._read_all()
@@ -545,6 +757,16 @@ class SeekableStreamWrapper:
         return result
 
     def seek(self, offset: int, whence: int = 0) -> int:
+        """
+        Seek to a specific position in the stream.
+
+        :param offset: The offset to seek to
+        :type offset: int
+        :param whence: How to interpret the offset (0=absolute, 1=relative, 2=from end)
+        :type whence: int
+        :returns: The new absolute position
+        :rtype: int
+        """
         if whence == 0:  # SEEK_SET
             self.position = offset
         elif whence == 1:  # SEEK_CUR
