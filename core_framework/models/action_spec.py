@@ -125,7 +125,7 @@ class ActionSpec(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    apiVesriin: str = Field(alias="ApiVersion", description="The API version of the actions API", default="v1")
+    apiVersion: str = Field(alias="ApiVersion", description="The API version of the actions API", default="v1")
 
     name: str = Field(
         ...,
