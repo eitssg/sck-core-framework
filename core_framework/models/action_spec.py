@@ -125,6 +125,8 @@ class ActionSpec(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
+    apiVesriin: str = Field(alias="ApiVersion", description="The API version of the actions API", default="v1")
+
     name: str = Field(
         ...,
         alias="Name",
@@ -183,6 +185,8 @@ class ActionSpec(BaseModel):
     execution failures.""",
         min_length=1,
     )
+
+    metadata: dict[str, Any] | None = Field(alias="Metadata", description="Arbitrary Medatadata about this action", default=None)
 
     depends_on: list[str] = Field(
         default=[],
@@ -514,7 +518,7 @@ class ActionSpec(BaseModel):
         default=None,
     )
 
-    save_outputs: bool = Field(
+    save_outputs: bool | None = Field(
         alias="SaveOutputs",
         description="""Controls whether action outputs are saved to the state system with namespace organization.
 
@@ -584,7 +588,7 @@ class ActionSpec(BaseModel):
                 "cleanup-temp/files_removed": 42
             }
             }""",
-        default=True,
+        default=None,
     )
 
     lifecycle_hooks: list["ActionSpec"] | None = Field(
