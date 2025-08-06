@@ -214,7 +214,7 @@ def test_generate_task_payload():
 
     # Generate the task payload
     payload = TaskPayload.from_arguments(task=task, **kwargs)
-    payload.package.deployspec = DeploySpec(actions=[])
+    payload.package.deployspec = None
 
     # Assert the payload contains the expected values
     assert payload.task == task
