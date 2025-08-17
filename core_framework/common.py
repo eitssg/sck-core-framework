@@ -6,7 +6,7 @@ other very common tasks.
 """
 
 import warnings
-from typing import Any, IO
+from typing import Any, IO, Dict
 import uuid
 import tempfile
 import json
@@ -135,27 +135,19 @@ def generate_branch_short_name(branch: str | None) -> str | None:
 def split_prn(
     prn: str,
 ) -> tuple[str | None, str | None, str | None, str | None, str | None]:
-    """
-    Split the PRN and return the parts relevant to the deployment details.
+    """Split PRN into deployment hierarchy components.
 
-    The PRN is in the format: prn:portfolio:app:branch:build:component
+    Parses PRN format: prn:portfolio:app:branch:build:component
+    Returns up to 5 components after 'prn:' prefix.
 
-    If you have too many colons, at most it will return the first 5 parts after prn:
+    Args:
+        prn: The PRN to split (e.g., "prn:portfolio:app:branch:build").
 
-    Parameters
-    ----------
-    prn : str
-        The PRN to split (ex: prn:portfolio:app:branch:build)
+    Returns:
+        Tuple containing (portfolio, app, branch, build, component).
 
-    Returns
-    -------
-    tuple[str | None, str | None, str | None, str | None, str | None]
-        A tuple containing (portfolio, app, branch, build, component)
-
-    Raises
-    ------
-    ValueError
-        If PRN is empty, None, or doesn't start with 'prn:'
+    Raises:
+        ValueError: If PRN is empty, None, or doesn't start with 'prn:'.
 
     Examples
     --------
@@ -184,34 +176,20 @@ def split_prn(
 def split_portfolio(
     portfolio: str | None,
 ) -> tuple[str | None, str | None, str | None, str]:
-    """
-    Split the portfolio into its component parts: Company, Group, Owner, Application.
-
-    The portfolio must have at least 2 parts separated by a hyphen('-').
-
-    For:
-       owner-bizapp -> returns Owner and BizApp parts. Company and Group is None
-       group-owner-bizapp -> returns Group and Owner and BizApp parts. Company is None
-       company-group-owner-bizapp -> returns Company, Group, Owner and BizApp parts
+    """Split portfolio into component parts.
 
     .. deprecated::
         This function is deprecated and will be removed in a future version.
         It was a bad idea and should not be used.
 
-    Parameters
-    ----------
-    portfolio : str | None
-        Name of the portfolio to parse
+    Args:
+        portfolio: Name of the portfolio to parse.
 
-    Returns
-    -------
-    tuple[str | None, str | None, str | None, str]
+    Returns:
         A tuple containing (Company, Group, Owner, Application)
 
-    Raises
-    ------
-    ValueError
-        If portfolio name is not specified or has invalid format
+    Raises:
+        ValueError: If portfolio name is not specified or has invalid format
 
     Examples
     --------
@@ -243,23 +221,15 @@ def split_portfolio(
 
 
 def split_branch(branch: str, default_region_alias: str | None = None) -> tuple[str, str | None]:
-    """
-    Split the branch into the environment and data_center parts.
+    """Split branch into environment and data center parts.
 
-    If the data center is not specified, the DEFAULT_DATA_CENTER is used.
-    Currently, this is the value "sin" to identify the Singapore data center.
+    Args:
+        branch: The branch name to split.
+        default_region_alias: Default region alias if not specified.
 
-    Parameters
-    ----------
-    branch : str
-        The branch name to split
-    default_region_alias : str | None, optional
-        The default region alias to use if the data center (region) is not specified
-
-    Returns
-    -------
-    tuple[str, str | None]
-        A tuple containing (branch, region_alias) for environment and data center parts
+    Returns:
+        tuple[str, str | None]
+            A tuple containing (branch, region_alias) for environment and data center parts
 
     Examples
     --------
@@ -287,41 +257,27 @@ def get_prn(
     scope: str = SCOPE_BUILD,
     delim: str = ":",
 ) -> str:
-    """
-    Generate a PRN with a delimiter between the parts as specified in the 'delim' parameter.
+    """Generate PRN with specified delimiter and scope.
 
-    The "Scope" argument is used to determine how many parts of the PRN are included in the result.
+    Args:
+        portfolio: Business application (portfolio) name.
+        app: Deployment part of the business application.
+        branch: Source code repository branch.
+        build: Build number or commit ID.
+        component: Component part of the deployment.
+        scope: Scope determining how many parts to include.
+        delim: Delimiter between PRN parts.
 
-    Parameters
-    ----------
-    portfolio : str
-        Business application (portfolio) name
-    app : str | None, optional
-        Deployment part of the Business application (app), by default None
-    branch : str | None, optional
-        Branch of the source-code repository, by default None
-    build : str | None, optional
-        Build Number or Commit ID of the deployment, by default None
-    component : str | None, optional
-        Component Part of the deployment, by default None
-    scope : str, optional
-        Scope of the PRN, by default SCOPE_BUILD
-    delim : str, optional
-        Delimiter of the parts of the PRN, by default ":"
+    Returns:
+        The Pipeline Reference Number (PRN).
 
-    Returns
-    -------
-    str
-        The Pipeline Reference Number (PRN)
-
-    Examples
-    --------
-    >>> get_prn("ecommerce", "web", "main", "1.0.0", scope=SCOPE_BUILD)
-    'ecommerce:web:main:1.0.0'
-    >>> get_prn("ecommerce", "web", scope=SCOPE_APP)
-    'ecommerce:web'
-    >>> get_prn("ecommerce", "web", "main", "1.0.0", delim="-")
-    'ecommerce-web-main-1.0.0'
+    Examples:
+        >>> get_prn("ecommerce", "web", "main", "1.0.0", scope=SCOPE_BUILD)
+        'ecommerce:web:main:1.0.0'
+        >>> get_prn("ecommerce", "web", scope=SCOPE_APP)
+        'ecommerce:web'
+        >>> get_prn("ecommerce", "web", "main", "1.0.0", delim="-")
+        'ecommerce-web-main-1.0.0'
     """
     result = portfolio
     if scope == SCOPE_PORTFOLIO:
@@ -350,29 +306,21 @@ def generate_bucket_name(
     region: str | None = None,
     scope_prefix: str | None = None,
 ) -> str:
-    """
-    Generate a bucket name from the client, region, and scope prefix.
+    """Generate S3 bucket name from client, region, and scope.
 
-    Parameters
-    ----------
-    client : str | None, optional
-        The client name, by default None (uses get_client())
-    region : str | None, optional
-        The region name, by default None (uses get_bucket_region())
-    scope_prefix : str | None, optional
-        The scope prefix, by default None (uses get_automation_scope())
+    Args:
+        client: The client name.
+        region: The region name.
+        scope_prefix: The automation scope prefix.
 
-    Returns
-    -------
-    str
+    Returns:
         The generated bucket name in format: {scope_prefix}{client}-{V_CORE_AUTOMATION}-{region}
 
-    Examples
-    --------
-    >>> generate_bucket_name("myclient", "us-east-1", "dev-")
-    'dev-myclient-core-automation-us-east-1'
-    >>> generate_bucket_name()  # Uses defaults from environment
-    'myclient-core-automation-us-east-1'
+    Examples:
+        >>> generate_bucket_name("myclient", "us-east-1", "dev-")
+        'dev-myclient-core-automation-us-east-1'
+        >>> generate_bucket_name()  # Uses defaults from environment
+        'myclient-core-automation-us-east-1'
     """
     if not client:
         client = get_client() or V_EMPTY
@@ -387,22 +335,16 @@ def generate_bucket_name(
 
 
 def get_bucket_name(client: str | None = None, region: str | None = None) -> str:
-    """
-    Get the bucket name from environment variable BUCKET_NAME or generate one.
+    """Get bucket name from environment or generate one.
 
     If BUCKET_NAME is not specified, generates a bucket name based on the client name,
     region, and automation scope prefix.
 
-    Parameters
-    ----------
-    client : str | None, optional
-        The client name, by default None (uses get_client())
-    region : str | None, optional
-        The region name, by default None (uses get_bucket_region())
+    Args:
+        client: The client name.
+        region: The region name.
 
-    Returns
-    -------
-    str
+    Returns:
         The bucket name for the core automation objects
 
     Examples
@@ -425,19 +367,12 @@ def get_bucket_name(client: str | None = None, region: str | None = None) -> str
 
 
 def get_document_bucket_name(client: str | None = None) -> str:
-    """
-    Get the bucket name for documents from environment variable DOCUMENT_BUCKET_NAME.
+    """Get document bucket name from environment or fallback.
 
-    If not specified, falls back to the core automation bucket name.
+    Args:
+        client: The client name.
 
-    Parameters
-    ----------
-    client : str | None, optional
-        The client name, by default None
-
-    Returns
-    -------
-    str
+    Returns:
         The bucket name for the documents
 
     Examples
@@ -449,19 +384,12 @@ def get_document_bucket_name(client: str | None = None) -> str:
 
 
 def get_ui_bucket_name(client: str | None = None) -> str:
-    """
-    Get the bucket name for UI from environment variable UI_BUCKET_NAME.
+    """Get UI bucket name from environment or fallback.
 
-    If not specified, falls back to the core automation bucket name.
+    Args:
+        client: The client name.
 
-    Parameters
-    ----------
-    client : str | None, optional
-        The client name, by default None
-
-    Returns
-    -------
-    str
+    Returns:
         The bucket name for the UI
 
     Examples
@@ -473,21 +401,13 @@ def get_ui_bucket_name(client: str | None = None) -> str:
 
 
 def get_artefact_bucket_name(client: str | None = None, region: str | None = None) -> str:
-    """
-    Get the bucket name for artefacts from environment variable ARTEFACT_BUCKET_NAME.
+    """Get artefact bucket name from environment or fallback.
 
-    If not specified, falls back to the core automation bucket name.
+    Args:
+        client: The client name.
+        region: The region name.
 
-    Parameters
-    ----------
-    client : str | None, optional
-        The client name, by default None
-    region : str | None, optional
-        The region name, by default None
-
-    Returns
-    -------
-    str
+    Returns:
         The bucket name for the artefacts
 
     Examples
@@ -499,14 +419,9 @@ def get_artefact_bucket_name(client: str | None = None, region: str | None = Non
 
 
 def get_artefact_bucket_region() -> str:
-    """
-    Get the region of the artefact bucket from environment variable ARTEFACT_BUCKET_REGION.
+    """Get artefact bucket region from environment.
 
-    If not specified, falls back to the core automation bucket region.
-
-    Returns
-    -------
-    str
+    Returns:
         Region of the artefact bucket
 
     Examples
@@ -525,54 +440,30 @@ def get_prn_alt(
     component: str | None = None,
     scope: str = SCOPE_BUILD,
 ) -> str:
-    """
-    Generate a PRN with a hyphen delimiter.
+    """Generate PRN with hyphen delimiter.
 
-    Helper function to generate a PRN with a hyphen delimiter instead of colon.
-    Returns a result like: portfolio-app-branch-build-component
+    Args:
+        portfolio: Portfolio name.
+        app: App name.
+        branch: Branch name.
+        build: Build reference.
+        component: Component name.
+        scope: PRN scope.
 
-    Parameters
-    ----------
-    portfolio : str
-        Portfolio Business Application Name
-    app : str | None, optional
-        Deployment component of the Business Application Portfolio, by default None
-    branch : str | None, optional
-        Repository Branch for the source code, by default None
-    build : str | None, optional
-        Branch build reference or Commit ID, by default None
-    component : str | None, optional
-        Infrastructure Component part, by default None
-    scope : str, optional
-        Scope of the Pipeline Reference Number, by default SCOPE_BUILD
+    Returns:
+        PRN with hyphen delimiters.
 
-    Returns
-    -------
-    str
-        The Pipeline Reference Number (PRN) with hyphen delimiters
-
-    Examples
-    --------
-    >>> get_prn_alt("ecommerce", "web", "main", "1.0.0")
-    'ecommerce-web-main-1.0.0'
+    Examples:
+        >>> get_prn_alt("ecommerce", "web", "main", "1.0.0")
+        'ecommerce-web-main-1.0.0'
     """
     return get_prn(portfolio, app, branch, build, component, scope, delim="-")
 
 
 def get_automation_scope() -> str:
-    """
-    Get the automation scope prefix from environment variable SCOPE.
+    """Get automation scope prefix from SCOPE environment variable.
 
-    The automation scope is a prefix on all automation objects. This is typically
-    an empty string or None. This is NOT the same thing as the deployment scope.
-    The deployment scope is a part of the PRN.
-
-    This is the "Automation Scope" typically used to differentiate multiple
-    core automation engines in the same AWS account.
-
-    Returns
-    -------
-    str
+    Returns:
         The prefix for all automation objects
 
     Examples
@@ -584,14 +475,9 @@ def get_automation_scope() -> str:
 
 
 def get_automation_type() -> str:
-    """
-    Get the type of automation engine to execute for the project.
+    """Get automation engine type from AUTOMATION_TYPE environment variable.
 
-    Values will be V_DEPLOYSPEC or V_PIPELINE from environment variable AUTOMATION_TYPE.
-
-    Returns
-    -------
-    str
+    Returns:
         The type of automation engine to use (deployspec or pipeline)
 
     Examples
@@ -603,12 +489,9 @@ def get_automation_type() -> str:
 
 
 def get_portfolio() -> str | None:
-    """
-    Get the portfolio name from environment variable PORTFOLIO.
+    """Get portfolio name from PORTFOLIO environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The portfolio name or None if not set
 
     Examples
@@ -620,12 +503,9 @@ def get_portfolio() -> str | None:
 
 
 def get_app() -> str | None:
-    """
-    Get the app name from environment variable APP.
+    """Get app name from APP environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The app name or None if not set
 
     Examples
@@ -637,12 +517,9 @@ def get_app() -> str | None:
 
 
 def get_branch() -> str | None:
-    """
-    Get the branch name from environment variable BRANCH.
+    """Get branch name from BRANCH environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The branch name or None if not set
 
     Examples
@@ -654,12 +531,9 @@ def get_branch() -> str | None:
 
 
 def get_build() -> str | None:
-    """
-    Get the build name from environment variable BUILD.
+    """Get build name from BUILD environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The build name or None if not set
 
     Examples
@@ -671,19 +545,12 @@ def get_build() -> str | None:
 
 
 def get_provisioning_role_arn(account: str | None = None) -> str:
-    """
-    Get the provisioning role ARN for the specified account.
+    """Get provisioning role ARN for specified account.
 
-    Constructs the ARN using the automation scope prefix and account number.
+    Args:
+        account: AWS account number.
 
-    Parameters
-    ----------
-    account : str | None, optional
-        The AWS account number, by default None (uses get_automation_account())
-
-    Returns
-    -------
-    str
+    Returns:
         The ARN for the provisioning role
 
     Examples
@@ -700,21 +567,13 @@ def get_provisioning_role_arn(account: str | None = None) -> str:
 
 
 def get_automation_api_role_arn(account: str | None = None, write: bool = False) -> str:
-    """
-    Get the automation API role ARN for the specified account.
+    """Get automation API role ARN.
 
-    Constructs the ARN for either read or write API role.
+    Args:
+        account: AWS account number.
+        write: Whether to get write role (True) or read role (False).
 
-    Parameters
-    ----------
-    account : str | None, optional
-        The AWS account number, by default None (uses get_automation_account())
-    write : bool, optional
-        Whether to get the write role (True) or read role (False), by default False
-
-    Returns
-    -------
-    str
+    Returns:
         The ARN for the automation API role, or None if account cannot be determined
 
     Examples
@@ -739,12 +598,9 @@ def get_automation_api_role_arn(account: str | None = None, write: bool = False)
 
 
 def get_organization_id() -> str | None:
-    """
-    Get the organization ID from environment variable ORGANIZATION_ID.
+    """Get organization ID from ORGANIZATION_ID environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The organization ID or None if not set
 
     Examples
@@ -756,12 +612,9 @@ def get_organization_id() -> str | None:
 
 
 def get_organization_name() -> str | None:
-    """
-    Get the organization name from environment variable ORGANIZATION_NAME.
+    """Get organization name from ORGANIZATION_NAME environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The organization name or None if not set
 
     Examples
@@ -773,12 +626,9 @@ def get_organization_name() -> str | None:
 
 
 def get_organization_account() -> str | None:
-    """
-    Get the organization account number from environment variable ORGANIZATION_ACCOUNT.
+    """Get organization account from ORGANIZATION_ACCOUNT environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The organization account number or None if not set
 
     Examples
@@ -790,12 +640,9 @@ def get_organization_account() -> str | None:
 
 
 def get_organization_email() -> str | None:
-    """
-    Get the organization email address from environment variable ORGANIZATION_EMAIL.
+    """Get organization email from ORGANIZATION_EMAIL environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The organization email address or None if not set
 
     Examples
@@ -807,12 +654,9 @@ def get_organization_email() -> str | None:
 
 
 def get_iam_account() -> str | None:
-    """
-    Get the IAM account number from environment variable IAM_ACCOUNT.
+    """Get IAM account from IAM_ACCOUNT environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The IAM account number or None if not set
 
     Examples
@@ -824,12 +668,9 @@ def get_iam_account() -> str | None:
 
 
 def get_audit_account() -> str | None:
-    """
-    Get the audit account number from environment variable AUDIT_ACCOUNT.
+    """Get audit account from AUDIT_ACCOUNT environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The audit account number or None if not set
 
     Examples
@@ -841,12 +682,9 @@ def get_audit_account() -> str | None:
 
 
 def get_security_account() -> str | None:
-    """
-    Get the security account number from environment variable SECURITY_ACCOUNT.
+    """Get security account from SECURITY_ACCOUNT environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The security account number or None if not set
 
     Examples
@@ -858,12 +696,9 @@ def get_security_account() -> str | None:
 
 
 def get_domain() -> str:
-    """
-    Get the domain name from environment variable DOMAIN.
+    """Get domain name from DOMAIN environment variable.
 
-    Returns
-    -------
-    str
+    Returns:
         The domain name, defaults to "example.com"
 
     Examples
@@ -875,12 +710,9 @@ def get_domain() -> str:
 
 
 def get_network_account() -> str | None:
-    """
-    Get the network account number from environment variable NETWORK_ACCOUNT.
+    """Get network account from NETWORK_ACCOUNT environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The network account number or None if not set
 
     Examples
@@ -892,12 +724,9 @@ def get_network_account() -> str | None:
 
 
 def get_cdk_default_account() -> str | None:
-    """
-    Get the CDK default account from environment variable CDK_DEFAULT_ACCOUNT.
+    """Get CDK default account from CDK_DEFAULT_ACCOUNT environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The CDK default account or None if not set
 
     Examples
@@ -909,12 +738,9 @@ def get_cdk_default_account() -> str | None:
 
 
 def get_cdk_default_region() -> str | None:
-    """
-    Get the CDK default region from environment variable CDK_DEFAULT_REGION.
+    """Get CDK default region from CDK_DEFAULT_REGION environment variable.
 
-    Returns
-    -------
-    str | None
+    Returns:
         The CDK default region or None if not set
 
     Examples
@@ -926,12 +752,9 @@ def get_cdk_default_region() -> str | None:
 
 
 def get_console_mode() -> str:
-    """
-    Get the console mode from environment variable CONSOLE.
+    """Get console mode from CONSOLE environment variable.
 
-    Returns
-    -------
-    str
+    Returns:
         The console mode if set to V_INTERACTIVE, otherwise None
 
     Examples
@@ -944,8 +767,7 @@ def get_console_mode() -> str:
 
 
 def is_use_s3() -> bool:
-    """
-    Check if the deployment is using S3 for storage.
+    """Check if deployment uses S3 storage.
 
     Returns True if not in local mode, or if USE_S3 environment variable is set to true.
 
@@ -966,8 +788,7 @@ def is_use_s3() -> bool:
 
 
 def is_json_log() -> bool:
-    """
-    Check if the log output is in JSON format from environment variable LOG_AS_JSON.
+    """Check if log output is in JSON format.
 
     Returns
     -------
@@ -983,8 +804,7 @@ def is_json_log() -> bool:
 
 
 def is_console_log() -> bool:
-    """
-    Check if the log output is to the console from environment variable CONSOLE_LOG.
+    """Check if log output goes to console.
 
     Returns
     -------
@@ -1000,8 +820,7 @@ def is_console_log() -> bool:
 
 
 def get_log_level() -> str:
-    """
-    Get the log level from environment variable LOG_LEVEL.
+    """Get log level from LOG_LEVEL environment variable.
 
     Returns
     -------
@@ -1017,8 +836,7 @@ def get_log_level() -> str:
 
 
 def is_local_mode() -> bool:
-    """
-    Check if the deployment is in local mode from environment variable LOCAL_MODE.
+    """Check if deployment is in local mode.
 
     Returns
     -------
@@ -1034,31 +852,12 @@ def is_local_mode() -> bool:
 
 
 def get_storage_volume(region: str | None = None) -> str:
-    """
-    Get the storage volume path for core automation objects.
+    """Get storage volume path for automation objects.
 
-    If LOCAL_MODE=true, you can specify a local storage volume via the VOLUME
-    environment variable. If not specified, the current working directory is used.
-    When using docker, this is your volume mount point.
+    Args:
+        region: AWS region.
 
-    Example:
-        export LOCAL_MODE=true
-        export VOLUME=/mnt/data/core
-
-    Then the engine will use /mnt/data/core/artefacts/**, /mnt/data/core/packages/**,
-    /mnt/data/core/files/** as the storage locations.
-
-    Setting LOCAL_MODE=false will store artefacts on S3.
-    The storage volume is then the S3 URL https://s3-{region}.amazonaws.com.
-
-    Parameters
-    ----------
-    region : str | None, optional
-        The AWS region, by default None (uses get_bucket_region())
-
-    Returns
-    -------
-    str
+    Returns:
         Storage Volume Path
 
     Examples
@@ -1077,17 +876,12 @@ def get_storage_volume(region: str | None = None) -> str:
 
 
 def get_temp_dir(path: str | None = None) -> str:
-    """
-    Get the temporary directory for the application from environment variable TEMP_DIR.
+    """Get temporary directory path.
 
-    Parameters
-    ----------
-    path : str | None, optional
-        The path to append to the temporary directory, by default None
+    Args:
+        path: Path to append to temp directory.
 
-    Returns
-    -------
-    str
+    Returns:
         The temporary directory path
 
     Examples
@@ -1102,8 +896,7 @@ def get_temp_dir(path: str | None = None) -> str:
 
 
 def get_mode() -> str:
-    """
-    Get the deployment mode from environment variable LOCAL_MODE.
+    """Get deployment mode.
 
     Returns
     -------
@@ -1119,8 +912,7 @@ def get_mode() -> str:
 
 
 def is_enforce_validation() -> bool:
-    """
-    Check if validation enforcement is enabled from environment variable ENFORCE_VALIDATION.
+    """Check if validation enforcement is enabled.
 
     Returns
     -------
@@ -1136,8 +928,7 @@ def is_enforce_validation() -> bool:
 
 
 def get_client() -> str | None:
-    """
-    Get the client name from environment variable CLIENT or AWS_PROFILE.
+    """Get client name from CLIENT or AWS_PROFILE environment variable.
 
     Returns
     -------
@@ -1153,8 +944,7 @@ def get_client() -> str | None:
 
 
 def get_client_name() -> str | None:
-    """
-    Get the client name from environment variable CLIENT_NAME.
+    """Get client name from CLIENT_NAME environment variable.
 
     Returns
     -------
@@ -1170,10 +960,7 @@ def get_client_name() -> str | None:
 
 
 def get_log_dir() -> str:
-    """
-    Get the log directory for the core automation engine from environment variable LOG_DIR.
-
-    If not specified, defaults to "local/logs" in the current working directory.
+    """Get log directory from LOG_DIR environment variable.
 
     Returns
     -------
@@ -1189,8 +976,7 @@ def get_log_dir() -> str:
 
 
 def get_delivered_by() -> str:
-    """
-    Get the delivered by value from environment variable DELIVERED_BY.
+    """Get delivered by value from DELIVERED_BY environment variable.
 
     Returns
     -------
@@ -1206,10 +992,7 @@ def get_delivered_by() -> str:
 
 
 def get_aws_profile() -> str:
-    """
-    Get the AWS profile name from environment variable AWS_PROFILE or client name.
-
-    If the profile is not found in boto3 session credentials, returns "default".
+    """Get AWS profile name or "default" if not found.
 
     Returns
     -------
@@ -1233,8 +1016,7 @@ def get_aws_profile() -> str:
 
 
 def get_aws_profile_region() -> str:
-    """
-    Get the AWS region from the AWS CLI configuration for the current profile.
+    """Get AWS region from profile configuration.
 
     Returns
     -------
@@ -1257,11 +1039,7 @@ def get_aws_profile_region() -> str:
 
 
 def get_aws_region() -> str:
-    """
-    Get the AWS region from environment variable AWS_REGION.
-
-    This is the region where the core automation engine is running.
-    Falls back to profile region or default region.
+    """Get AWS region from AWS_REGION environment variable.
 
     Returns
     -------
@@ -1277,11 +1055,7 @@ def get_aws_region() -> str:
 
 
 def get_client_region() -> str:
-    """
-    Get the client region from environment variable CLIENT_REGION.
-
-    This is the BASE region where all other regions are derived from.
-    Falls back to AWS region if not set.
+    """Get client region from CLIENT_REGION environment variable.
 
     Returns
     -------
@@ -1297,10 +1071,7 @@ def get_client_region() -> str:
 
 
 def get_master_region() -> str:
-    """
-    Get the AWS region of the Core-Automation engine from environment variable MASTER_REGION.
-
-    If not specified, it will be derived from the client region.
+    """Get master region from MASTER_REGION environment variable.
 
     Returns
     -------
@@ -1316,10 +1087,7 @@ def get_master_region() -> str:
 
 
 def get_region() -> str:
-    """
-    Get the AWS region for the Deployment from environment variable AWS_REGION.
-
-    If not specified, the region will be derived from the master region.
+    """Get deployment region from AWS_REGION environment variable.
 
     Returns
     -------
@@ -1335,10 +1103,7 @@ def get_region() -> str:
 
 
 def get_automation_region() -> str:
-    """
-    Get the automation region from environment variable AUTOMATION_REGION.
-
-    Falls back to the main region if not set.
+    """Get automation region from AUTOMATION_REGION environment variable.
 
     Returns
     -------
@@ -1354,10 +1119,7 @@ def get_automation_region() -> str:
 
 
 def get_bucket_region() -> str:
-    """
-    Get the bucket region from environment variable BUCKET_REGION.
-
-    Falls back to the master region if not set.
+    """Get bucket region from BUCKET_REGION environment variable.
 
     Returns
     -------
@@ -1373,10 +1135,7 @@ def get_bucket_region() -> str:
 
 
 def get_dynamodb_region() -> str:
-    """
-    Get the DynamoDB region from environment variable DYNAMODB_REGION.
-
-    Falls back to the master region if not set.
+    """Get DynamoDB region from DYNAMODB_REGION environment variable.
 
     Returns
     -------
@@ -1392,10 +1151,7 @@ def get_dynamodb_region() -> str:
 
 
 def get_invoker_lambda_region() -> str:
-    """
-    Get the invoker lambda region from environment variable INVOKER_LAMBDA_REGION.
-
-    Falls back to the master region if not set.
+    """Get invoker lambda region from INVOKER_LAMBDA_REGION environment variable.
 
     Returns
     -------
@@ -1411,8 +1167,7 @@ def get_invoker_lambda_region() -> str:
 
 
 def get_automation_account() -> str | None:
-    """
-    Get the AWS account number for the automation account from environment variable AUTOMATION_ACCOUNT.
+    """Get automation account from AUTOMATION_ACCOUNT environment variable.
 
     Returns
     -------
@@ -1428,12 +1183,7 @@ def get_automation_account() -> str | None:
 
 
 def get_dynamodb_host() -> str:
-    """
-    Get the URL for the DynamoDB host from environment variable DYNAMODB_HOST.
-
-    This is typically the AWS DynamoDB endpoint for the region. However, you can
-    specify a different endpoint if you are using a local DynamoDB instance or
-    a different DynamoDB service.
+    """Get DynamoDB host URL from DYNAMODB_HOST environment variable.
 
     Returns
     -------
@@ -1450,10 +1200,7 @@ def get_dynamodb_host() -> str:
 
 
 def get_step_function_arn() -> str:
-    """
-    Get the Core Automation Step Function ARN from environment variable START_RUNNER_LAMBDA_ARN.
-
-    If not specified, the default value is used based on the region and account number.
+    """Get Core Automation Step Function ARN.
 
     Returns
     -------
@@ -1478,8 +1225,7 @@ def get_step_function_arn() -> str:
 
 
 def get_invoker_lambda_name() -> str:
-    """
-    Get the name of the invoker lambda from environment variable INVOKER_LAMBDA_NAME.
+    """Get invoker lambda name from INVOKER_LAMBDA_NAME environment variable.
 
     Returns
     -------
@@ -1495,8 +1241,7 @@ def get_invoker_lambda_name() -> str:
 
 
 def get_api_lambda_name() -> str:
-    """
-    Get the name of the Core Automation API Lambda from environment variable API_LAMBDA_NAME.
+    """Get API lambda name from API_LAMBDA_NAME environment variable.
 
     Returns
     -------
@@ -1512,10 +1257,7 @@ def get_api_lambda_name() -> str:
 
 
 def get_api_lambda_arn() -> str:
-    """
-    Get the ARN of the Core Automation API Lambda from environment variable API_LAMBDA_ARN.
-
-    If not specified, the default value is used based on the region and account number.
+    """Get API lambda ARN from API_LAMBDA_ARN environment variable.
 
     Returns
     -------
@@ -1537,10 +1279,7 @@ def get_api_lambda_arn() -> str:
 
 
 def get_api_host_url() -> str | None:
-    """
-    Get the URL for the API Gateway from environment variable API_HOST_URL.
-
-    If not specified, returns None.
+    """Get API Gateway URL from API_HOST_URL environment variable.
 
     Returns
     -------
@@ -1556,10 +1295,7 @@ def get_api_host_url() -> str | None:
 
 
 def get_invoker_lambda_arn() -> str:
-    """
-    Get the ARN of the invoker lambda from environment variable INVOKER_LAMBDA_ARN.
-
-    If not specified, the default value is used based on the region and account number.
+    """Get invoker lambda ARN from INVOKER_LAMBDA_ARN environment variable.
 
     Returns
     -------
@@ -1581,10 +1317,7 @@ def get_invoker_lambda_arn() -> str:
 
 
 def get_execute_lambda_arn() -> str:
-    """
-    Get the ARN of the execute lambda from environment variable EXECUTE_LAMBDA_ARN.
-
-    If not specified, the default value is used based on the region and account number.
+    """Get execute lambda ARN from EXECUTE_LAMBDA_ARN environment variable.
 
     Returns
     -------
@@ -1605,10 +1338,7 @@ def get_execute_lambda_arn() -> str:
 
 
 def get_start_runner_lambda_arn() -> str:
-    """
-    Get the ARN of the start runner lambda from environment variable START_RUNNER_LAMBDA_ARN.
-
-    If not specified, the default value is used based on the region and account number.
+    """Get start runner lambda ARN from START_RUNNER_LAMBDA_ARN environment variable.
 
     Returns
     -------
@@ -1629,8 +1359,7 @@ def get_start_runner_lambda_arn() -> str:
 
 
 def get_project() -> str | None:
-    """
-    Get the project name from environment variable PROJECT.
+    """Get project name from PROJECT environment variable.
 
     Returns
     -------
@@ -1646,8 +1375,7 @@ def get_project() -> str | None:
 
 
 def get_bizapp() -> str | None:
-    """
-    Get the business application name from environment variable BIZAPP.
+    """Get business application name from BIZAPP environment variable.
 
     Returns
     -------
@@ -1663,10 +1391,7 @@ def get_bizapp() -> str | None:
 
 
 def get_deployspec_compiler_lambda_arn() -> str:
-    """
-    Get the ARN of the deployspec compiler lambda from environment variable DEPLOYSPEC_COMPILER_LAMBDA_ARN.
-
-    If not specified, the default value is used based on the region and account number.
+    """Get deployspec compiler lambda ARN.
 
     Returns
     -------
@@ -1687,10 +1412,7 @@ def get_deployspec_compiler_lambda_arn() -> str:
 
 
 def get_component_compiler_lambda_arn() -> str:
-    """
-    Get the ARN of the component compiler lambda from environment variable COMPONENT_COMPILER_LAMBDA_ARN.
-
-    If not specified, the default value is used based on the region and account number.
+    """Get component compiler lambda ARN.
 
     Returns
     -------
@@ -1711,10 +1433,7 @@ def get_component_compiler_lambda_arn() -> str:
 
 
 def get_correlation_id() -> str:
-    """
-    Get the correlation id from environment variable CORRELATION_ID.
-
-    If not specified, generates a new UUID.
+    """Get correlation ID from CORRELATION_ID environment variable.
 
     Returns
     -------
@@ -1730,8 +1449,7 @@ def get_correlation_id() -> str:
 
 
 def get_environment() -> str:
-    """
-    Get the environment name from environment variable ENVIRONMENT.
+    """Get environment name from ENVIRONMENT environment variable.
 
     Returns
     -------
@@ -1747,8 +1465,7 @@ def get_environment() -> str:
 
 
 def get_valid_mimetypes() -> list[str]:
-    """
-    Returns the list of supported MIME types for action files.
+    """Get list of supported MIME types for action files.
 
     Returns
     -------
@@ -1769,17 +1486,12 @@ def get_valid_mimetypes() -> list[str]:
 
 
 def is_yaml_mimetype(mimetype: str) -> bool:
-    """
-    Check if the provided MIME type is a valid YAML MIME type.
+    """Check if MIME type is valid YAML.
 
-    Parameters
-    ----------
-    mimetype : str
-        The MIME type to check
+    Args:
+        mimetype: MIME type to check.
 
-    Returns
-    -------
-    bool
+    Returns:
         True if the MIME type is a valid YAML MIME type, False otherwise
 
     Examples
@@ -1798,17 +1510,12 @@ def is_yaml_mimetype(mimetype: str) -> bool:
 
 
 def is_json_mimetype(mimetype: str) -> bool:
-    """
-    Check if the provided MIME type is a valid JSON MIME type.
+    """Check if MIME type is valid JSON.
 
-    Parameters
-    ----------
-    mimetype : str
-        The MIME type to check
+    Args:
+        mimetype: MIME type to check.
 
-    Returns
-    -------
-    bool
+    Returns:
         True if the MIME type is a valid JSON MIME type, False otherwise
 
     Examples
@@ -1822,17 +1529,12 @@ def is_json_mimetype(mimetype: str) -> bool:
 
 
 def is_zip_mimetype(mimetype: str) -> bool:
-    """
-    Check if the provided MIME type is a valid ZIP MIME type.
+    """Check if MIME type is valid ZIP.
 
-    Parameters
-    ----------
-    mimetype : str
-        The MIME type to check
+    Args:
+        mimetype: MIME type to check.
 
-    Returns
-    -------
-    bool
+    Returns:
         True if the MIME type is a valid ZIP MIME type, False otherwise
 
     Examples
@@ -1850,19 +1552,12 @@ def is_zip_mimetype(mimetype: str) -> bool:
 
 
 def __custom_serializer(obj: Any) -> Any:
-    """
-    Custom serializer for objects not serializable by default json code.
+    """Custom serializer for objects not serializable by default json code.
 
-    Handles datetime objects, dates, times, and Decimal objects for JSON serialization.
+    Args:
+        obj: The object to serialize.
 
-    Parameters
-    ----------
-    obj : Any
-        The object to serialize
-
-    Returns
-    -------
-    Any
+    Returns:
         The serialized object
 
     Raises
@@ -1889,21 +1584,13 @@ def __custom_serializer(obj: Any) -> Any:
 
 
 def to_json(data: Any, pretty: int | None = None) -> str:
-    """
-    JSON serializer for data objects with custom datetime handling.
+    """JSON serializer with custom datetime handling.
 
-    This function will convert datetime objects to strings in the ISO8601 format.
+    Args:
+        data: Data object to serialize.
+        pretty: Pretty print indent level.
 
-    Parameters
-    ----------
-    data : Any
-        The data object to serialize
-    pretty : int | None, optional
-        The pretty print indent level, by default None
-
-    Returns
-    -------
-    str
+    Returns:
         JSON string representation of the data
 
     Examples
@@ -1920,43 +1607,30 @@ def to_json(data: Any, pretty: int | None = None) -> str:
 
 
 def write_json(data: Any, output_stream: IO, pretty: int | None = None) -> None:
-    """
-    Write JSON data to an output stream with custom datetime handling.
+    """Write JSON data to output stream.
 
-    This function will convert datetime objects to strings in the ISO8601 format.
+    Args:
+        data: Data to write.
+        output_stream: Output stream.
+        pretty: Pretty print indent level.
 
-    Parameters
-    ----------
-    data : Any
-        The data to write to the output stream
-    output_stream : IO
-        The output stream to write the data to
-    pretty : int | None, optional
-        The pretty print indent level, by default None
-
-    Examples
-    --------
-    >>> with open('output.json', 'w') as f:
-    ...     write_json({"name": "test"}, f, pretty=2)
+    Examples:
+        >>> with open('output.json', 'w') as f:
+        ...     write_json({"name": "test"}, f, pretty=2)
     """
     json.dump(data, output_stream, indent=pretty, default=__custom_serializer)
 
 
 def __iso8601_parser(data: Any) -> Any:
-    """
-    Parse ISO8601 datetime strings back to datetime objects.
+    """Parse ISO8601 datetime strings back to datetime objects.
 
     Recursively processes dictionaries and lists to convert ISO8601 strings.
 
-    Parameters
-    ----------
-    data : Any
-        The data to parse
+    Args:
+        data: The data to parse.
 
-    Returns
-    -------
-    Any
-        The parsed data with datetime objects converted from ISO8601 strings
+    Returns:
+        The parsed data with datetime objects converted from ISO8601 strings.
 
     Examples
     --------
@@ -1978,23 +1652,12 @@ def __iso8601_parser(data: Any) -> Any:
 
 
 def from_json(data: str) -> Any:
-    """
-    JSON deserializer with automatic datetime parsing.
+    """JSON deserializer with automatic datetime parsing.
 
-    This function will convert datetime strings in the JSON data to datetime objects.
+    Args:
+        data: JSON string to deserialize.
 
-    .. warning::
-        This function will convert datetime strings in the JSON data to datetime objects.
-        If you want strings, you will have to convert them back to strings yourself.
-
-    Parameters
-    ----------
-    data : str
-        The JSON string to deserialize
-
-    Returns
-    -------
-    Any
+    Returns:
         The deserialized data object with datetime strings converted to datetime objects
 
     Examples
@@ -2006,34 +1669,23 @@ def from_json(data: str) -> Any:
 
 
 def read_json(input_stream: IO) -> Any:
-    """
-    Load JSON data from an input stream with automatic datetime parsing.
+    """Load JSON data from input stream with datetime parsing.
 
-    .. warning::
-        This function will convert datetime strings in the JSON data to datetime objects.
-        If you want strings, you will have to convert them back to strings yourself.
+    Args:
+        input_stream: Input stream to read from.
 
-    Parameters
-    ----------
-    input_stream : IO
-        The input stream to read the JSON data from
+    Returns:
+        JSON data with datetime objects.
 
-    Returns
-    -------
-    Any
-        The JSON data as a dict or list object with datetime strings converted to datetime objects
-
-    Examples
-    --------
-    >>> with open('input.json', 'r') as f:
-    ...     data = read_json(f)
+    Examples:
+        >>> with open('input.json', 'r') as f:
+        ...     data = read_json(f)
     """
     return json.load(input_stream, object_hook=__iso8601_parser)
 
 
 def get_current_timestamp() -> str:
-    """
-    Get the current timestamp as a string in ISO8601 format.
+    """Get current timestamp in ISO8601 format.
 
     Returns
     -------
@@ -2049,8 +1701,7 @@ def get_current_timestamp() -> str:
 
 
 def get_cognito_endpoint(default: str = None) -> str | None:
-    """
-    Get the Cognito endpoint URL from environment variable COGNITO_ENDPOINT.
+    """Get Cognito endpoint URL from COGNITO_ENDPOINT environment variable.
 
     Returns
     -------
@@ -2066,14 +1717,61 @@ def get_cognito_endpoint(default: str = None) -> str | None:
 
 
 def get_current_timestamp_short() -> str:
-    """
-    Generate a short timestamp string suitable for AWS resource naming.
+    """Generate short timestamp for AWS resource naming.
 
     Returns a compact timestamp in format: YYYYMMDD-HHMMSS
     Example: "20250720-143052"
 
-    :return: Short timestamp string
-    :rtype: str
+    Returns:
+        Short timestamp in format YYYYMMDD-HHMMSS.
     """
 
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+
+def pascal_case_to_snake_case(value: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert PascalCase field names to snake_case field names.
+
+    Returns:
+        Dict[str, Any]: Dictionary with snake_case field names
+
+    """
+
+    def snake_case_key(key: str) -> str:
+        """Convert a PascalCase key to snake_case."""
+        return "".join(["_" + i.lower() if i.isupper() else i for i in key]).lstrip("_")
+
+    result = {}
+    for k, v in value.items():
+        key = snake_case_key(k)
+        if isinstance(v, dict):
+            result[key] = pascal_case_to_snake_case(v)
+        elif isinstance(v, list):
+            result[key] = [pascal_case_to_snake_case(item) if isinstance(item, dict) else item for item in v]
+        else:
+            result[key] = v
+    return result
+
+
+def snake_case_to_pascal_case(value: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert snake_case field names to PascalCase field names.
+
+    Returns:
+        Dict[str, Any]: Dictionary with PascalCase field names
+
+    """
+
+    def pascal_case_key(key: str) -> str:
+        """Convert a snake_case key to PascalCase."""
+        return "".join(word.capitalize() for word in key.split("_"))
+
+    result = {}
+    for k, v in value.items():
+        key = pascal_case_key(k)
+        if isinstance(v, dict):
+            result[key] = snake_case_to_pascal_case(v)
+        elif isinstance(v, list):
+            result[key] = [snake_case_to_pascal_case(item) if isinstance(item, dict) else item for item in v]
+        else:
+            result[key] = v
+    return result

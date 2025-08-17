@@ -1,4 +1,19 @@
-"""This module provides the TaskPayload class that is used throughout Core-Automation to identify the operating Task to perform."""
+"""TaskPayload model for Core Automation framework operations.
+
+The TaskPayload serves as the primary data structure passed between Core Automation
+components, containing all information necessary to perform cloud operations.
+It acts as the top-level object for Lambda function events and workflow coordination.
+
+Key Components:
+    - **Task Configuration**: Operation type, execution flags, and control flow
+    - **Deployment Context**: Portfolio, app, branch, and build information
+    - **Resource Details**: Package, actions, and state management
+    - **Client Configuration**: Multi-tenant client identification and settings
+
+Workflow Integration:
+    TaskPayload objects are serialized and passed to Lambda functions as event
+    payloads, enabling distributed task execution across the automation pipeline.
+"""
 
 from typing import Self, Any, List
 from pydantic import (
@@ -22,21 +37,21 @@ from .action_details import ActionDetails
 from .state_details import StateDetails
 
 FLOW_CONTROLS = ["execute", "success", "failure"]
+"""Valid flow control values for task execution."""
 
 
 def get_valid_tasks() -> List[str]:
-    """
-    Get the list of valid task values.
+    """Get the list of valid task values for TaskPayload operations.
 
-    Returns
-    -------
-    List[str]
+    Returns:
         List of valid task names that can be used in TaskPayload.
 
-    Examples
-    --------
-    >>> valid_tasks = get_valid_tasks()
-    >>> print(valid_tasks)  # ['package', 'upload', 'compile', 'plan', 'deploy', 'apply', 'release', 'teardown']
+    Examples:
+        >>> valid_tasks = get_valid_tasks()
+        >>> print(valid_tasks)
+        ['package', 'upload', 'compile', 'plan', 'deploy', 'apply', 'release', 'teardown']
+        >>> 'deploy' in valid_tasks
+        True
     """
     return [
         "package",
@@ -51,54 +66,41 @@ def get_valid_tasks() -> List[str]:
 
 
 class TaskPayload(BaseModel):
-    """
-    The TaskPayload is the primary artefact that is passed between the various components of Core Automation.
+    """Primary payload for Core Automation task execution.
 
-    You may consider this the "Top Level" object that contains all of the information needed to perform a task.
-    This object contains all of the information necessary to perform operations on the cloud and is the artefact
-    that is passed to all core "Lambda Functions" in the event method (except DB and API).
+    The TaskPayload contains all information necessary to perform cloud operations
+    and serves as the event object passed to core Lambda functions. It encapsulates
+    deployment context, resource details, and execution configuration.
 
-    TaskPayload == Lambda Function *event* object for core lambda
+    This object represents the complete state needed for distributed task execution
+    across the automation pipeline, ensuring consistency and traceability.
 
-    Attributes
-    ----------
-    client : str
-        The client to perform the task for. Usually stored in client-vars.yaml
-    task : str
-        The task to perform. Must be one of: package, upload, compile, plan, deploy, apply, release, teardown
-    force : bool
-        Force the task to be performed regardless of the state of the deployment
-    dry_run : bool
-        Perform a dry run of the task. Don't actually do anything.
-    identity : str
-        The identity of the user performing the task. Derived from DeploymentDetails
-    deployment_details : DeploymentDetailsClass
-        The deployment details such as Portfolio, App, Branch, Build
-    package : PackageDetailsClass
-        The package details. Usually stored in packages/**/package.zip
-    actions : ActionDetailsClass
-        The actions to perform. Usually stored in artefacts/**/{task}.actions
-    state : StateDetailsClass
-        The state of the task. Usually stored in artefacts/**/{task}.state
-    flow_control : str | None
-        The flow control of the task
-    type : str
-        The type of the task. Either "deployspec" or "pipeline" (automatically generated)
+    Attributes:
+        client: Client identifier for multi-tenant operations.
+        task: Operation type (package, deploy, release, etc.).
+        force: Force execution regardless of deployment state.
+        dry_run: Perform validation without executing operations.
+        identity: User identity for audit and permissions.
+        deployment_details: Deployment context (portfolio, app, branch, build).
+        package: Package artifact details and storage location.
+        actions: Task-specific actions and configuration.
+        state: Current task state and execution history.
+        flow_control: Workflow control directive (execute, success, failure).
+        type: Automation type (pipeline or deployspec).
 
-    Examples
-    --------
-    Create a basic TaskPayload::
-
+    Examples:
         >>> from core_framework.models.deployment_details import DeploymentDetails
         >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
         >>> payload = TaskPayload(
         ...     task="deploy",
         ...     deployment_details=dd
         ... )
-        >>> print(payload.task)  # deploy
+        >>> print(payload.task)
+        'deploy'
+        >>> print(payload.deployment_details.portfolio)
+        'ecommerce'
 
-    Create from command line arguments::
-
+        >>> # Command line integration
         >>> payload = TaskPayload.from_arguments(
         ...     task="deploy",
         ...     portfolio="ecommerce",
@@ -106,99 +108,107 @@ class TaskPayload(BaseModel):
         ...     build="1.0.0",
         ...     force=True
         ... )
-        >>> print(payload.force)  # True
+        >>> print(payload.force)
+        True
+
+        >>> # Lambda function usage
+        >>> def lambda_handler(event, context):
+        ...     payload = TaskPayload(**event)
+        ...     return process_task(payload)
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     client: str = Field(
         alias="Client",
-        description="The client to perform the task for. Usually stored in client-vars.yaml",
+        description="Client identifier for multi-tenant operations",
         default=V_EMPTY,
     )
     task: str = Field(
         ...,
         alias="Task",
-        description="The task to perform. Must be one of: package, upload, compile, plan, deploy, apply, release, teardown",
+        description="Operation type: package, upload, compile, plan, deploy, apply, release, teardown",
     )
     force: bool = Field(
         alias="Force",
-        description="Force the task to be performed regardless of the state of the deployment",
+        description="Force execution regardless of deployment state",
         default=False,
     )
     dry_run: bool = Field(
         alias="DryRun",
-        description="Perform a dry run of the task. Don't actually do anything.",
+        description="Perform validation without executing operations",
         default=False,
     )
     identity: str = Field(
         alias="Identity",
-        description="The identity of the user performing the task. Derived from DeploymentDetails",
+        description="User identity for audit and permissions",
         default=V_EMPTY,
     )
     deployment_details: DeploymentDetails = Field(
         ...,
         alias="DeploymentDetails",
-        description="The deployment details such as Portfolio, App, Branch, Build",
+        description="Deployment context including portfolio, app, branch, build",
     )
     package: PackageDetails = Field(
         alias="Package",
-        description="The package details. Usually stored in packages/**/package.zip",
+        description="Package artifact details and storage location",
         default_factory=lambda: PackageDetails(),
     )
     actions: ActionDetails = Field(
         alias="Actions",
-        description="The actions to perform. Usually stored in artefacts/**/{task}.actions",
+        description="Task-specific actions and configuration",
         default_factory=lambda: ActionDetails(),
     )
     state: StateDetails = Field(
         alias="State",
-        description="The state of the task. Usually stored in artefacts/**/{task}.state",
+        description="Current task state and execution history",
         default_factory=lambda: StateDetails(),
     )
     flow_control: str | None = Field(
         alias="FlowControl",
-        description="The flow control of the task",
+        description="Workflow control directive (execute, success, failure)",
         default=None,
     )
     type: str = Field(
         alias="Type",
-        description="The type of templates to use (pipeline/deployspec)",
+        description="Automation type (pipeline or deployspec)",
         default=V_PIPELINE,
     )
 
     @property
     def temp_dir(self) -> str:
-        """
-        Get the temporary directory for this task.
+        """Get the temporary directory for this task.
 
-        Returns
-        -------
-        str
-            The path to the temporary directory for this task.
+        Returns:
+            Path to the temporary directory for task operations.
+
+        Examples:
+            >>> payload = TaskPayload(task="deploy", deployment_details=dd)
+            >>> temp_path = payload.temp_dir
+            >>> print(temp_path)
+            '/tmp/core-automation'
         """
         return util.get_temp_dir()
 
     @field_validator("task")
     @classmethod
     def validate_task_value(cls, value: str) -> str:
-        """
-        Validate that the task is one of the allowed values.
+        """Validate that the task is one of the allowed values.
 
-        Parameters
-        ----------
-        value : str
-            The task value to validate
+        Args:
+            value: The task value to validate.
 
-        Returns
-        -------
-        str
-            The validated task value
+        Returns:
+            The validated task value.
 
-        Raises
-        ------
-        ValueError
-            If the task is not one of the valid values
+        Raises:
+            ValueError: If the task is not one of the valid values.
+
+        Examples:
+            >>> TaskPayload.validate_task_value("deploy")
+            'deploy'
+            >>> TaskPayload.validate_task_value("invalid")
+            ValueError: Task must be one of package, upload, compile, plan, deploy, apply, release, teardown, got 'invalid'
         """
         valid_tasks = get_valid_tasks()
         if value not in valid_tasks:
@@ -208,23 +218,24 @@ class TaskPayload(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_model_before(cls, values: Any) -> Any:
-        """
-        Validate and normalize values before model creation.
+        """Validate and normalize values before model creation.
 
-        Parameters
-        ----------
-        values : Any
-            The input values to validate
+        Ensures proper client propagation to nested objects and validates
+        flow control and type values against allowed options.
 
-        Returns
-        -------
-        Any
-            The validated and normalized values
+        Args:
+            values: The input values to validate.
 
-        Raises
-        ------
-        ValueError
-            If FlowControl or Type values are invalid
+        Returns:
+            The validated and normalized values.
+
+        Raises:
+            ValueError: If FlowControl or Type values are invalid.
+
+        Examples:
+            >>> values = {"task": "deploy", "client": "test"}
+            >>> validated = TaskPayload.validate_model_before(values)
+            >>> # Client is propagated to nested objects
         """
         if isinstance(values, dict):
             client = values.get("Client") or values.get("client") or util.get_client()
@@ -233,7 +244,6 @@ class TaskPayload(BaseModel):
 
             if isinstance(dd, dict):
                 dd = DeploymentDetails(**dd)
-                # If we supplied a client, then push it to deployment details
             elif not isinstance(dd, DeploymentDetails):
                 dd = DeploymentDetails(client=client)
 
@@ -260,16 +270,19 @@ class TaskPayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_task(self) -> Self:
-        """
-        Validate and finalize the task after model creation.
+        """Validate and finalize the task after model creation.
 
-        This method ensures that all required fields are properly set and
-        that keys are generated based on deployment details.
+        Ensures all required fields are properly set and generates keys
+        for package, actions, and state based on deployment details.
 
-        Returns
-        -------
-        Self
-            The validated TaskPayload instance
+        Returns:
+            The validated TaskPayload instance.
+
+        Examples:
+            >>> payload = TaskPayload(task="deploy", deployment_details=dd)
+            >>> # Identity and keys are automatically generated
+            >>> print(payload.identity)
+            'prn:portfolio:app:branch:build'
         """
         if not self.client:
             self.client = self.deployment_details.client
@@ -300,20 +313,24 @@ class TaskPayload(BaseModel):
         return self
 
     def set_task(self, task: str, reset_keys: bool = True) -> None:
-        """
-        Set the task for this TaskPayload.
+        """Set the task for this TaskPayload and optionally reset resource keys.
 
-        This method is used to set the task value and ensure it is valid.
+        Updates the task type and regenerates storage keys for package, actions,
+        and state objects based on the new task name.
 
-        Parameters
-        ----------
-        task : str
-            The task to set. Must be one of: package, upload, compile, plan, deploy, apply, release, teardown
+        Args:
+            task: The task to set (must be valid task value).
+            reset_keys: Whether to regenerate storage keys for resources.
 
-        Raises
-        ------
-        ValueError
-            If the task is not one of the valid values
+        Raises:
+            ValueError: If the task is not one of the valid values.
+
+        Examples:
+            >>> payload = TaskPayload(task="deploy", deployment_details=dd)
+            >>> payload.set_task("release")
+            >>> print(payload.task)
+            'release'
+            >>> # Keys are automatically updated for the new task
         """
         self.task = task
         if reset_keys:
@@ -326,83 +343,66 @@ class TaskPayload(BaseModel):
 
     @staticmethod
     def from_arguments(**kwargs: Any) -> "TaskPayload":
-        """
-        Create a TaskPayload object from the given keyword arguments.
+        """Create TaskPayload from command line arguments or flat parameters.
 
-        This method is used to create a TaskPayload from command line arguments.
-        Arguments are typically from the command line. "from_arguments" means
-        "from command line arguments".
+        Constructs a TaskPayload from flat keyword arguments, automatically
+        creating nested objects and handling parameter aliases. Supports both
+        CamelCase and snake_case parameter names for flexibility.
 
-        Command line arguments are the lowercase 'snake_case' version of the
-        TaskPayload, DeploymentDetails, PackageDetails, ActionDetails, and
-        StateDetails attributes.
+        Args:
+            **kwargs: Keyword arguments including:
+                - **Core Parameters**:
+                    - task/Task (str): Operation type (required)
+                    - client/Client (str): Client identifier
+                    - force/Force (bool): Force execution flag
+                    - dry_run/DryRun (bool): Dry run flag
+                    - identity/Identity (str): User identity
+                    - type/Type/automation_type (str): Automation type
+                    - flow_control/FlowControl (str): Flow control setting
+                - **DeploymentDetails Parameters**:
+                    - deployment_details/DeploymentDetails: Deployment context
+                    - portfolio/Portfolio (str): Portfolio name
+                    - app/App (str): Application name
+                    - build/Build (str): Build version
+                    - branch/Branch (str): Branch name
+                - **Additional Parameters**: Any parameters for nested objects
 
-        Since there is no object hierarchy in the command line arguments,
-        this method attempts to make sense of that by creating the appropriate
-        nested objects.
+        Returns:
+            A new TaskPayload instance with properly initialized nested objects.
 
-        Parameters
-        ----------
-        **kwargs : Any
-            Keyword arguments that can include:
+        Raises:
+            ValueError: If task parameter is missing or invalid.
+            ValidationError: If deployment_details parameter is invalid.
 
-            Core Parameters:
-                task/Task (str): The task to perform (required). Must be one of:
-                               package, upload, compile, plan, deploy, apply, release, teardown
-                client/Client (str): Client identifier
-                force/Force (bool): Force execution flag
-                dry_run/DryRun (bool): Dry run flag
-                identity/Identity (str): User identity
-                type/Type/automation_type (str): Automation type (pipeline/deployspec)
-                flow_control/FlowControl (str): Flow control setting
+        Examples:
+            >>> # From command line args
+            >>> payload = TaskPayload.from_arguments(
+            ...     task="deploy",
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     build="1.0.0",
+            ...     force=True
+            ... )
+            >>> print(payload.task)
+            'deploy'
 
-            DeploymentDetails Parameters:
-                deployment_details/DeploymentDetails (DeploymentDetails): Deployment context
-                portfolio/Portfolio (str): Portfolio name
-                app/App (str): Application name
-                build/Build (str): Build version
-                branch/Branch (str): Branch name
+            >>> # From mixed case parameters
+            >>> payload = TaskPayload.from_arguments(
+            ...     Task="release",
+            ...     Portfolio="ecommerce",
+            ...     dry_run=True
+            ... )
+            >>> print(payload.dry_run)
+            True
 
-            Package/Action/State Parameters:
-                Any parameters accepted by PackageDetails.from_arguments(),
-                ActionDetails.from_arguments(), or StateDetails.from_arguments()
-
-        Returns
-        -------
-        TaskPayload
-            A new TaskPayload instance with all nested objects properly initialized
-
-        Raises
-        ------
-        ValidationError
-            If the deployment_details parameter is not a DeploymentDetails instance
-            when provided, or if required parameters are missing
-        ValueError
-            If task parameter is missing, invalid, or not one of the valid task values
-
-        Examples
-        --------
-        Create from minimal arguments::
-
-            >>> payload = TaskPayload.from_arguments(**command_line_args)
-            >>> print(payload.task)  # deploy
-
-        Notes
-        -----
         Parameter Aliases:
-            This method accepts both CamelCase and snake_case parameter names for
-            compatibility (e.g., both 'dry_run' and 'DryRun' are accepted).
+            This method accepts both CamelCase and snake_case parameter names
+            for compatibility (e.g., both 'dry_run' and 'DryRun' are accepted).
 
         Nested Object Creation:
             If deployment_details is not provided, it will be created from the
             provided kwargs. Similarly, PackageDetails, ActionDetails, and
-            StateDetails objects are created with their respective from_arguments
-            methods.
-
-        Valid Tasks:
-            The task parameter must be one of: package, upload, compile, plan,
-            deploy, apply, release, teardown. Use get_valid_tasks() to get the
-            current list of valid task values.
+            StateDetails objects are created automatically.
         """
 
         def _get(key1: str, key2: str, defualt: Any, can_be_empty: bool = False) -> Any:
@@ -473,19 +473,27 @@ class TaskPayload(BaseModel):
         )
 
     def model_dump(self, **kwargs: Any) -> dict:
-        """
-        Override to exclude None values by default.
+        """Serialize model to dictionary with optimized defaults.
 
-        Parameters
-        ----------
-        **kwargs : Any
-            Keyword arguments passed to the parent model_dump method.
-            All standard Pydantic model_dump parameters are supported.
+        Overrides default behavior to exclude None values and use field aliases
+        by default for cleaner serialization output.
 
-        Returns
-        -------
-        dict
-            Dictionary representation of the model with None values excluded by default.
+        Args:
+            **kwargs: Keyword arguments for serialization options.
+                     All standard Pydantic model_dump parameters are supported.
+
+        Returns:
+            Dictionary representation with None values excluded and aliases used.
+
+        Examples:
+            >>> payload = TaskPayload(task="deploy", deployment_details=dd)
+            >>> data = payload.model_dump()
+            >>> # Uses aliases like "Task" instead of "task"
+            >>> print("Task" in data)
+            True
+            >>> # None values are excluded
+            >>> print("FlowControl" in data)
+            False  # Because flow_control is None
         """
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True

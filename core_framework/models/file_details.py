@@ -1,3 +1,63 @@
+"""FileDetails Model Module for Simple Cloud Kit Framework.
+
+This module defines the FileDetails base class, which provides comprehensive file management
+capabilities for both local filesystem and S3 storage modes. It serves as the foundation
+for file-based operations throughout the Simple Cloud Kit framework with unified storage
+interfaces and intelligent path handling.
+
+The FileDetails class handles file location, validation, and path generation across different
+storage backends, enabling seamless transitions between development (local) and production
+(S3) environments while maintaining consistent APIs and behavior.
+
+Key Features:
+    - **Unified Storage Interface**: Seamless support for local filesystem and S3 storage
+    - **Path Normalization**: Intelligent path handling across different operating systems
+    - **Validation Framework**: Comprehensive field validation with error handling
+    - **MIME Type Support**: Content type validation and management
+    - **Storage Mode Detection**: Automatic detection and configuration of storage modes
+
+Storage Modes:
+    - **Local Mode (V_LOCAL)**: Development workflow using local filesystem storage
+    - **Service Mode (V_SERVICE)**: Production deployment using AWS S3 bucket storage
+
+Examples:
+    >>> from core_framework.models import FileDetails
+
+    >>> # S3 storage configuration
+    >>> s3_file = FileDetails(
+    ...     client="acme-corp",
+    ...     bucket_name="deployment-artifacts",
+    ...     bucket_region="us-east-1",
+    ...     key="packages/web-app/v1.0.0/deployment.zip",
+    ...     mode="service",
+    ...     content_type="application/zip"
+    ... )
+
+    >>> # Local filesystem configuration
+    >>> local_file = FileDetails(
+    ...     client="dev-client",
+    ...     bucket_name="/var/deployments",
+    ...     key="packages/web-app/v1.0.0/deployment.zip",
+    ...     mode="local",
+    ...     content_type="application/zip"
+    ... )
+
+    >>> # Path operations
+    >>> print(s3_file.get_name())  # "deployment.zip"
+    >>> print(s3_file.get_full_path())  # "s3://deployment-artifacts/packages/web-app/v1.0.0/deployment.zip"
+    >>> print(local_file.get_full_path())  # "/var/data/var/deployments/packages/web-app/v1.0.0/deployment.zip"
+
+Related Classes:
+    - ActionDetails: Extends FileDetails for action specification files
+    - DeploymentDetails: Provides deployment context for path generation
+    - PackageDetails: Extends FileDetails for deployment package files
+
+Note:
+    FileDetails serves as the base class for all file-related operations in the framework.
+    It provides consistent behavior across storage backends and forms the foundation for
+    more specialized file management classes.
+"""
+
 from typing import Any
 import os
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
@@ -12,162 +72,149 @@ from core_framework.constants import (
 
 
 class FileDetails(BaseModel):
-    """
-    FileDetails is a model that contains file information within the context of the core framework.
+    """Base model for file information with support for local filesystem and S3 storage.
 
-    This base class provides common functionality for managing files in both local filesystem
-    and S3 storage modes. It handles path normalization, validation, and provides utilities
-    for working with file paths across different storage backends.
+    FileDetails provides a comprehensive abstraction for file management across different
+    storage backends. It handles path normalization, validation, and provides utilities
+    for working with files in both development and production environments.
 
-    Attributes
-    ----------
-    client : str
-        The client identifier for the deployment.
-    bucket_name : str
-        The S3 bucket name or root directory path where files are stored.
-        For S3 mode: bucket name (e.g., "my-deployment-bucket")
-        For local mode: root directory path (e.g., "/local/storage/root")
-    bucket_region : str
-        The region of the S3 bucket where files are stored (S3 mode only).
-    key : str
-        The full path to the file relative to bucket_name.
-        Example: "artefacts/ecommerce/web-app/main/1.0.0/deploy.state"
-    mode : str
-        The storage mode. Either "local" for local filesystem or "service" for S3 storage.
-        Defaults to "local" if util.is_local_mode() else "service".
-    version_id : str | None
-        The version ID of the file (S3 only). Used for S3 object versioning.
-    content_type : str | None
-        The MIME type of the file. Defaults to "application/zip".
+    The class enforces proper validation of storage modes, content types, and path formats
+    while providing intelligent defaults and flexible configuration options.
 
-    Properties
-    ----------
-    data_path : str
-        The storage volume path for the application.
-    temp_dir : str
-        The temporary directory to use for processing files.
+    Attributes:
+        client (str): Client identifier for multi-tenant deployments and access control.
+                     Defaults to framework client configuration if not provided.
+        bucket_name (str): S3 bucket name for cloud storage, or root directory path for local mode.
+                          For S3: AWS bucket name (e.g., "acme-deployment-bucket")
+                          For local: Base directory path (e.g., "/var/deployments")
+        bucket_region (str): AWS region for S3 bucket location. Required for S3 operations,
+                           ignored in local mode.
+        key (str): File path relative to bucket_name. Normalized based on storage mode.
+                  Example: "packages/web-app/v1.0.0/deployment.zip"
+        mode (str): Storage mode - V_LOCAL for filesystem or V_SERVICE for S3 storage.
+                   Automatically determined if not provided.
+        version_id (str, optional): S3 object version identifier for versioned storage.
+                                  Only used in S3 mode for object versioning.
+        content_type (str): MIME type of the file. Defaults to "application/octet-stream".
+                          Validated against supported MIME types.
 
-    Methods
-    -------
-    set_key(key)
-        Set the key path for the file with validation and normalization.
-    get_name()
-        Get the filename from the key path.
-    get_full_path()
-        Get the full path to the file including storage prefix.
-    is_local_mode()
-        Check if the file is in local storage mode.
-    is_service_mode()
-        Check if the file is in service (S3) storage mode.
-    model_dump(**kwargs)
-        Override to exclude None values by default in serialization.
+    Properties:
+        data_path (str): Base storage volume path from framework configuration.
+        temp_dir (str): Temporary directory path for file processing operations.
 
-    Class Methods
-    --------------
-    validate_key(value)
-        Validate and normalize the key path based on storage mode.
-    validate_mode(value)
-        Validate that mode is either 'local' or 'service'.
-    validate_content_type(value)
-        Validate that content_type is a valid MIME type.
-    validate_before(values)
-        Validate and populate missing fields before model creation.
-
-    Examples
-    --------
-    S3 storage mode::
-
-        >>> file_details = FileDetails(
-        ...     client="my-client",
-        ...     bucket_name="deployment-bucket",
+    Examples:
+        >>> # Complete S3 file configuration
+        >>> s3_file = FileDetails(
+        ...     client="acme-corp",
+        ...     bucket_name="prod-deployments",
         ...     bucket_region="us-east-1",
-        ...     key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
-        ...     mode="service"
+        ...     key="artifacts/web-frontend/v2.1.0/bundle.zip",
+        ...     mode="service",
+        ...     content_type="application/zip",
+        ...     version_id="abc123def456"
         ... )
 
-    Local storage mode::
+        >>> # Local development file configuration
+        >>> local_file = FileDetails(
+        ...     client="dev-client",
+        ...     bucket_name="/home/dev/projects",
+        ...     key="artifacts/web-frontend/v2.1.0/bundle.zip",
+        ...     mode="local",
+        ...     content_type="application/zip"
+        ... )
 
+        >>> # Minimal configuration with intelligent defaults
         >>> file_details = FileDetails(
-        ...     client="my-client",
-        ...     bucket_name="/var/deployments",
-        ...     key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
-        ...     mode="local"
+        ...     key="config/application.yaml"
+        ...     # client, bucket_name, bucket_region, mode auto-populated
         ... )
 
-    Working with file paths::
+    Validation Rules:
+        - **Mode**: Must be either "local" or "service"
+        - **Content Type**: Must be a supported MIME type from framework configuration
+        - **Key Path**: Automatically normalized for storage mode compatibility
+        - **Required Fields**: Client, bucket_name, and key are required for operations
 
-        >>> file_details = FileDetails(
-        ...     bucket_name="my-bucket",
-        ...     key="packages/app/main/1.0.0/package.zip"
-        ... )
-        >>> print(file_details.get_name())  # package.zip
-        >>> print(file_details.get_full_path())  # s3://my-bucket/packages/app/main/1.0.0/package.zip
+    Storage Path Examples:
+        **S3 Storage**:
+        - bucket_name: "acme-prod-deployments"
+        - key: "packages/web-app/v1.0.0/app.zip"
+        - Full path: "s3://acme-prod-deployments/packages/web-app/v1.0.0/app.zip"
+
+        **Local Storage**:
+        - bucket_name: "/var/deployments"
+        - key: "packages/web-app/v1.0.0/app.zip"
+        - Full path: "/var/data/var/deployments/packages/web-app/v1.0.0/app.zip"
+
+    Content Type Support:
+        Common supported MIME types include:
+        - "application/zip": ZIP archives and compressed packages
+        - "application/json": JSON configuration files
+        - "application/yaml": YAML configuration files
+        - "application/x-yaml": Alternative YAML MIME type
+        - "text/plain": Plain text files
+        - "application/octet-stream": Binary files (default)
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     client: str = Field(
         alias="Client",
-        description="The client identifier for the deployment",
+        description="Client identifier for multi-tenant deployments and access control",
         default=V_EMPTY,
     )
 
     bucket_name: str = Field(
         alias="BucketName",
-        description="The S3 bucket name or root directory path where packages are stored",
+        description="S3 bucket name or root directory path where files are stored",
         default=V_EMPTY,
     )
 
     bucket_region: str = Field(
         alias="BucketRegion",
-        description="The region of the bucket where packages are stored (S3 mode only)",
+        description="AWS region for S3 bucket location (S3 mode only)",
         default=V_EMPTY,
     )
 
     key: str = Field(
         alias="Key",
-        description="The full path to the package file relative to bucket_name",
+        description="File path relative to bucket_name, normalized for storage mode",
         default=V_EMPTY,
     )
 
     @field_validator("key")
     @classmethod
     def validate_key(cls, value: str) -> str:
-        """
-        Validate and normalize the key path based on storage mode.
+        """Validate and normalize the key path for consistent storage operations.
 
-        Removes leading slashes and prepares the path for normalization.
-        Path separators are normalized later in the model validator since
-        the mode field is not accessible during field validation.
+        Removes leading slashes and prepares the path for storage mode normalization.
+        This ensures consistent path handling across different input sources and
+        storage backends.
 
-        Parameters
-        ----------
-        value : str
-            The key path to validate.
+        Args:
+            value (str): The key path to validate and normalize.
 
-        Returns
-        -------
-        str
-            The validated and normalized key path.
+        Returns:
+            str: The validated and normalized key path with leading slashes removed.
 
-        Notes
-        -----
-        - Removes leading forward slashes and backslashes for consistency
-        - Empty values are preserved and returned as-is
-        - Full path separator normalization occurs in the model validator
-
-        Examples
-        --------
-        ::
-
+        Examples:
             >>> FileDetails.validate_key("/path/to/file.txt")
-            'path/to/file.txt'
+            "path/to/file.txt"
 
-            >>> FileDetails.validate_key("\\\\path\\\\to\\\\file.txt")
-            'path\\\\to\\\\file.txt'
+            >>> FileDetails.validate_key("\\\\windows\\\\path\\\\file.txt")
+            "windows\\\\path\\\\file.txt"
+
+            >>> FileDetails.validate_key("already/normalized/path.txt")
+            "already/normalized/path.txt"
 
             >>> FileDetails.validate_key("")
-            ''
+            ""
+
+        Notes:
+            - Leading forward slashes and backslashes are removed for consistency
+            - Empty values are preserved and returned as-is
+            - Path separator normalization occurs in the model validator where mode is accessible
+            - This validator focuses on basic cleanup while preserving the path structure
         """
         if not value:
             return value
@@ -183,66 +230,74 @@ class FileDetails(BaseModel):
         return value
 
     def set_key(self, key: str) -> None:
-        """
-        Set the key path for the file with validation and normalization.
+        """Set the key path with validation and normalization.
 
-        This method allows setting the key path after model initialization,
-        ensuring it is validated and normalized according to the current storage mode.
+        Updates the key field while ensuring proper validation and normalization.
+        This method allows dynamic key updates after model initialization while
+        maintaining data integrity.
 
-        Parameters
-        ----------
-        key : str
-            The new key path to set.
+        Args:
+            key (str): The new key path to set. Will be validated and normalized.
 
-        Examples
-        --------
-        ::
-
-            >>> file_details = FileDetails(bucket_name="test-bucket", mode="local")
+        Examples:
+            >>> file_details = FileDetails(
+            ...     bucket_name="test-bucket",
+            ...     mode="local"
+            ... )
             >>> file_details.set_key("packages/app/main/package.zip")
-            >>> print(file_details.key)  # packages/app/main/package.zip
+            >>> print(file_details.key)
+            "packages/app/main/package.zip"
+
+            >>> # Leading slashes are automatically removed
+            >>> file_details.set_key("/artifacts/config.yaml")
+            >>> print(file_details.key)
+            "artifacts/config.yaml"
+
+        Side Effects:
+            Updates the instance's key attribute in-place after validation.
         """
         self.key = self.validate_key(key)
 
     mode: str = Field(
         alias="Mode",
-        description="The storage mode: 'local' for filesystem or 'service' for S3",
+        description="Storage mode: 'local' for filesystem or 'service' for S3",
         default=V_EMPTY,
     )
 
     @field_validator("mode")
     @classmethod
     def validate_mode(cls, value: str) -> str:
-        """
-        Validate that mode is either 'local' or 'service'.
+        """Validate that mode is a supported storage mode.
 
-        Parameters
-        ----------
-        value : str
-            The mode value to validate.
+        Ensures the storage mode is one of the supported values defined in the
+        framework constants. This validation prevents invalid storage configurations
+        and ensures consistent behavior.
 
-        Returns
-        -------
-        str
-            The validated mode value.
+        Args:
+            value (str): The mode value to validate.
 
-        Raises
-        ------
-        ValueError
-            If mode is not 'local' or 'service'.
+        Returns:
+            str: The validated mode value.
 
-        Examples
-        --------
-        ::
+        Raises:
+            ValueError: If mode is not 'local' or 'service'.
 
+        Examples:
             >>> FileDetails.validate_mode("local")
-            'local'
+            "local"
 
             >>> FileDetails.validate_mode("service")
-            'service'
+            "service"
 
-            >>> FileDetails.validate_mode("invalid")
-            ValueError: Mode must be 'local' or 'service', got 'invalid'
+            >>> try:
+            ...     FileDetails.validate_mode("invalid")
+            ... except ValueError as e:
+            ...     print(e)
+            "Mode must be 'local' or 'service', got 'invalid'"
+
+        Supported Modes:
+            - **"local"**: Local filesystem storage for development workflows
+            - **"service"**: AWS S3 storage for production deployments
         """
         if value not in [V_LOCAL, V_SERVICE]:
             raise ValueError(f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'")
@@ -250,53 +305,61 @@ class FileDetails(BaseModel):
 
     version_id: str | None = Field(
         alias="VersionId",
-        description="The version ID of the package file (S3 only)",
+        description="S3 object version identifier for versioned storage (S3 only)",
         default=None,
     )
 
     content_type: str | None = Field(
         alias="ContentType",
-        description="The MIME type of the package file",
+        description="MIME type of the file, validated against supported types",
         default="application/octet-stream",
     )
 
     @field_validator("content_type")
     @classmethod
     def validate_content_type(cls, value: str) -> str:
-        """
-        Validate that content_type is a valid MIME type.
+        """Validate that content_type is a supported MIME type.
 
-        Checks against the list of supported MIME types defined in the framework.
-        Common supported types include application/zip, application/json,
-        application/yaml, and text/plain.
+        Checks the content type against the framework's list of supported MIME types
+        to ensure compatibility with storage operations and content handling systems.
 
-        Parameters
-        ----------
-        value : str
-            The content_type value to validate.
+        Args:
+            value (str): The content_type value to validate.
 
-        Returns
-        -------
-        str
-            The validated content_type value.
+        Returns:
+            str: The validated content_type value.
 
-        Raises
-        ------
-        ValueError
-            If content_type is not a supported MIME type.
+        Raises:
+            ValueError: If content_type is not in the list of supported MIME types.
 
-        Examples
-        --------
-        ::
-
+        Examples:
             >>> FileDetails.validate_content_type("application/zip")
-            'application/zip'
+            "application/zip"
 
             >>> FileDetails.validate_content_type("application/json")
-            'application/json'
+            "application/json"
 
-            >>> FileDetails.validate_content_type("invalid/type")
-            ValueError: ContentType must be one of [...], got: invalid/type
+            >>> FileDetails.validate_content_type("application/yaml")
+            "application/yaml"
+
+            >>> try:
+            ...     FileDetails.validate_content_type("invalid/type")
+            ... except ValueError as e:
+            ...     print(e)
+            "ContentType must be one of [...], got: invalid/type"
+
+        Supported MIME Types:
+            Common supported types include:
+            - application/zip: ZIP archives and compressed packages
+            - application/json: JSON configuration files
+            - application/yaml: YAML configuration files
+            - application/x-yaml: Alternative YAML MIME type
+            - text/plain: Plain text files
+            - application/octet-stream: Binary files (default)
+
+        Notes:
+            The complete list of supported MIME types is retrieved from the framework
+            configuration and may vary based on deployment environment and extensions.
         """
         allowed_types = util.get_valid_mimetypes()
         if value not in allowed_types:
@@ -306,48 +369,53 @@ class FileDetails(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_before(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """
-        Validate and populate missing fields before model creation.
+        """Validate and populate missing fields with intelligent defaults.
 
-        This validator ensures that required fields are properly populated by applying
-        intelligent defaults when values are missing. It handles both CamelCase and
-        snake_case parameter names for compatibility.
+        Performs pre-validation processing to ensure all required fields are populated
+        with sensible defaults from the framework configuration. Handles both snake_case
+        and PascalCase field names for maximum compatibility.
 
-        Parameters
-        ----------
-        values : dict[str, Any]
-            The input values for model creation. If not a dict, values are returned unchanged.
+        Args:
+            values (dict[str, Any]): Raw field values for model creation. If not a dict,
+                                   values are returned unchanged.
 
-        Returns
-        -------
-        dict[str, Any]
-            The validated and potentially modified values with populated defaults.
+        Returns:
+            dict[str, Any]: Processed field values with intelligent defaults applied:
+                          - client: From framework configuration if not provided
+                          - bucket_region: From framework configuration if not provided
+                          - bucket_name: Generated from client and region if not provided
+                          - mode: Determined from framework settings if not provided
 
-        Notes
-        -----
-        Default Population Logic:
-            - client: populated with util.get_client() if missing
-            - bucket_region: populated with util.get_bucket_region() if missing
-            - bucket_name: populated with util.get_bucket_name(client, region) if missing
-            - mode: populated with 'local' or 'service' based on util.is_local_mode() if missing
-
-        Parameter Aliases:
-            Accepts both CamelCase and snake_case versions of parameter names:
-            - Client/client, BucketRegion/bucket_region, BucketName/bucket_name, Mode/mode
-
-        Examples
-        --------
-        ::
-
+        Examples:
             >>> # Minimal input with intelligent defaults
             >>> values = {"key": "packages/app/package.zip"}
             >>> result = FileDetails.validate_before(values)
-            >>> # result will include populated client, bucket_region, bucket_name, mode
+            >>> # Result includes populated client, bucket_region, bucket_name, mode
 
-            >>> # Mixed case parameter names
-            >>> values = {"Client": "test", "bucket_region": "us-east-1"}
+            >>> # Mixed case parameter compatibility
+            >>> values = {
+            ...     "Client": "test-client",
+            ...     "bucket_region": "us-west-2",
+            ...     "Key": "artifacts/config.yaml"
+            ... }
             >>> result = FileDetails.validate_before(values)
-            >>> # Normalizes to consistent parameter names
+            >>> # Normalizes parameter names and applies remaining defaults
+
+        Default Population Logic:
+            **Client**: Retrieved from framework configuration (util.get_client())
+            **Bucket Region**: Retrieved from framework configuration (util.get_bucket_region())
+            **Bucket Name**: Generated using client and region (util.get_bucket_name())
+            **Mode**: Determined by framework deployment mode (local vs service)
+
+        Parameter Alias Handling:
+            Accepts both naming conventions:
+            - Client/client, BucketRegion/bucket_region, BucketName/bucket_name, Mode/mode
+            - PascalCase parameters take precedence when both are provided
+            - snake_case fallback ensures compatibility with internal usage
+
+        Side Effects:
+            Modifies the provided values dictionary by adding missing defaults
+            and normalizing field names to snake_case for internal consistency.
         """
         if isinstance(values, dict):
             # Set client if not provided
@@ -377,78 +445,84 @@ class FileDetails(BaseModel):
 
     @property
     def data_path(self) -> str:
-        """
-        Get the storage volume path for the application.
+        """Get the base storage volume path for file operations.
 
-        Returns the base storage path used by the framework for file operations.
-        This path represents the mount point or prefix where files are stored.
+        Returns the storage volume path configured in the framework, which serves
+        as the mount point or prefix for all file storage operations.
 
-        Returns
-        -------
-        str
-            The storage volume path for the application.
+        Returns:
+            str: The base storage volume path from framework configuration.
 
-        Examples
-        --------
-        ::
-
+        Examples:
             >>> file_details = FileDetails(mode="local")
-            >>> print(file_details.data_path)  # /var/data (or configured volume path)
+            >>> print(file_details.data_path)
+            "/var/data"  # or configured volume path
 
             >>> file_details = FileDetails(mode="service")
-            >>> print(file_details.data_path)  # s3:// (or configured service prefix)
+            >>> print(file_details.data_path)
+            "/var/data"  # same base path, mode affects full_path generation
         """
         return util.get_storage_volume()
 
     @property
     def temp_dir(self) -> str:
-        """
-        Get the temporary directory for processing files.
+        """Get the temporary directory for file processing operations.
 
-        Returns the temporary directory path configured in the framework,
-        typically used for intermediate file processing operations.
+        Returns the temporary directory path configured in the framework, typically
+        used for intermediate file processing, extraction, and transformation operations.
 
-        Returns
-        -------
-        str
-            The temporary directory path.
+        Returns:
+            str: The temporary directory path from framework configuration.
 
-        Examples
-        --------
-        ::
-
+        Examples:
             >>> file_details = FileDetails()
-            >>> print(file_details.temp_dir)  # /tmp (or configured temp directory)
+            >>> print(file_details.temp_dir)
+            "/tmp"  # or configured temporary directory
+
+            >>> # Usage in file processing
+            >>> temp_path = os.path.join(file_details.temp_dir, "processing")
+            >>> os.makedirs(temp_path, exist_ok=True)
         """
         return util.get_temp_dir()
 
     def get_name(self) -> str:
-        """
-        Get the filename from the key path.
+        """Extract the filename from the key path.
 
-        Extracts the filename from the full key path, handling both forward slashes
-        and OS-specific path separators. Returns empty string if no key is set.
+        Parses the key path to extract just the filename portion, handling both
+        forward slashes and OS-specific path separators. Returns empty string
+        if no key is set.
 
-        Returns
-        -------
-        str
-            The filename from the key path, or empty string if no key is set.
+        Returns:
+            str: The filename from the key path, or empty string if no key is set.
 
-        Examples
-        --------
-        ::
+        Examples:
+            >>> file_details = FileDetails(
+            ...     key="artifacts/ecommerce/web-app/v1.0.0/deployment.zip"
+            ... )
+            >>> print(file_details.get_name())
+            "deployment.zip"
 
-            >>> file_details = FileDetails(key="artefacts/ecommerce/web/main/1.0.0/deploy.state")
-            >>> print(file_details.get_name())  # deploy.state
+            >>> # Windows-style paths
+            >>> file_details = FileDetails(
+            ...     key="packages\\\\app\\\\release.zip"
+            ... )
+            >>> print(file_details.get_name())
+            "release.zip"
 
-            >>> file_details = FileDetails(key="packages\\\\app\\\\package.zip")  # Windows path
-            >>> print(file_details.get_name())  # package.zip
+            >>> # Single filename without path
+            >>> file_details = FileDetails(key="config.yaml")
+            >>> print(file_details.get_name())
+            "config.yaml"
 
+            >>> # Empty key
             >>> file_details = FileDetails(key="")
-            >>> print(file_details.get_name())  # ""
+            >>> print(file_details.get_name())
+            ""
 
-            >>> file_details = FileDetails(key="single-file.txt")
-            >>> print(file_details.get_name())  # single-file.txt
+        Path Separator Handling:
+            - Handles both forward slashes (/) and OS-specific separators
+            - Works correctly on Windows, Linux, and macOS systems
+            - Gracefully handles mixed separator usage in paths
         """
         if not self.key:
             return ""
@@ -463,45 +537,58 @@ class FileDetails(BaseModel):
             return self.key
 
     def get_full_path(self) -> str:
-        """
-        Get the full path to the file including storage prefix.
+        """Generate the complete path to the file including storage prefix.
 
-        Constructs the complete path to the file by combining the storage volume,
-        bucket name, and key path. The format depends on the storage mode.
+        Constructs the full path by combining the storage volume, bucket name,
+        and key path according to the storage mode. The format varies between
+        local filesystem and S3 storage modes.
 
-        Returns
-        -------
-        str
-            The full path to the file with appropriate storage prefix.
-            Returns empty string if bucket_name or key is not set.
+        Returns:
+            str: The complete path to the file with appropriate storage prefix.
+                Returns empty string if bucket_name or key is not set.
 
-        Examples
-        --------
-        Local mode::
-
-            >>> file_details = FileDetails(
-            ...     bucket_name="my-bucket",
-            ...     key="packages/app/package.zip",
+        Examples:
+            >>> # Local filesystem mode
+            >>> local_file = FileDetails(
+            ...     bucket_name="deployments",
+            ...     key="packages/web-app/v1.0.0/app.zip",
             ...     mode="local"
             ... )
-            >>> print(file_details.get_full_path())
-            # /var/data/my-bucket/packages/app/package.zip (Unix)
-            # C:\\var\\data\\my-bucket\\packages\\app\\package.zip (Windows)
+            >>> print(local_file.get_full_path())
+            "/var/data/deployments/packages/web-app/v1.0.0/app.zip"  # Unix
+            "C:\\var\\data\\deployments\\packages\\web-app\\v1.0.0\\app.zip"  # Windows
 
-        Service mode::
-
-            >>> file_details = FileDetails(
-            ...     bucket_name="my-bucket",
-            ...     key="packages/app/package.zip",
+            >>> # S3 service mode
+            >>> s3_file = FileDetails(
+            ...     bucket_name="prod-deployments",
+            ...     key="packages/web-app/v1.0.0/app.zip",
             ...     mode="service"
             ... )
-            >>> print(file_details.get_full_path())
-            # s3://my-bucket/packages/app/package.zip
+            >>> print(s3_file.get_full_path())
+            "s3://prod-deployments/packages/web-app/v1.0.0/app.zip"
 
-        Missing required fields::
+            >>> # Missing required fields
+            >>> incomplete_file = FileDetails(bucket_name="", key="test.txt")
+            >>> print(incomplete_file.get_full_path())
+            ""
 
-            >>> file_details = FileDetails(bucket_name="", key="")
-            >>> print(file_details.get_full_path())  # ""
+        Path Format by Mode:
+            **Local Mode**: {data_path}{sep}{bucket_name}{sep}{key}
+            - Uses OS-specific path separators
+            - Includes storage volume prefix
+            - Results in absolute filesystem path
+
+            **Service Mode**: s3://{bucket_name}/{key}
+            - Always uses forward slashes
+            - Standard S3 URI format
+            - Compatible with AWS CLI and SDKs
+
+        Usage:
+            The full path is suitable for:
+            - Direct file system operations (local mode)
+            - AWS S3 API calls (service mode)
+            - Logging and debugging output
+            - Configuration file references
         """
         if not self.bucket_name or not self.key:
             return ""
@@ -514,92 +601,98 @@ class FileDetails(BaseModel):
             return f"s3://{self.bucket_name}/{self.key}"
 
     def is_local_mode(self) -> bool:
-        """
-        Check if the file is in local storage mode.
+        """Check if the file is configured for local filesystem storage.
 
-        Returns
-        -------
-        bool
-            True if mode is local, False if mode is service.
+        Returns:
+            bool: True if mode is local, False if mode is service.
 
-        Examples
-        --------
-        ::
+        Examples:
+            >>> local_file = FileDetails(mode="local")
+            >>> print(local_file.is_local_mode())
+            True
 
-            >>> file_details = FileDetails(mode="local")
-            >>> print(file_details.is_local_mode())  # True
+            >>> s3_file = FileDetails(mode="service")
+            >>> print(s3_file.is_local_mode())
+            False
 
-            >>> file_details = FileDetails(mode="service")
-            >>> print(file_details.is_local_mode())  # False
+            >>> # Conditional file operations
+            >>> if file_details.is_local_mode():
+            ...     with open(file_details.get_full_path(), 'r') as f:
+            ...         content = f.read()
+            ... else:
+            ...     # Use S3 client
+            ...     content = s3_client.get_object(...)['Body'].read()
         """
         return self.mode == V_LOCAL
 
     def is_service_mode(self) -> bool:
-        """
-        Check if the file is in service (S3) storage mode.
+        """Check if the file is configured for S3 service storage.
 
-        Returns
-        -------
-        bool
-            True if mode is service, False if mode is local.
+        Returns:
+            bool: True if mode is service, False if mode is local.
 
-        Examples
-        --------
-        ::
+        Examples:
+            >>> s3_file = FileDetails(mode="service")
+            >>> print(s3_file.is_service_mode())
+            True
 
-            >>> file_details = FileDetails(mode="service")
-            >>> print(file_details.is_service_mode())  # True
+            >>> local_file = FileDetails(mode="local")
+            >>> print(s3_file.is_service_mode())
+            False
 
-            >>> file_details = FileDetails(mode="local")
-            >>> print(file_details.is_service_mode())  # False
+            >>> # Mode-specific operations
+            >>> if file_details.is_service_mode():
+            ...     # Configure S3 client
+            ...     s3_client = boto3.client('s3', region_name=file_details.bucket_region)
+            ... else:
+            ...     # Use local file operations
+            ...     os.makedirs(os.path.dirname(file_details.get_full_path()), exist_ok=True)
         """
         return self.mode == V_SERVICE
 
     def model_dump(self, **kwargs) -> dict:
-        """
-        Override to exclude None values by default in model serialization.
+        """Serialize model to dictionary with optimized defaults.
 
-        Provides convenient defaults for model serialization by excluding None values
-        and using field aliases by default, reducing clutter in serialized output.
+        Overrides the default Pydantic serialization to provide cleaner output
+        by excluding None values and using field aliases by default. This reduces
+        clutter in API responses and configuration files.
 
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments passed to the parent model_dump method.
-            All standard Pydantic model_dump parameters are supported.
+        Args:
+            **kwargs: Keyword arguments passed to parent model_dump method.
+                     All standard Pydantic serialization options are supported:
+                     - exclude_none (bool): Exclude None values (default: True)
+                     - by_alias (bool): Use field aliases (default: True)
+                     - include (set): Specific fields to include
+                     - exclude (set): Specific fields to exclude
 
-            Common parameters:
-                exclude_none (bool): Exclude fields with None values. Defaults to True.
-                by_alias (bool): Use field aliases in output. Defaults to True.
-                include (set): Fields to include in output.
-                exclude (set): Fields to exclude from output.
+        Returns:
+            dict: Dictionary representation with None values excluded by default.
 
-        Returns
-        -------
-        dict
-            Dictionary representation of the model with None values excluded by default.
-
-        Examples
-        --------
-        ::
-
+        Examples:
             >>> file_details = FileDetails(
-            ...     client="test",
-            ...     bucket_name="bucket",
-            ...     key="file.txt",
-            ...     version_id=None
+            ...     client="test-client",
+            ...     bucket_name="test-bucket",
+            ...     key="test-file.txt",
+            ...     version_id=None  # This will be excluded
             ... )
             >>> result = file_details.model_dump()
-            >>> # version_id is excluded because it's None
-            >>> print("version_id" in result)  # False
+            >>> print("version_id" in result)
+            False  # Excluded because it's None
 
             >>> # Include None values explicitly
             >>> result = file_details.model_dump(exclude_none=False)
-            >>> print("version_id" in result)  # True
+            >>> print("version_id" in result)
+            True  # Now included with null value
 
             >>> # Use original field names instead of aliases
             >>> result = file_details.model_dump(by_alias=False)
-            >>> print("client" in result)  # True (vs "Client" with aliases)
+            >>> print("client" in result)
+            True  # snake_case instead of "Client"
+
+        Default Behavior:
+            - **exclude_none=True**: Removes clutter from serialized output
+            - **by_alias=True**: Uses PascalCase field names for API compatibility
+            - Maintains compatibility with external systems expecting specific formats
         """
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True

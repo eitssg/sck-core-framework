@@ -1,43 +1,67 @@
-"""
-ActionDetails Model Module
-===========================
+"""ActionDetails Model Module for Simple Cloud Kit Framework.
 
 This module defines the ActionDetails class, which serves as a file descriptor for action files
 stored in either S3 buckets or local filesystem locations. It provides a unified interface for
-accessing action specification files regardless of storage backend.
+accessing action specification files regardless of storage backend, enabling flexible deployment
+automation across different environments.
 
-Classes
--------
-ActionDetails : BaseModel
-    File descriptor for action files with S3 and local filesystem support
+The ActionDetails class extends FileDetails to provide specialized functionality for action files,
+including intelligent key generation, deployment context integration, and support for both
+cloud and local development workflows.
 
-Examples
---------
-Creating an ActionDetails instance for S3 storage::
+Key Features:
+    - **Unified Storage Interface**: Seamless support for S3 and local filesystem storage
+    - **Intelligent Key Generation**: Automatic key construction from deployment context
+    - **Flexible Factory Methods**: Multiple ways to create instances from various parameter sources
+    - **Deployment Integration**: Native integration with deployment details and contexts
+    - **Content Type Detection**: Automatic MIME type handling for YAML and JSON action files
 
-    >>> details = ActionDetails(
-    ...     client="my-client",
-    ...     bucket_name="core-bucket",
-    ...     bucket_region="us-east-1",
-    ...     key="artefacts/deploy.actions"
+Storage Modes:
+    - **S3 Mode (V_SERVICE)**: Production deployment using AWS S3 bucket storage
+    - **Local Mode (V_LOCAL)**: Development workflow using local filesystem storage
+
+Examples:
+    >>> from core_framework.models import ActionDetails, DeploymentDetails
+
+    >>> # Create from task name (most common pattern)
+    >>> details = ActionDetails.from_arguments(
+    ...     task="deploy",
+    ...     client="acme",
+    ...     bucket_name="acme-deployments",
+    ...     bucket_region="us-east-1"
+    ... )
+    >>> print(details.key)  # "acme/artefacts/deploy.actions"
+
+    >>> # Create with explicit key
+    >>> details = ActionDetails.from_arguments(
+    ...     client="acme",
+    ...     key="custom/deployment/special.actions",
+    ...     bucket_name="acme-deployments"
     ... )
 
-Creating an ActionDetails instance for local storage::
-
-    >>> details = ActionDetails(
-    ...     client="my-client",
-    ...     bucket_name="/var/data/core",
-    ...     key="artefacts/deploy.actions"
-    ...     mode=local
+    >>> # Create for local development
+    >>> details = ActionDetails.from_arguments(
+    ...     task="test",
+    ...     client="dev-client",
+    ...     bucket_name="/var/local/deployments",
+    ...     mode="local"
     ... )
 
-Note
-----
-The storage mode (S3 vs local) is determined by the application's configuration,
-not by the ActionDetails instance itself.
+    >>> # Set key from deployment context
+    >>> deployment_details = DeploymentDetails(client="acme", environment="prod")
+    >>> details = ActionDetails(client="acme", bucket_name="acme-bucket")
+    >>> details.set_key(deployment_details, "rollback.actions")
+
+Related Classes:
+    - FileDetails: Base class providing common file descriptor functionality
+    - DeploymentDetails: Deployment context for key generation and environment configuration
+    - ActionSpec: Action specification content loaded from ActionDetails locations
+
+Note:
+    The storage mode (S3 vs local) is typically determined by the application's configuration
+    and environment settings, not by the ActionDetails instance itself. Use the mode parameter
+    to override default behavior when needed.
 """
-
-"""Defines the class ActionDetails that provide information about where ActionSpec files are stored in S3 (or local filesystem)."""
 
 from pydantic import model_validator
 
@@ -48,52 +72,119 @@ from .file_details import FileDetails
 
 
 class ActionDetails(FileDetails):
-    """
-    ActionDetails: The details of the action location in S3 or local filesystem.
+    """File descriptor for action specification files with S3 and local filesystem support.
 
-    This class serves as a file descriptor for action files, providing a unified interface
-    for accessing action specification files regardless of storage backend (S3 or local filesystem).
+    ActionDetails serves as a comprehensive file descriptor for action files, providing a unified
+    interface for accessing action specification files regardless of storage backend. It extends
+    FileDetails with specialized functionality for deployment automation workflows.
 
-    Attributes
-    ----------
-    client : str
-        The client to use for the action
-    bucket_name : str
-        The name of the S3 bucket where the action file is stored, or base directory path for local mode
-    bucket_region : str
-        The region of the S3 bucket where the action file is stored (unused in local mode)
-    key : str
-        The key prefix where the action file is stored in s3, or relative path for local mode. Usually in the artefacts folder
-    version_id : str | None
-        The version of the action file (S3 only)
-    content_type : str
-        The content type of the action file such as 'application/json' or 'application/x-yaml'
-    mode : str
-        The storage mode - either V_LOCAL for local filesystem or V_SERVICE for S3 storage
+    The class handles both S3 bucket storage for production deployments and local filesystem
+    storage for development workflows, with intelligent key generation and deployment context
+    integration.
 
-    Notes
-    -----
-    Storage Modes:
-        - S3 Mode (V_SERVICE): Uses S3 bucket storage with bucket_name as S3 bucket name
-        - Local Mode (V_LOCAL): Uses local filesystem with bucket_name as base directory path
+    Attributes:
+        client (str): Client identifier for multi-tenant deployments and access control.
+        bucket_name (str): S3 bucket name for cloud storage, or base directory path for local mode.
+        bucket_region (str): AWS region for S3 bucket location (unused in local mode).
+        key (str): S3 object key or relative file path for the action specification file.
+        version_id (str, optional): S3 object version identifier for versioned deployments.
+        content_type (str): MIME type such as 'application/yaml' or 'application/json'.
+        mode (str): Storage mode - V_LOCAL for filesystem or V_SERVICE for S3 storage.
 
-    Examples
-    --------
-    Create from task name::
+    Examples:
+        >>> # Basic S3 action details
+        >>> details = ActionDetails(
+        ...     client="acme",
+        ...     bucket_name="acme-deployments",
+        ...     bucket_region="us-east-1",
+        ...     key="artefacts/deploy.actions",
+        ...     content_type="application/yaml"
+        ... )
 
-        >>> details = ActionDetails.from_arguments(task="deploy", client="my-client")
+        >>> # Local filesystem action details
+        >>> details = ActionDetails(
+        ...     client="dev-client",
+        ...     bucket_name="/var/deployments",
+        ...     key="artefacts/test.actions",
+        ...     mode="local"
+        ... )
 
-    Create with explicit key::
+        >>> # Check storage mode and construct paths
+        >>> if details.mode == "service":
+        ...     s3_url = f"s3://{details.bucket_name}/{details.key}"
+        ... else:
+        ...     local_path = f"{details.bucket_name}/{details.key}"
 
-        >>> details = ActionDetails.from_arguments(key="custom/path/file.actions")
+    Storage Patterns:
+        **S3 Storage (Production)**:
+        - bucket_name: AWS S3 bucket name (e.g., "acme-prod-deployments")
+        - bucket_region: AWS region (e.g., "us-east-1")
+        - key: Object key path (e.g., "client/env/artefacts/deploy.actions")
+        - mode: "service"
 
-    Set key using deployment details::
+        **Local Storage (Development)**:
+        - bucket_name: Base directory path (e.g., "/var/local/deployments")
+        - bucket_region: Ignored in local mode
+        - key: Relative file path (e.g., "client/env/artefacts/test.actions")
+        - mode: "local"
 
-        >>> details.set_key(deployment_details, "custom.actions")
+    Key Generation:
+        Action file keys follow a hierarchical pattern:
+        ```
+        {client}/{environment}/artefacts/{action_file}
+        ```
+
+        Example keys:
+        - "acme/production/artefacts/deploy.actions"
+        - "testcorp/staging/artefacts/rollback.actions"
+        - "dev-client/local/artefacts/test.actions"
+
+    Content Types:
+        Supported MIME types for action specification files:
+        - "application/yaml": YAML format action specifications
+        - "application/json": JSON format action specifications
+        - "application/x-yaml": Alternative YAML MIME type
+        - "text/yaml": Text-based YAML format
     """
 
     @model_validator(mode="before")
     def validate_model_before(cls, values: dict) -> dict:
+        """Validate and normalize model values before instance creation.
+
+        Performs pre-validation processing to normalize content type values from various
+        sources and apply default values where needed. Handles both direct field names
+        and capitalized variants commonly found in AWS responses.
+
+        Args:
+            values (dict): Raw field values for model creation, which may include:
+                          - content_type or ContentType: MIME type specification
+                          - Other ActionDetails fields in various formats
+
+        Returns:
+            dict: Processed and normalized field values with:
+                 - content_type: Normalized MIME type (defaults to "application/yaml")
+                 - All other fields preserved and normalized
+
+        Examples:
+            >>> # Called automatically during instance creation
+            >>> details = ActionDetails(
+            ...     client="test",
+            ...     bucket_name="test-bucket",
+            ...     ContentType="application/json"  # Gets normalized to content_type
+            ... )
+            >>> print(details.content_type)  # "application/json"
+
+            >>> # Default content type applied
+            >>> details = ActionDetails(
+            ...     client="test",
+            ...     bucket_name="test-bucket"
+            ... )
+            >>> print(details.content_type)  # "application/yaml"
+
+        Note:
+            This validator runs before field validation and handles the common pattern
+            of AWS services returning capitalized field names that need normalization.
+        """
         if isinstance(values, dict):
             content_type = values.pop("content_type", None) or values.pop("ContentType", None)
             if not content_type:
@@ -102,88 +193,172 @@ class ActionDetails(FileDetails):
         return values
 
     def set_key(self, dd: DeploymentDetails, filename: str) -> None:
-        """
-        Set the key based on deployment details and filename.
+        """Set the object key based on deployment details and filename.
 
-        This method constructs the appropriate object key by combining the
-        deployment details with the specified filename in the artefacts folder.
+        Constructs the appropriate object key by combining deployment context with the
+        specified filename in the artefacts folder. The key follows the hierarchical
+        pattern used throughout the deployment system for consistent organization.
 
-        Parameters
-        ----------
-        dd : DeploymentDetails
-            Deployment details instance containing the context for key generation.
-        filename : str
-            The name of the action file (e.g., "deploy.actions").
+        Args:
+            dd (DeploymentDetails): Deployment details providing the context for key generation.
+                                   Must include client, environment, and other contextual information.
+            filename (str): Name of the action file including extension (e.g., "deploy.actions").
 
-        Returns
-        -------
-        None
-            This method modifies the instance's key attribute in-place.
+        Examples:
+            >>> from core_framework.models import ActionDetails, DeploymentDetails
 
-        Examples
-        --------
-        ::
+            >>> # Set key for production deployment
+            >>> details = ActionDetails(client="acme", bucket_name="acme-deployments")
+            >>> deployment = DeploymentDetails(client="acme", environment="production")
+            >>> details.set_key(deployment, "deploy.actions")
+            >>> print(details.key)  # "acme/production/artefacts/deploy.actions"
 
-            >>> details = ActionDetails(client="test", bucket_name="my-bucket")
-            >>> details.set_key(deployment_details, "deploy.actions")
-            >>> print(details.key)  # Will be something like "client/env/deploy.actions"
+            >>> # Set key for staging rollback
+            >>> details.set_key(deployment, "rollback.actions")
+            >>> print(details.key)  # "acme/production/artefacts/rollback.actions"
+
+            >>> # Custom action file
+            >>> details.set_key(deployment, "custom-migration.actions")
+            >>> print(details.key)  # "acme/production/artefacts/custom-migration.actions"
+
+        Key Structure:
+            The generated key follows this pattern:
+            ```
+            {client}/{environment}/artefacts/{filename}
+            ```
+
+            Where:
+            - client: From deployment details client field
+            - environment: From deployment details environment context
+            - artefacts: Fixed folder name for action specifications
+            - filename: Provided filename parameter
+
+        Side Effects:
+            Modifies the instance's key attribute in-place. No return value.
         """
         super().set_key(dd.get_object_key(OBJ_ARTEFACTS, filename))
 
     @classmethod
     def from_arguments(cls, **kwargs) -> "ActionDetails":
+        """Create ActionDetails instance from flexible keyword arguments.
+
+        Factory method that provides intelligent ActionDetails creation by accepting various
+        parameter combinations and applying defaults. Handles multiple parameter naming
+        conventions and automatically generates missing values from context.
+
+        Args:
+            **kwargs: Flexible keyword arguments supporting multiple naming conventions:
+
+                     **Core Parameters:**
+                     - client/Client (str): Client identifier
+                     - bucket_name/BucketName (str): S3 bucket or local base path
+                     - bucket_region/BucketRegion (str): AWS region
+                     - mode/Mode (str): Storage mode (V_LOCAL or V_SERVICE)
+
+                     **Key Generation Parameters:**
+                     - key/Key (str): Direct key specification (overrides generation)
+                     - task/Task (str): Task name for automatic key generation
+                     - action_file/ActionFile (str): Action filename for key generation
+                     - deployment_details/DeploymentDetails: Deployment context object
+
+                     **Optional Parameters:**
+                     - version_id/VersionId (str): S3 object version
+                     - content_type/ContentType (str): MIME type
+
+        Returns:
+            ActionDetails: Fully configured ActionDetails instance with all required fields populated.
+
+        Raises:
+            ValueError: If required parameters cannot be determined or if there are
+                       validation errors in the provided arguments.
+
+        Examples:
+            >>> # Create from task name (common pattern)
+            >>> details = ActionDetails.from_arguments(
+            ...     task="deploy",
+            ...     client="acme",
+            ...     bucket_region="us-east-1"
+            ... )
+            >>> print(details.key)  # Auto-generated from task and context
+
+            >>> # Create with explicit key
+            >>> details = ActionDetails.from_arguments(
+            ...     client="acme",
+            ...     key="custom/path/special.actions",
+            ...     bucket_name="acme-bucket"
+            ... )
+
+            >>> # Create for local development
+            >>> details = ActionDetails.from_arguments(
+            ...     task="test",
+            ...     client="dev",
+            ...     mode="local",
+            ...     bucket_name="/tmp/actions"
+            ... )
+
+            >>> # Create from command line arguments
+            >>> cli_args = {
+            ...     "Task": "deploy",
+            ...     "Client": "production-client",
+            ...     "BucketRegion": "eu-west-1"
+            ... }
+            >>> details = ActionDetails.from_arguments(**cli_args)
+
+            >>> # Create with deployment context
+            >>> deployment = DeploymentDetails(client="acme", environment="staging")
+            >>> details = ActionDetails.from_arguments(
+            ...     action_file="rollback.actions",
+            ...     deployment_details=deployment
+            ... )
+
+        Parameter Resolution:
+            The method uses intelligent defaults and context-aware resolution:
+
+            **Client Resolution:**
+            1. Explicit client/Client parameter
+            2. Framework default client from configuration
+
+            **Key Generation:**
+            1. Direct key/Key parameter (highest priority)
+            2. Generated from action_file + deployment_details
+            3. Generated from task name (defaults to "deploy")
+
+            **Storage Configuration:**
+            1. Explicit bucket_name or auto-generated from client + region
+            2. Explicit bucket_region or framework default region
+            3. Mode determined by framework configuration (local vs service)
+
+        Factory Patterns:
+            ```python
+            # Pattern 1: Task-based creation
+            details = ActionDetails.from_arguments(task="deploy", client="acme")
+
+            # Pattern 2: Explicit key creation
+            details = ActionDetails.from_arguments(key="path/file.actions")
+
+            # Pattern 3: Deployment context creation
+            details = ActionDetails.from_arguments(
+                deployment_details=deployment_context,
+                action_file="custom.actions"
+            )
+
+            # Pattern 4: Command line integration
+            details = ActionDetails.from_arguments(**parsed_cli_args)
+            ```
         """
-        Create ActionDetails instance from keyword arguments.
 
-        This factory method provides a flexible way to create ActionDetails instances
-        by accepting various parameter combinations and applying intelligent defaults.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments that can include:
-                - key/Key (str): Direct key specification
-                - task/Task (str): Task name to generate key from
-                - action_file/ActionFile (str): Action file name
-                - client/Client (str): Client identifier
-                - bucket_name/BucketName (str): S3 bucket name or local base path
-                - bucket_region/BucketRegion (str): AWS region
-                - version_id/VersionId (str): S3 object version
-                - content_type/ContentType (str): MIME type
-                - mode/Mode (str): Storage mode (V_LOCAL or V_SERVICE)
-                - deployment_details/DeploymentDetails: Deployment context
-
-        Returns
-        -------
-        ActionDetails
-            A new ActionDetails instance with populated fields.
-
-        Raises
-        ------
-        ValueError
-            If the instance cannot be created due to missing required
-            parameters or other validation errors.
-
-        Examples
-        --------
-        Create from task name::
-
-            >>> details = ActionDetails.from_arguments(**command_line_args)
-
-        """
-
-        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
+        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+            """Extract parameter with fallback and default handling."""
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
-            return value if value or can_be_empty else defualt
+            return value if value or can_be_empty else default
 
-        # Extract all parameters with defaults
+        # Extract all parameters with intelligent defaults
         client = _get("client", "Client", util.get_client())
 
         # Handle key generation from task/action_file
         key = _get("key", "Key", None)
 
         if not key:
-
             action_file = _get("action_file", "ActionFile", None)
 
             if not action_file:
@@ -202,7 +377,7 @@ class ActionDetails(FileDetails):
         # Bucket region must be populated before bucket_name
         bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
 
-        # Bucket name must alos be populated before creating ActionDetails
+        # Bucket name must also be populated before creating ActionDetails
         bucket_name = _get(
             "bucket_name",
             "BucketName",
@@ -226,23 +401,45 @@ class ActionDetails(FileDetails):
         )
 
     def __str__(self) -> str:
-        """
-        Return a human-readable string representation.
+        """Return a human-readable string representation.
 
-        Returns
-        -------
-        str
-            String showing the storage mode and key information.
+        Provides a concise, user-friendly representation showing the storage mode
+        and location information for quick identification and debugging.
+
+        Returns:
+            str: Human-readable string in format "ActionDetails(mode: location/key)".
+
+        Examples:
+            >>> details = ActionDetails.from_arguments(task="deploy", client="acme")
+            >>> print(str(details))
+            "ActionDetails(service: acme-bucket/acme/prod/artefacts/deploy.actions)"
+
+            >>> local_details = ActionDetails.from_arguments(
+            ...     task="test",
+            ...     mode="local",
+            ...     bucket_name="/tmp"
+            ... )
+            >>> print(str(local_details))
+            "ActionDetails(local: /tmp/client/env/artefacts/test.actions)"
         """
         return f"ActionDetails({self.mode}: {self.bucket_name}/{self.key})"
 
     def __repr__(self) -> str:
-        """
-        Return a detailed string representation for debugging.
+        """Return a detailed string representation for debugging.
 
-        Returns
-        -------
-        str
-            Detailed representation showing all key attributes.
+        Provides a detailed representation suitable for debugging and development,
+        showing the key attributes needed to reconstruct or understand the instance.
+
+        Returns:
+            str: Detailed string representation showing bucket_name and key.
+
+        Examples:
+            >>> details = ActionDetails.from_arguments(task="deploy", client="acme")
+            >>> print(repr(details))
+            "ActionDetails(bucket_name='acme-deployments', key='acme/prod/artefacts/deploy.actions')"
+
+            >>> # Useful in debugging and logging
+            >>> import logging
+            >>> logging.debug(f"Processing action: {repr(details)}")
         """
         return f"ActionDetails(bucket_name='{self.bucket_name}', key='{self.key}')"

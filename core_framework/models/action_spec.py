@@ -1,23 +1,58 @@
-"""
-ActionSpec Model Module
-=======================
+"""ActionSpec Model Module for Core Automation Framework.
 
 This module contains the ActionSpec class which provides a model for how Tasks or Actions are to
-be provided to the core-execute library.
+be provided to the core-execute library. The ActionSpec class defines actions that can be performed
+by the Core Automation framework, including creating or deleting AWS resources, updating user
+permissions, and other operations that wouldn't necessarily be done in a CloudFormation template.
 
-The ActionSpec class defines actions that can be performed by the Core Automation framework.
-These actions can include creating or deleting AWS resources, updating user permissions, and more.
+Key Features:
+    - **Action Definition**: Comprehensive specification for automation tasks
+    - **Dependency Management**: Support for action dependencies and execution ordering
+    - **Conditional Execution**: Python expressions for conditional action execution
+    - **Output Management**: Organized output storage with namespace support
+    - **Lifecycle Hooks**: Pre/post execution hooks for complex workflows
+    - **Validation**: Comprehensive validation for action integrity and dependencies
 
-Things that you wouldn't necessarily do in a CloudFormation template.
+Common Use Cases:
+    - CloudFormation stack creation and management
+    - IAM user and permission management
+    - Event recording and status tracking
+    - Resource tagging and metadata updates
+    - Custom AWS service integrations
 
-Classes
--------
-ActionSpec : BaseModel
-    Model for action specifications with fields for name, kind, parameters, dependencies, and metadata.
+Classes:
+    ActionParams: Base parameters model for action configuration.
+    ActionSpec: Complete action specification with validation and execution metadata.
 
-Note
-----
-Consider moving this to the core-execute library as it is used almost exclusively by the core-execute library.
+Examples:
+    Creating a CloudFormation stack action:
+
+    >>> action = ActionSpec(
+    ...     name="create-vpc-stack",
+    ...     kind="AWS::CreateStack",
+    ...     params={
+    ...         "account": "123456789012",
+    ...         "region": "us-east-1",
+    ...         "stack_name": "vpc-infrastructure",
+    ...         "template": "templates/vpc.yaml"
+    ...     }
+    ... )
+
+    Creating an action with dependencies:
+
+    >>> database_action = ActionSpec(
+    ...     name="create-database",
+    ...     kind="AWS::CreateStack",
+    ...     depends_on=["create-vpc-stack"],
+    ...     params={
+    ...         "stack_name": "database-stack",
+    ...         "template": "templates/database.yaml"
+    ...     }
+    ... )
+
+Note:
+    Consider moving this to the core-execute library as it is used almost exclusively
+    by the core-execute library for action execution and orchestration.
 """
 
 from typing import Any
@@ -35,13 +70,50 @@ from pydantic import (
 
 
 class ActionParams(BaseModel):
+    """Base parameters model for action configuration.
+
+    Provides common parameters required by most actions, particularly AWS-related
+    actions that need account and region specification. This model serves as a
+    foundation for action-specific parameter validation.
+
+    Attributes:
+        account: AWS account ID where the action should be executed.
+        region: AWS region where the action should be executed.
+
+    Examples:
+        >>> params = ActionParams(
+        ...     account="123456789012",
+        ...     region="us-east-1"
+        ... )
+        >>> print(params.account)
+        '123456789012'
+
+        >>> # Serialization uses aliases by default
+        >>> data = params.model_dump()
+        >>> print("Account" in data)
+        True
+    """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    account: str = Field(..., alias="Account", description="Account where this action is to take place")
-    region: str = Field(..., alias="Region", description="Region were this action is to take place")
+    account: str = Field(..., alias="Account", description="AWS account ID where this action should be executed")
+    region: str = Field(..., alias="Region", description="AWS region where this action should be executed")
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
+        """Serialize model with optimized defaults.
+
+        Args:
+            **kwargs: Keyword arguments for serialization options.
+
+        Returns:
+            Dictionary representation with None values excluded and aliases used.
+
+        Examples:
+            >>> params = ActionParams(account="123456789012", region="us-east-1")
+            >>> data = params.model_dump()
+            >>> print("Account" in data)
+            True
+        """
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True
         if "by_alias" not in kwargs:
@@ -50,77 +122,120 @@ class ActionParams(BaseModel):
 
 
 class ActionSpec(BaseModel):
-    """
-    The ActionSpec class defines an "action" or "task" that Core Automation will perform when deploying infrastructure to your Cloud.
+    """Complete specification for Core Automation actions with validation and execution metadata.
 
-    Tasks could include adding tags to resources, adjusting DNS entries, etc. Tasks are executed by core-execute
-    and are defined in the core-execute.actionlib library.
+    The ActionSpec class defines an "action" or "task" that Core Automation will perform when
+    deploying infrastructure to your Cloud. Tasks could include adding tags to resources,
+    adjusting DNS entries, creating CloudFormation stacks, etc. Tasks are executed by
+    core-execute and are defined in the core-execute.actionlib library.
 
-    Note on "save_outputs" attribute:
+    The class provides comprehensive validation for action integrity, dependency management,
+    and output organization to ensure reliable automation workflows.
 
-    Some actions call 'set_state("variable_name", value)'.  This will set the variable 'variable_name': 'value' in the
-    service statee.
+    Attributes:
+        apiVersion: API version of the actions API (defaults to "v1").
+        name: Unique identifier for the action with namespace support.
+        kind: Action type that determines which action class will be instantiated.
+        metadata: Arbitrary metadata about the action.
+        depends_on: List of action names that must complete successfully before this action.
+        params: Parameters dictionary containing action-specific configuration.
+        scope: Organizational scope (portfolio, app, branch, build).
+        condition: Python expression for conditional execution.
+        before: List of actions that should execute after this action completes.
+        after: List of actions that should execute before this action starts.
+        save_outputs: Whether to save action outputs to the state system.
+        lifecycle_hooks: List of ActionSpec objects for lifecycle event handling.
 
-    If the action calls 'set_output("variable_name", value)', the output will be saved as 'namespace/variable_name': value if
-    the save_output attribute is True.
+    Properties:
+        action_name: Extracts the final component after the last '/' in the name.
+        output_namespace: Calculated namespace for organizing action outputs.
+        state_namespace: Namespace used for state variable storage.
+        action: Backward compatibility property returning the kind value.
+        label: DEPRECATED - Use 'name' instead.
+        type: DEPRECATED - Use 'kind' instead.
 
-    namespace is a calculated value:
-
-    Attributes
-    ----------
-    name : str
-        The name of the action. A unique identifier for the action spec
-    kind : str
-        The action kind. This is the name of the action spec (e.g. create_user, create_stack, etc.)
-    scope : str
-        The scope of the action (optional). Examples: portfolio, app, branch, or build.
-    params : dict[str, Any]
-        The parameters for the action. This is a dictionary of parameters that the action requires
-    depends_on : list[str]
-        A list of names of actions that this action depends on. Scoped to the single deployspec.yaml
-    condition : str | None
-        Condition clauses. In code, the default is 'True'
-    before : list[str] | None
-        Before is a list of actions that should be performed before this one
-    after : list[str] | None
-        After is a list of actions that should be performed after this one
-    save_outputs : bool
-        SaveOutputs is a flag to save the outputs of the action. See notes above.
-    lifecycle_hooks : list['ActionSpec'] | None
-        Lifecycle Hooks. A list of ActionSpec objects
-
-    Examples
-    --------
-    Creating a simple CloudFormation stack action::
-
+    Examples:
+        >>> # Basic CloudFormation stack creation
         >>> action = ActionSpec(
-        ...     name="namespace:action/create-s3-bucket",
-        ...     kind="create_stack",
+        ...     name="create-s3-bucket",
+        ...     kind="AWS::CreateStack",
         ...     params={
+        ...         "account": "123456789012",
+        ...         "region": "us-east-1",
         ...         "stack_name": "my-s3-bucket",
-        ...         "template": "s3-bucket-template.yaml"
-        ...         "stack_parameters": {
-        ...             "BucketName": "my-s3-bucket",
-        ...         }
+        ...         "template": "templates/s3-bucket.yaml"
         ...     }
         ... )
 
-    Creating an action with dependencies::
-
+        >>> # Action with dependencies and namespace
         >>> action = ActionSpec(
-        ...     name="namespace:action/create-lambda",
-        ...     kind="create_stack",
-        ...     depends_on=["namespace:action/create-s3-bucket"],
+        ...     name="myapp:action/deploy-lambda",
+        ...     kind="AWS::CreateStack",
+        ...     depends_on=["create-s3-bucket"],
         ...     params={
-        ...         "stack_name": "my-lambda-function",
-        ...         "template": "lambda-template.yaml"
-        ...         "stack_parameters": {
-        ...             "FunctionName": "myLambdaFunction",
-        ...             "S3Bucket": "{{ create-s3-bucket.outputs.BucketName }}"
-        ...         }
+        ...         "stack_name": "lambda-function",
+        ...         "template": "templates/lambda.yaml"
+        ...     }
+        ... )
+        >>> print(action.action_name)
+        'deploy-lambda'
+        >>> print(action.output_namespace)
+        'myapp:output'
+
+        >>> # Conditional action with lifecycle hooks
+        >>> action = ActionSpec(
+        ...     name="conditional-cleanup",
+        ...     kind="AWS::DeleteStack",
+        ...     condition="deployment.environment != 'production'",
+        ...     lifecycle_hooks=[
+        ...         ActionSpec(
+        ...             name="backup-data",
+        ...             kind="AWS::BackupResources",
+        ...             params={"resources": ["database", "files"]}
+        ...         )
+        ...     ]
+        ... )
+
+        >>> # Action ordering with before/after
+        >>> setup_action = ActionSpec(
+        ...     name="setup-logging",
+        ...     kind="AWS::EnableLogging",
+        ...     before=["deploy-app", "deploy-database"]
+        ... )
+
+    Output Management:
+        Actions can save outputs for use by other actions:
+
+        >>> # Action that saves outputs
+        >>> vpc_action = ActionSpec(
+        ...     name="infra:action/create-vpc",
+        ...     kind="AWS::CreateStack",
+        ...     save_outputs=True,  # Enables output saving
+        ...     params={"stack_name": "vpc-stack"}
+        ... )
+
+        >>> # Later action using the outputs
+        >>> app_action = ActionSpec(
+        ...     name="app:action/deploy",
+        ...     kind="AWS::CreateStack",
+        ...     depends_on=["infra:action/create-vpc"],
+        ...     params={
+        ...         "vpc_id": "{{ actions['infra:action/create-vpc'].outputs.vpc_id }}"
         ...     }
         ... )
 
+    Validation Rules:
+        - **Name Format**: Must be alphanumeric with hyphens, underscores, colons, slashes
+        - **No Self-Dependencies**: Actions cannot depend on themselves
+        - **Scope Validation**: Must be one of portfolio, app, branch, build
+        - **Dependency Integrity**: All dependency references must be valid action names
+        - **Namespace Consistency**: Output namespaces follow consistent transformation rules
+
+    Note on save_outputs:
+        When save_outputs is True, action outputs are organized by namespace:
+        - Action calls set_output("variable_name", value)
+        - Stored as "{namespace}/variable_name": value in state
+        - Namespace calculated from action name (e.g., "myapp:action" → "myapp:output")
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
@@ -164,11 +279,12 @@ class ActionSpec(BaseModel):
     
     The kind field specifies which action implementation from core_execute.actionlib 
     will be used to execute this action. It maps directly to action class names using
-    snake_case naming convention.
+    the AWS service namespace convention.
     
     **Naming Convention:**
     
-    - The name is "AWS::ActionName", "RDS::ActionName", "KMS::ActionName", etc.
+    - The format is "AWS::ActionName", "RDS::ActionName", "KMS::ActionName", etc.
+    - Maps to snake_case class names in the actionlib module
     
     **Common Examples:**
 
@@ -186,7 +302,9 @@ class ActionSpec(BaseModel):
         min_length=1,
     )
 
-    metadata: dict[str, Any] | None = Field(alias="Metadata", description="Arbitrary Medatadata about this action", default=None)
+    metadata: dict[str, Any] | None = Field(
+        alias="Metadata", description="Arbitrary metadata about this action for documentation and tooling", default=None
+    )
 
     depends_on: list[str] = Field(
         default=[],
@@ -618,13 +736,13 @@ class ActionSpec(BaseModel):
         
             lifecycle_hooks:
             - name: "pre-deploy-validation"
-                kind: "validate_template"
+                kind: "AWS::ValidateTemplate"
                 scope: "build"
                 params:
                 template: "{{ params.template }}"
                 
             - name: "post-deploy-notification"  
-                kind: "put_event"
+                kind: "AWS::PutEvent"
                 scope: "build"
                 params:
                 type: "STATUS"
@@ -639,7 +757,7 @@ class ActionSpec(BaseModel):
         
             lifecycle_hooks:
             - name: "validate-prerequisites"
-                kind: "check_dependencies"
+                kind: "AWS::CheckDependencies"
                 params:
                 required_stacks: ["vpc-stack", "security-stack"]
         
@@ -649,12 +767,12 @@ class ActionSpec(BaseModel):
         
             lifecycle_hooks:
             - name: "start-monitoring"
-                kind: "enable_monitoring"
+                kind: "AWS::EnableMonitoring"
                 params:
                 resource_arn: "{{ outputs.stack_arn }}"
                 
             - name: "create-dashboard"
-                kind: "create_dashboard"  
+                kind: "AWS::CreateDashboard"  
                 params:
                 stack_name: "{{ params.stack_name }}"
         
@@ -664,7 +782,7 @@ class ActionSpec(BaseModel):
         
             lifecycle_hooks:
             - name: "cleanup-temp-files"
-                kind: "remove_files"
+                kind: "AWS::RemoveFiles"
                 condition: "True"  # Always run cleanup
                 params:
                 path: "/tmp/deployment-{{ deployment.id }}"
@@ -688,56 +806,38 @@ class ActionSpec(BaseModel):
 
     @property
     def action_name(self) -> str:
-        """
-        Get the action name for this ActionSpec.
+        """Get the action name for this ActionSpec.
 
         Extracts the final component of the action name after the last '/' separator.
         This is used to identify the action in logs and other outputs, removing any
         namespace prefixes.
 
-        Returns
-        -------
-        str
+        Returns:
             The action name without namespace prefix. Returns empty string if name is empty.
 
-        Examples
-        --------
-        Simple action name without separators::
-
-            >>> action = ActionSpec(name="deploy-stack", kind="create_stack", params={})
+        Examples:
+            >>> action = ActionSpec(name="deploy-stack", kind="AWS::CreateStack", params={})
             >>> action.action_name
-            "deploy-stack"
+            'deploy-stack'
 
-        Action name with namespace prefix::
-
-            >>> action = ActionSpec(name="myapp:action/deploy", kind="create_stack", params={})
+            >>> action = ActionSpec(name="myapp:action/deploy", kind="AWS::CreateStack", params={})
             >>> action.action_name
-            "deploy"
+            'deploy'
 
-        Complex nested path::
-
-            >>> action = ActionSpec(name="portfolio/app/branch/action-name", kind="create_stack", params={})
+            >>> action = ActionSpec(name="portfolio/app/branch/action-name", kind="AWS::CreateStack", params={})
             >>> action.action_name
-            "action-name"
+            'action-name'
 
-        Empty name edge case::
-
-            >>> action = ActionSpec(name="", kind="create_stack", params={})
-            >>> action.action_name
-            ""
-
-        Notes
-        -----
-        This property extracts the meaningful action identifier from potentially
-        complex namespaced names. The namespace portion is used for organization
-        while the action name is used for identification and logging.
+        Notes:
+            This property extracts the meaningful action identifier from potentially
+            complex namespaced names. The namespace portion is used for organization
+            while the action name is used for identification and logging.
         """
-        return self.name.split("/", 1)[-1] if self.name else ""
+        return self.name.split("/")[-1] if self.name else ""
 
     @property
     def output_namespace(self) -> str | None:
-        """
-        Calculate the output namespace for action results.
+        """Calculate the output namespace for action results.
 
         The output namespace is used to group action outputs in the state system
         when `save_outputs` is enabled. It transforms the action name into a
@@ -748,54 +848,35 @@ class ActionSpec(BaseModel):
         2. Replacing ':action' suffix with ':output' if present
         3. Returning None if save_outputs is False or name is empty
 
-        Returns
-        -------
-        str | None
+        Returns:
             The calculated output namespace string, or None if outputs should
             not be saved or if the name is invalid.
 
-        Examples
-        --------
-        Basic action name transformation::
-
-            >>> action = ActionSpec(name="deploy-stack", kind="create_stack", params={})
+        Examples:
+            >>> action = ActionSpec(name="deploy-stack", kind="AWS::CreateStack", params={})
             >>> action.output_namespace
-            "deploy-stack"
+            'deploy-stack'
 
-        Action name with namespace prefix::
-
-            >>> action = ActionSpec(name="myapp:action/deploy", kind="create_stack", params={})
+            >>> action = ActionSpec(name="myapp:action/deploy", kind="AWS::CreateStack", params={})
             >>> action.output_namespace
-            "myapp:output"
+            'myapp:output'
 
-        When save_outputs is disabled::
-
-            >>> action = ActionSpec(name="deploy-stack", kind="create_stack",
+            >>> action = ActionSpec(name="deploy-stack", kind="AWS::CreateStack",
             ...                    params={}, save_outputs=False)
             >>> action.output_namespace is None
             True
 
-        Complex namespace with path components::
-
-            >>> action = ActionSpec(name="portfolio:action/app/branch", kind="create_stack", params={})
-            >>> action.output_namespace
-            "portfolio:output"
-
-        Notes
-        -----
-        The output namespace is used by the action execution system to organize
-        outputs in the state. When an action calls `set_output("key", value)`,
-        the actual state key becomes `{namespace}/key` if a namespace exists.
-
-        This property is automatically calculated and cannot be set directly.
-        To control the namespace, modify the action name or save_outputs setting.
+        Notes:
+            The output namespace is used by the action execution system to organize
+            outputs in the state. When an action calls `set_output("key", value)`,
+            the actual state key becomes `{namespace}/key` if a namespace exists.
         """
         # Early return if outputs should not be saved or name is invalid
-        if not self.save_outputs or not self.name:
+        if self.save_outputs is False or not self.name:
             return None
 
         # Split on '/' and take the first part for namespace
-        namespace_part = self.name.split("/", 1)[0]
+        namespace_part = self.name.split("/")[0]
 
         # Return None if the first part is empty (shouldn't happen with validation)
         if not namespace_part:
@@ -806,22 +887,28 @@ class ActionSpec(BaseModel):
 
     @property
     def state_namespace(self) -> str | None:
-        """
-        Get the state namespace for this ActionSpec.
+        """Get the state namespace for this ActionSpec.
 
         The state namespace is used to organize action outputs in the state system.
-        It is derived from the output_namespace property, which is calculated based
-        on the action name.
+        It transforms the action name by replacing ':action/' with ':var/' to create
+        a consistent namespace for variable storage.
 
-        Returns
-        -------
-        str | None
-            The state namespace string, or None if outputs should not be saved or
-            if the name is empty.
+        Returns:
+            The state namespace string, or None if the name is empty.
 
-        Notes
-        -----
-        This property is an alias for output_namespace and serves the same purpose.
+        Examples:
+            >>> action = ActionSpec(name="namespace:action/action-name", kind="AWS::CreateStack", params={})
+            >>> action.state_namespace
+            'namespace:var/action-name'
+
+            >>> action = ActionSpec(name="simple-name", kind="AWS::CreateStack", params={})
+            >>> action.state_namespace
+            'simple-name'
+
+        Notes:
+            This property transforms action namespaces into variable namespaces for
+            consistent state organization. The ':action/' pattern becomes ':var/'
+            to distinguish between action definitions and variable storage.
         """
         namespace_part = self.name
 
@@ -829,39 +916,37 @@ class ActionSpec(BaseModel):
         if not namespace_part:
             return None
 
-        # Replace ':action' suffix with ':var' if present so that 'namespace:action/action-name' becomes 'namespace:var/action-name'
+        # Replace ':action/' suffix with ':var/' if present
         return namespace_part.replace(":action/", ":var/")
 
     @model_validator(mode="before")
     @classmethod
     def handle_deprecations(cls, values: Any) -> Any:
-        """
-        Handle the deprecation of 'label' and 'type' fields in favor of 'name' and 'kind'.
+        """Handle the deprecation of 'label' and 'type' fields in favor of 'name' and 'kind'.
 
         This validator provides backward compatibility by mapping deprecated field names
         to their new equivalents and issuing appropriate warnings.
 
-        Parameters
-        ----------
-        values : Any
-            The input values for model creation. Expected to be a dict for processing,
-            but other types are passed through unchanged.
+        Args:
+            values: The input values for model creation. Expected to be a dict for processing,
+                   but other types are passed through unchanged.
 
-        Returns
-        -------
-        Any
+        Returns:
             The validated and potentially modified values with deprecated fields
             mapped to their new equivalents.
 
-        Raises
-        ------
-        ValueError
-            If conflicting values are provided for both old and new field names.
+        Raises:
+            ValueError: If conflicting values are provided for both old and new field names.
 
-        Warnings
-        --------
-        DeprecationWarning
-            When deprecated field names are used.
+        Examples:
+            >>> # Handles legacy field names automatically
+            >>> legacy_data = {"label": "my-action", "type": "AWS::CreateStack"}
+            >>> values = ActionSpec.handle_deprecations(legacy_data)
+            >>> print(values["name"])
+            'my-action'
+
+        Warnings:
+            Issues DeprecationWarning when deprecated fields are used.
         """
         if isinstance(values, dict):
             # Handle label -> name deprecation
@@ -919,24 +1004,25 @@ class ActionSpec(BaseModel):
     @field_validator("depends_on", mode="before")
     @classmethod
     def validate_depends_on(cls, value) -> list[str]:
-        """
-        Validate and normalize depends_on field values.
+        """Validate and normalize depends_on field values.
 
-        Parameters
-        ----------
-        value : str | list[str] | None
-            The depends_on value to validate. Can be a string, list of strings, or None.
+        Args:
+            value: The depends_on value to validate. Can be a string, list of strings, or None.
 
-        Returns
-        -------
-        list[str]
+        Returns:
             A list of dependency names. Empty list if None was provided.
 
-        Raises
-        ------
-        ValueError
-            If value is not a string, list of strings, or None.
-            If any item in a list is not a string.
+        Raises:
+            ValueError: If value is not a string, list of strings, or None.
+                       If any item in a list is not a string.
+
+        Examples:
+            >>> ActionSpec.validate_depends_on(None)
+            []
+            >>> ActionSpec.validate_depends_on("single-dep")
+            ['single-dep']
+            >>> ActionSpec.validate_depends_on(["dep1", "dep2"])
+            ['dep1', 'dep2']
         """
         if value is None:
             return []
@@ -955,20 +1041,21 @@ class ActionSpec(BaseModel):
     @field_validator("kind", mode="before")
     @classmethod
     def validate_action_kind(cls, value) -> str:
-        """
-        Validate and normalize action kind values.
+        """Validate and normalize action kind values.
 
         Removes 'aws.' prefix from kind values for backward compatibility.
 
-        Parameters
-        ----------
-        value : str
-            The kind value to validate and normalize.
+        Args:
+            value: The kind value to validate and normalize.
 
-        Returns
-        -------
-        str
+        Returns:
             The normalized kind value with 'aws.' prefix removed if present.
+
+        Examples:
+            >>> ActionSpec.validate_action_kind("AWS::CreateStack")
+            'AWS::CreateStack'
+            >>> ActionSpec.validate_action_kind("aws.create_stack")
+            'create_stack'
         """
         if value and isinstance(value, str):
             if value.startswith("aws."):
@@ -978,23 +1065,22 @@ class ActionSpec(BaseModel):
     @field_validator("scope", mode="before")
     @classmethod
     def validate_scope(cls, value) -> str:
-        """
-        Validate that scope is one of the allowed values.
+        """Validate that scope is one of the allowed values.
 
-        Parameters
-        ----------
-        value : str
-            The scope value to validate.
+        Args:
+            value: The scope value to validate.
 
-        Returns
-        -------
-        str
+        Returns:
             The validated scope value.
 
-        Raises
-        ------
-        ValueError
-            If scope is not one of the allowed values.
+        Raises:
+            ValueError: If scope is not one of the allowed values.
+
+        Examples:
+            >>> ActionSpec.validate_scope("build")
+            'build'
+            >>> ActionSpec.validate_scope("invalid")
+            ValueError: Invalid scope: invalid. Must be one of: ['build', 'branch', 'app', 'portfolio']
         """
         scope_list = cls.get_scope_list()
         if value not in scope_list:
@@ -1004,28 +1090,29 @@ class ActionSpec(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name_format(cls, value: str) -> str:
-        """
-        Validate that name follows the format required for action_name and output_namespace properties.
+        """Validate that name follows the format required for action_name and output_namespace properties.
 
         The name field supports hierarchical namespaces and action identification:
         - Used by action_name property (extracts part after last '/')
         - Used by output_namespace property (extracts part before first '/' and transforms :action to :output)
 
-        Parameters
-        ----------
-        value : str
-            The name value to validate.
+        Args:
+            value: The name value to validate.
 
-        Returns
-        -------
-        str
+        Returns:
             The validated name value.
 
-        Raises
-        ------
-        ValueError
-            If name is empty, contains invalid characters, starts/ends with hyphen,
-            has invalid structure, or exceeds maximum length.
+        Raises:
+            ValueError: If name is empty, contains invalid characters, starts/ends with hyphen,
+                       has invalid structure, or exceeds maximum length.
+
+        Examples:
+            >>> ActionSpec.validate_name_format("deploy-stack")
+            'deploy-stack'
+            >>> ActionSpec.validate_name_format("myapp:action/deploy")
+            'myapp:action/deploy'
+            >>> ActionSpec.validate_name_format("invalid name")
+            ValueError: Name 'invalid name' must contain only alphanumeric characters...
         """
         import re
 
@@ -1033,10 +1120,6 @@ class ActionSpec(BaseModel):
             raise ValueError("Name cannot be empty or whitespace")
 
         # Allow alphanumeric, hyphens, underscores, colons, and forward slashes
-        # Pattern breakdown:
-        # - [a-zA-Z0-9_:-] for namespace parts (allows colons)
-        # - [/] for separators
-        # - [a-zA-Z0-9_-] for final action name part (no colons)
         if not re.match(r"^[a-zA-Z0-9_:/-]+$", value):
             raise ValueError(
                 f"Name '{value}' must contain only alphanumeric characters, hyphens, underscores, "
@@ -1100,24 +1183,25 @@ class ActionSpec(BaseModel):
     @field_validator("before", "after", mode="before")
     @classmethod
     def validate_action_lists(cls, value) -> list[str] | None:
-        """
-        Validate before/after action lists.
+        """Validate before/after action lists.
 
-        Parameters
-        ----------
-        value : str | list[str] | None
-            The before/after value to validate. Can be a string, list of strings, or None.
+        Args:
+            value: The before/after value to validate. Can be a string, list of strings, or None.
 
-        Returns
-        -------
-        list[str] | None
+        Returns:
             A list of action names or None if input was None.
 
-        Raises
-        ------
-        ValueError
-            If value is not a string, list of strings, or None.
-            If any item in a list is not a string.
+        Raises:
+            ValueError: If value is not a string, list of strings, or None.
+                       If any item in a list is not a string.
+
+        Examples:
+            >>> ActionSpec.validate_action_lists(None)
+            None
+            >>> ActionSpec.validate_action_lists("single-action")
+            ['single-action']
+            >>> ActionSpec.validate_action_lists(["action1", "action2"])
+            ['action1', 'action2']
         """
         if value is None:
             return None
@@ -1133,18 +1217,17 @@ class ActionSpec(BaseModel):
 
     @model_validator(mode="after")
     def validate_no_self_dependency(self) -> "ActionSpec":
-        """
-        Validate that action doesn't depend on itself.
+        """Validate that action doesn't depend on itself.
 
-        Returns
-        -------
-        ActionSpec
+        Returns:
             The validated instance.
 
-        Raises
-        ------
-        ValueError
-            If the action depends on itself through depends_on, before, or after fields.
+        Raises:
+            ValueError: If the action depends on itself through depends_on, before, or after fields.
+
+        Examples:
+            >>> action = ActionSpec(name="test", kind="AWS::CreateStack", params={}, depends_on=["test"])
+            ValueError: Action 'test' cannot depend on itself
         """
         if self.name in self.depends_on:
             raise ValueError(f"Action '{self.name}' cannot depend on itself")
@@ -1156,46 +1239,66 @@ class ActionSpec(BaseModel):
 
     @classmethod
     def get_scope_list(cls) -> list[str]:
-        """
-        Get the list of valid scopes.
+        """Get the list of valid scopes.
 
-        Returns
-        -------
-        list[str]
-            List of valid scope values.
+        Returns:
+            List of valid scope values ordered from most specific to least specific.
+
+        Examples:
+            >>> ActionSpec.get_scope_list()
+            ['build', 'branch', 'app', 'portfolio']
         """
         return ["build", "branch", "app", "portfolio"]
 
     def has_dependencies(self) -> bool:
-        """
-        Check if this action has any dependencies.
+        """Check if this action has any dependencies.
 
-        Returns
-        -------
-        bool
+        Returns:
             True if the action has dependencies, False otherwise.
+
+        Examples:
+            >>> action = ActionSpec(name="test", kind="AWS::CreateStack", params={})
+            >>> action.has_dependencies()
+            False
+            >>> action.depends_on = ["other-action"]
+            >>> action.has_dependencies()
+            True
         """
         return bool(self.depends_on)
 
     def is_conditional(self) -> bool:
-        """
-        Check if this action has a condition.
+        """Check if this action has a condition.
 
-        Returns
-        -------
-        bool
+        Returns:
             True if the action has a condition, False otherwise.
+
+        Examples:
+            >>> action = ActionSpec(name="test", kind="AWS::CreateStack", params={})
+            >>> action.is_conditional()
+            False
+            >>> action.condition = "deployment.environment == 'production'"
+            >>> action.is_conditional()
+            True
         """
         return self.condition is not None
 
     def get_execution_order_dependencies(self) -> list[str]:
-        """
-        Get all dependencies that affect execution order.
+        """Get all dependencies that affect execution order.
 
-        Returns
-        -------
-        list[str]
+        Returns:
             List of dependency names including depends_on and before dependencies.
+
+        Examples:
+            >>> action = ActionSpec(
+            ...     name="test",
+            ...     kind="AWS::CreateStack",
+            ...     params={},
+            ...     depends_on=["dep1", "dep2"],
+            ...     before=["after1"]
+            ... )
+            >>> deps = action.get_execution_order_dependencies()
+            >>> print(sorted(deps))
+            ['after1', 'dep1', 'dep2']
         """
         dependencies = self.depends_on.copy()
         if self.before:
@@ -1205,18 +1308,19 @@ class ActionSpec(BaseModel):
     # Backward compatibility properties
     @property
     def label(self) -> str:
-        """
-        DEPRECATED: Use 'name' instead. Returns the name value for backward compatibility.
+        """DEPRECATED: Use 'name' instead. Returns the name value for backward compatibility.
 
-        Returns
-        -------
-        str
+        Returns:
             The name value.
 
-        Warnings
-        --------
-        DeprecationWarning
-            When this property is accessed.
+        Warnings:
+            Issues DeprecationWarning when this property is accessed.
+
+        Examples:
+            >>> action = ActionSpec(name="test-action", kind="AWS::CreateStack", params={})
+            >>> label = action.label  # Triggers deprecation warning
+            >>> print(label)
+            'test-action'
         """
         warnings.warn(
             "The 'label' property is deprecated. Use 'name' instead.",
@@ -1227,18 +1331,19 @@ class ActionSpec(BaseModel):
 
     @property
     def type(self) -> str:
-        """
-        DEPRECATED: Use 'kind' instead. Returns the kind value for backward compatibility.
+        """DEPRECATED: Use 'kind' instead. Returns the kind value for backward compatibility.
 
-        Returns
-        -------
-        str
+        Returns:
             The kind value.
 
-        Warnings
-        --------
-        DeprecationWarning
-            When this property is accessed.
+        Warnings:
+            Issues DeprecationWarning when this property is accessed.
+
+        Examples:
+            >>> action = ActionSpec(name="test", kind="AWS::CreateStack", params={})
+            >>> action_type = action.type  # Triggers deprecation warning
+            >>> print(action_type)
+            'AWS::CreateStack'
         """
         warnings.warn(
             "The 'type' property is deprecated. Use 'kind' instead.",
@@ -1249,32 +1354,39 @@ class ActionSpec(BaseModel):
 
     @property
     def action(self) -> str:
-        """
-        The action to perform as defined by the execute.actionlib module.
+        """The action to perform as defined by the execute.actionlib module.
 
-        This property returns the value of the 'kind' field for backward compatibility.
+        This property returns the value of the 'kind' field for backward compatibility
+        and action library integration.
 
-        Returns
-        -------
-        str
+        Returns:
             The action kind value.
+
+        Examples:
+            >>> action = ActionSpec(name="test", kind="AWS::CreateStack", params={})
+            >>> print(action.action)
+            'AWS::CreateStack'
         """
         return self.kind
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
-        """
-        Override to exclude None values by default.
+        """Override to exclude None values and use aliases by default.
 
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments passed to the parent model_dump method.
-            All standard Pydantic model_dump parameters are supported.
+        Args:
+            **kwargs: Keyword arguments passed to the parent model_dump method.
+                     All standard Pydantic model_dump parameters are supported.
 
-        Returns
-        -------
-        dict[str, Any]
-            Dictionary representation of the model with None values excluded by default.
+        Returns:
+            Dictionary representation of the model with None values excluded by default
+            and field aliases used.
+
+        Examples:
+            >>> action = ActionSpec(name="test", kind="AWS::CreateStack", params={})
+            >>> data = action.model_dump()
+            >>> print("Name" in data)  # Uses alias
+            True
+            >>> print(None in data.values())  # None values excluded
+            False
         """
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True
@@ -1284,25 +1396,29 @@ class ActionSpec(BaseModel):
 
     @model_serializer
     def ser_model(self, info: SerializationInfo) -> OrderedDict:
-        """
-        Serialize the model to an OrderedDict in a specific order.
+        """Serialize the model to an OrderedDict in a specific field order.
 
-        Respects exclude_none and by_alias parameters, and uses Field aliases.
+        Respects exclude_none and by_alias parameters, and uses Field aliases
+        for consistent serialization output.
 
-        Parameters
-        ----------
-        info : SerializationInfo
-            Serialization information containing exclude_none and by_alias settings.
+        Args:
+            info: Serialization information containing exclude_none and by_alias settings.
 
-        Returns
-        -------
-        OrderedDict
+        Returns:
             Serialized model data in the specified field order.
+
+        Examples:
+            >>> action = ActionSpec(name="test", kind="AWS::CreateStack", params={})
+            >>> from pydantic import SerializationInfo
+            >>> info = SerializationInfo(exclude_none=True, by_alias=True)
+            >>> data = action.ser_model(info)
+            >>> list(data.keys())[0]  # First field in order
+            'Name'
         """
         exclude_none = info.exclude_none
         by_alias = info.by_alias
 
-        # Only specify the field names in the desired order (removed 'action' from field_order)
+        # Define field order for consistent serialization
         field_order = [
             "name",
             "kind",
@@ -1344,23 +1460,27 @@ class ActionSpec(BaseModel):
         return out
 
     def __str__(self) -> str:
-        """
-        String representation of the action.
+        """Return a human-readable string representation.
 
-        Returns
-        -------
-        str
-            Human-readable string representation showing key attributes.
+        Returns:
+            String showing key attributes for identification.
+
+        Examples:
+            >>> action = ActionSpec(name="deploy-stack", kind="AWS::CreateStack", params={})
+            >>> str(action)
+            "ActionSpec(name='deploy-stack', kind='AWS::CreateStack', scope='build')"
         """
         return f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
 
     def __repr__(self) -> str:
-        """
-        Detailed string representation of the action.
+        """Return a detailed string representation for debugging.
 
-        Returns
-        -------
-        str
-            Detailed representation for debugging showing name, kind, scope, and dependencies.
+        Returns:
+            Detailed representation showing name and kind for debugging.
+
+        Examples:
+            >>> action = ActionSpec(name="deploy-stack", kind="AWS::CreateStack", params={})
+            >>> repr(action)
+            "ActionSpec(Kind='AWS::CreateStack',Name='deploy-stack')"
         """
         return f"ActionSpec(Kind='{self.kind}',Name='{self.name}')"

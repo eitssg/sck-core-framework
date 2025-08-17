@@ -1,755 +1,1057 @@
-"""
-This module provides a list of constants that are used throughout the Core-Automation framework.
+"""Constants module for the Core-Automation framework.
 
-The constants prevent mistyping and provide a single source of truth for the values used in the framework.
-
-This includes values for the Task Payload, Task Results, Task Result, and other objects used in the framework.
-
+Provides a single source of truth for values used throughout the framework,
+preventing mistyping and ensuring consistency across Task Payload, Task Results,
+and other framework objects.
 """
 
 # Good to go
 HTTP_OK = 200
-""" \\- "200 OK" """
+"""HTTP 200 OK status code."""
+
 HTTP_CREATED = 201
-""" \\- "201 Created" " """
+"""HTTP 201 Created status code."""
+
 HTTP_ACCEPTED = 202
-""" \\- "202 Accepted" " """
+"""HTTP 202 Accepted status code."""
+
 HTTP_NO_CONTENT = 204
-""" \\- "204 No Content" """
+"""HTTP 204 No Content status code."""
 
 # Bad to go
 HTTP_BAD_REQUEST = 400
-""" \\- "400 Bad Request" """
+"""HTTP 400 Bad Request status code."""
+
 HTTP_UNAUTHORIZED = 401
-""" \\- "401 Unauthorized" """
+"""HTTP 401 Unauthorized status code."""
+
 HTTP_PAYMENT_REQUIRED = 402
-""" \\- "402 Payment Required" """
+"""HTTP 402 Payment Required status code."""
+
 HTTP_FORBIDDEN = 403
-""" \\- "403 Forbidden" """
+"""HTTP 403 Forbidden status code."""
+
 HTTP_NOT_FOUND = 404
-""" \\- "404 Not Found" """
+"""HTTP 404 Not Found status code."""
+
 HTTP_METHOD_NOT_ALLOWED = 405
-""" \\- "405 Method Not Allowed" """
+"""HTTP 405 Method Not Allowed status code."""
+
 HTTP_NOT_ACCEPTABLE = 406
-""" \\- "406 Not Acceptable" """
+"""HTTP 406 Not Acceptable status code."""
+
 HTTP_PROXY_AUTHENTICATION_REQUIRED = 407
-""" \\- "407 Proxy Authentication Required" """
+"""HTTP 407 Proxy Authentication Required status code."""
+
 HTTP_REQUEST_TIMEOUT = 408
-""" \\- "408 Request Timeout" """
+"""HTTP 408 Request Timeout status code."""
+
 HTTP_CONFLICT = 409
-""" \\- "409 Conflict" """
+"""HTTP 409 Conflict status code."""
 
 # Can't process data
 HTTP_UNPROCESSABLE_ENTITY = 422
-""" \\- "422 Unprocessable Entity" """
+"""HTTP 422 Unprocessable Entity status code."""
 
 # Server Error
 HTTP_INTERNAL_SERVER_ERROR = 500
-""" \\- "500 Internal Server Error" """
+"""HTTP 500 Internal Server Error status code."""
+
 HTTP_NOT_IMPLEMENTED = 501
-""" \\- "501 Not Implemented" """
+"""HTTP 501 Not Implemented status code."""
 
 # Task Types
 TASK_PACKAGE = "package"
-""" \\- "package" """
-TASK_UPLOAD = "upload"
-""" \\- "upload" """
-TASK_COMPILE = "compile"
-""" \\- "compile" """
-TASK_DEPLOY = "deploy"
-""" \\- "deploy" """
-TASK_PLAN = "plan"
-""" \\- "plan" """
-TASK_APPLY = "apply"
-""" \\- "apply" """
-TASK_RELEASE = "release"
-""" \\- "release" """
-TASK_TEARDOWN = "teardown"
-""" \\- "teardown" """
+"""Package task type identifier."""
 
-# Feild values
+TASK_UPLOAD = "upload"
+"""Upload task type identifier."""
+
+TASK_COMPILE = "compile"
+"""Compile task type identifier."""
+
+TASK_DEPLOY = "deploy"
+"""Deploy task type identifier."""
+
+TASK_PLAN = "plan"
+"""Plan task type identifier."""
+
+TASK_APPLY = "apply"
+"""Apply task type identifier."""
+
+TASK_RELEASE = "release"
+"""Release task type identifier."""
+
+TASK_TEARDOWN = "teardown"
+"""Teardown task type identifier."""
+
+# Field values
 V_CORE_AUTOMATION = "core-automation"
-""" \\- "core-automation" """
+"""Core automation service identifier."""
+
 V_PACKAGE_ZIP = "package.zip"
-""" \\- "package.zip" """
+"""ZIP package filename."""
+
 V_PACKAGE_TAR = "package.tar"
-""" \\- "package.tar" """
+"""TAR package filename."""
+
 V_PIPELINE = "pipeline"
-""" \\- "pipeline" """
+"""Pipeline automation type."""
+
 V_DEPLOYSPEC = "deployspec"
-""" \\- "deployspec" """
+"""Deployspec automation type."""
+
 V_PLANSPEC = "planspec"
-""" \\- "planspec" """
+"""Planspec automation type."""
+
 V_APPLYSPEC = "applyspec"
-""" \\- "applyspec" """
+"""Applyspec automation type."""
+
 V_TEARDOWNSPEC = "teardownspec"
-""" \\- "teardownspec" """
+"""Teardownspec automation type."""
+
 V_DEPLOYSPEC_FILE_YAML = "deployspec.yaml"
-""" \\- "deployspec.yaml" """
+"""YAML deployspec filename."""
+
 V_PLANSPEC_FILE_YAML = "planspec.yaml"
-""" \\- "planspec.yaml" """
+"""YAML planspec filename."""
+
 V_APPLYSPEC_FILE_YAML = "applyspec.yaml"
-""" \\- "applyspec.yaml" """
+"""YAML applyspec filename."""
+
 V_DEPLOYSPEC_FILE_JSON = "deployspec.json"
-""" \\- "deployspec.json" """
+"""JSON deployspec filename."""
+
 V_PLANSPEC_FILE_JSON = "planspec.json"
-""" \\- "planspec.json" """
+"""JSON planspec filename."""
+
 V_APPLYSPEC_FILE_JSON = "applyspec.json"
-""" \\- "applyspec.json" """
+"""JSON applyspec filename."""
+
 V_TEARDOWNSPEC_FILE_YAML = "teardownspec.yaml"
-""" \\- "teardownspec.yaml" """
+"""YAML teardownspec filename."""
+
 V_TEARDOWNSPEC_FILE_JSON = "teardownspec.json"
-""" \\- "teardownspec.json" """
+"""JSON teardownspec filename."""
+
 V_LAMBDA_MODULES_FILE = "lambda_modules.txt"
-""" \\- "lambda_modules.txt" """
+"""Lambda modules requirements filename."""
+
 V_SERVICE = "service"
-""" \\- "service" """
+"""Service deployment mode."""
+
 V_LOCAL = "local"
-""" \\- "local" """
+"""Local deployment mode."""
+
 V_FULL = "full"
-""" \\- "full" """
+"""Full deployment type."""
+
 V_INCREMENTAL = "incremental"
-""" \\- "incremental" """
+"""Incremental deployment type."""
+
 V_PLATFORM = "platform"
-""" \\- "platform" """
+"""Platform deployment scope."""
+
 V_CREATE_STACK = "create_stack"
-""" \\- "create_stack" """
+"""Create stack operation type."""
+
 V_DEFAULT_REGION = "us-east-1"
-""" \\- "ap-southeast-1" """
+"""Default AWS region."""
+
 V_DEFAULT_REGION_NAME = "US East (N. Virginia)"
-""" \\- "Singapore" """
+"""Default AWS region display name."""
+
 V_DEFAULT_REGION_ALIAS = "use"
-""" \\- "sin" """
+"""Default region alias abbreviation."""
+
 V_DEFAULT_BRANCH = "master"
-""" \\- "master" """
+"""Default repository branch name."""
+
 V_DEFAULT_ENVIRONMENT = "prod"
-""" \\- "prod" """
+"""Default deployment environment."""
+
 V_TRUE = "true"
-""" \\- "true" """
+"""String representation of boolean true."""
+
 V_FALSE = "false"
-""" \\- "false" """
+"""String representation of boolean false."""
+
 V_EMPTY = ""
-""" \\- "" """
+"""Empty string constant."""
+
 V_INTERACTIVE = "interactive"
+"""Interactive console mode."""
 
 # Authorization Context Object
 AUTH_CREDENTIALS = "Credentials"
-""" \\- "Credentials" """
+"""Authorization credentials field."""
+
 AUTH_ROLE = "Role"
-""" \\- "Role" """
+"""Authorization role field."""
+
 AUTH_ACCOUNT = "Account"
-""" \\- "Account" """
+"""Authorization account field."""
+
 AUTH_USER = "User"
-""" \\- "User" """
+"""Authorization user field."""
+
 AUTH_ACCESS_KEY = "AccessKey"
-""" \\- "AccessKey" """
+"""AWS access key field."""
+
 AUTH_SECRET_KEY = "SecretKey"
-""" \\- "SecretKey" """
+"""AWS secret key field."""
+
 AUTH_TOKEN = "Token"
-""" \\- "Token" """
+"""Authorization token field."""
+
 AUTH_ACCESS_KEY_ID = "AccessKeyId"
-""" \\- "AccessKeyId" """
+"""AWS access key ID field."""
+
 AUTH_SECRET_ACCESS_KEY = "SecretAccessKey"
-""" \\- "SecretAccessKey" """
+"""AWS secret access key field."""
+
 AUTH_SESSION_TOKEN = "SessionToken"
-""" \\- "SessionToken" """
+"""AWS session token field."""
 
 # Account object in Authorization Context
 ACCOUNT_ID = "Id"
-""" \\- "Id" """
+"""Account ID field."""
+
 ACCOUNT_REGION = "Region"
-""" \\- "Region" """
+"""Account region field."""
+
 ACCOUNT_USER_ARN = "UserArn"
-""" \\- "UserArn" """
+"""Account user ARN field."""
+
 ACCOUNT_USER_ID = "UserId"
-""" \\- "UserId" """
+"""Account user ID field."""
 
 # Task Payload Object
 TP_TASK = "Task"
-""" \\- "Task" """
-TP_FORCE = "Force"
-""" \\- "Force" """
-TP_DRY_RUN = "DryRun"
-""" \\- "DryRun" """
-TP_IDENTITY = "Identity"
-""" \\- "Identity" """
-TP_TYPE = "Type"
-""" \\- "Type" """
-TP_DEPLOYMENT_DETAILS = "DeploymentDetails"
-""" \\- "DeploymentDetails" """
-TP_PACKAGE_DETAILS = "Package"
-""" \\- "Package" """
-TP_FACTS = "Facts"
-""" \\- "Facts" """
-TP_ACTIONS = "Actions"
-""" \\- "Actions" """
-TP_DEPLOY_ACTIONS = "DeployActions"
-""" \\- "DeployActions" """
-TP_STATE = "State"
-""" \\- "State" """
-TP_FLOW_CONTROL = "FlowControl"
-""" \\- "FlowControl" """
+"""Task payload task field."""
 
-# TP_ACTIONS/TP_STATE Actions Object Attributes
+TP_FORCE = "Force"
+"""Task payload force flag."""
+
+TP_DRY_RUN = "DryRun"
+"""Task payload dry run flag."""
+
+TP_IDENTITY = "Identity"
+"""Task payload identity field."""
+
+TP_TYPE = "Type"
+"""Task payload type field."""
+
+TP_DEPLOYMENT_DETAILS = "DeploymentDetails"
+"""Task payload deployment details field."""
+
+TP_PACKAGE_DETAILS = "Package"
+"""Task payload package details field."""
+
+TP_FACTS = "Facts"
+"""Task payload facts field."""
+
+TP_ACTIONS = "Actions"
+"""Task payload actions field."""
+
+TP_DEPLOY_ACTIONS = "DeployActions"
+"""Task payload deploy actions field."""
+
+TP_STATE = "State"
+"""Task payload state field."""
+
+TP_FLOW_CONTROL = "FlowControl"
+"""Task payload flow control field."""
+
+# Actions Object Attributes
 ACT_VERSION = "VersionId"
-""" \\- "VersionId" """
+"""Action version ID field."""
+
 ACT_BUCKETNAME = "BucketName"
-""" \\- "BucketName" """
+"""Action bucket name field."""
+
 ACT_BUCKET_REGION = "BucketRegion"
-""" \\- "BucketRegion" """
+"""Action bucket region field."""
+
 ACT_KEY = "Key"
-""" \\- "Key" """
+"""Action key field."""
+
 ACT_MIME_TYPE = "ContentType"
-""" \\- "ContentType" """
+"""Action MIME type field."""
 
 # Deployment Details object
 DD_CLIENT = "Client"
-""" \\- "Client" """
+"""Deployment details client field."""
+
 DD_APP = "App"
-""" \\- "App" """
+"""Deployment details app field."""
+
 DD_PORTFOLIO = "Portfolio"
-""" \\- "Portfolio" """
+"""Deployment details portfolio field."""
+
 DD_BRANCH = "Branch"
-""" \\- "Branch" """
+"""Deployment details branch field."""
+
 DD_BRANCH_SHORT_NAME = "BranchShortName"
-""" \\- "BranchShortName" """
+"""Deployment details short branch name field."""
+
 DD_BUILD = "Build"
-""" \\- "Build" """
+"""Deployment details build field."""
+
 DD_COMPONENT = "Component"
-""" \\- "Component" """
+"""Deployment details component field."""
+
 DD_ENVIRONMENT = "Environment"
-""" \\- "Environment" """
+"""Deployment details environment field."""
+
 DD_DATA_CENTER = "DataCenter"
-""" \\- "DataCenter" """
+"""Deployment details data center field."""
+
 DD_SCOPE = "Scope"
-""" \\- "Scope" """
-DD_ECR = "Ecr"  # ECR object for docker containers
-""" \\- "Ecr" """
-DD_TAGS = "Tags"  # A place to hold tags for the deployment
-""" \\- "Tags" """
+"""Deployment details scope field."""
+
+DD_ECR = "Ecr"
+"""Deployment details ECR object field."""
+
+DD_TAGS = "Tags"
+"""Deployment details tags field."""
 
 # Docker Image
 ECR_REGISTRY_URI = "RegistryUri"
-""" \\- "RegistryUri" """
+"""ECR registry URI field."""
 
 # Standard Tags / Tagging Policy
-TAG_NAME = "Name"  # This is actually the PRN or component name with PRN prefix
-""" \\- "Name" """
-TAG_CLIENT = "Client"
-""" \\- "Client" """
-TAG_PORTFOLIO = "Portfolio"
-""" \\- "Portfolio" """
-TAG_APP = "App"
-""" \\- "App" """
-TAG_BRANCH = "Branch"
-""" \\- "Branch" """
-TAG_BUILD = "Build"
-""" \\- "Build" """
-TAG_SCOPE = "Scope"
-""" \\- "Scope" """
+TAG_NAME = "Name"
+"""Name tag key."""
 
-# Prod/NotProd/Dev/UAT1/UAT2 (a.k.a. Zone or Data Center)
+TAG_CLIENT = "Client"
+"""Client tag key."""
+
+TAG_PORTFOLIO = "Portfolio"
+"""Portfolio tag key."""
+
+TAG_APP = "App"
+"""App tag key."""
+
+TAG_BRANCH = "Branch"
+"""Branch tag key."""
+
+TAG_BUILD = "Build"
+"""Build tag key."""
+
+TAG_SCOPE = "Scope"
+"""Scope tag key."""
+
 TAG_ENVIRONMENT = "Environment"
-""" \\- "Environment" """
+"""Environment tag key."""
 
 TAG_COMPONENT = "Component"
-""" \\- "Component" """
+"""Component tag key."""
+
 TAG_ZONE = "Zone"
-""" \\- "Zone" """
+"""Zone tag key."""
+
 TAG_REGION = "Region"
-""" \\- "Region" """
+"""Region tag key."""
+
 TAG_CAPEX_CODE = "CapexCode"
-""" \\- "CapexCode" """
+"""CAPEX code tag key."""
+
 TAG_OPEX_CODE = "OpexCode"
-""" \\- "OpexCode" """
+"""OPEX code tag key."""
+
 TAG_JIRA_CODE = "JiraCode"
-""" \\- "JiraCode" """
+"""JIRA code tag key."""
+
 TAG_OWNER = "Owner"
-""" \\- "Owner" """
+"""Owner tag key."""
+
 TAG_CONTACTS = "Contacts"
-""" \\- "Contacts" """
+"""Contacts tag key."""
 
 # Package Object
 PKG_BUCKET_REGION = "BucketRegion"
-""" \\- "BucketRegion" """
-PKG_BUCKET_NAME = "BucketName"
-""" \\- "BucketName" """
-PKG_S3_KEY = "Key"
-""" \\- "Key" """
-PKG_VERSION_ID = "VersionId"
-""" \\- "VersionId" """
-PKG_MODE = "Mode"
-""" \\- "Mode" """
-PKG_DATA_PATH = "DataPath"
-""" \\- "DataPath" """
-PKG_COMPILE_MODE = "CompileMode"
-""" \\- "CompileMode" """
-PKG_DEPLOYSPEC = "DeploySpec"
-""" \\- "DeploySpec" """
-PKG_TEMPDIR = "TempDir"
-""" \\- "TempDir" """
+"""Package bucket region field."""
 
+PKG_BUCKET_NAME = "BucketName"
+"""Package bucket name field."""
+
+PKG_S3_KEY = "Key"
+"""Package S3 key field."""
+
+PKG_VERSION_ID = "VersionId"
+"""Package version ID field."""
+
+PKG_MODE = "Mode"
+"""Package mode field."""
+
+PKG_DATA_PATH = "DataPath"
+"""Package data path field."""
+
+PKG_COMPILE_MODE = "CompileMode"
+"""Package compile mode field."""
+
+PKG_DEPLOYSPEC = "DeploySpec"
+"""Package deployspec field."""
+
+PKG_TEMPDIR = "TempDir"
+"""Package temporary directory field."""
 
 # Deployspec Object
 DS_LABEL = "label"
-""" \\- "label" """
+"""Deployspec label field."""
+
 DS_TYPE = "type"
-""" \\- "type" """
+"""Deployspec type field."""
+
 DS_PARAMS = "params"
-""" \\- "params" """
-# array of DS_LABEL (only useful in deployspec with more than one deployment)
+"""Deployspec parameters field."""
+
 DS_DEPENDS_ON = "depends_on"
-""" \\- "depends_on" """
+"""Deployspec dependencies field."""
 
 # Deployspec Types
 DS_TYPE_AWS_CREATE_STACK = "aws.create_stack"
-""" \\- "aws.create_stack" """
+"""AWS create stack deployspec type."""
+
 DS_TYPE_CREATE_STACK = "create_stack"
-""" \\- "create_stack" """
+"""Create stack deployspec type."""
+
 DS_TYPE_AWS_DELETE_STACK = "aws.delete_stack"
-""" \\- "aws.delete_stack" """
+"""AWS delete stack deployspec type."""
+
 DS_TYPE_DELETE_STACK = "delete_stack"
-""" \\- "delete_stack" """
+"""Delete stack deployspec type."""
+
 DS_TYPE_AWS_DELETE_USER = "aws.delete_user"
-""" \\- "aws.delete_user" """
+"""AWS delete user deployspec type."""
+
 DS_TYPE_DELETE_USER = "delete_user"
-""" \\- "delete_user" """
+"""Delete user deployspec type."""
+
 DS_TYPE_AWS_CREATE_USER = "aws.create_user"
-""" \\- "aws.create_user" """
+"""AWS create user deployspec type."""
+
 DS_TYPE_CREATE_USER = "create_user"
-""" \\- "create_user" """
+"""Create user deployspec type."""
 
 # Deployspec Params Object
 DSP_TEMPLATE = "template"
-""" \\- "template" """
+"""Deployspec template parameter."""
+
 DSP_STACK_NAME = "stack_name"
-""" \\- "stack_name" """
+"""Deployspec stack name parameter."""
+
 DSP_PARAMETERS = "parameters"
-""" \\- "parameters" """
+"""Deployspec parameters field."""
+
 DSP_ACCOUNT = "account"
-""" \\- "account" """
+"""Deployspec account parameter."""
+
 DSP_ACCOUNTS = "accounts"
-""" \\- "accounts" """
+"""Deployspec accounts parameter."""
+
 DSP_REGION = "region"
-""" \\- "region" """
+"""Deployspec region parameter."""
+
 DSP_REGIONS = "regions"
-""" \\- "regions" """
+"""Deployspec regions parameter."""
+
 DSP_USER_NAME = "user_name"
-""" \\- "user_name" """
+"""Deployspec user name parameter."""
+
 DSP_STACK_POLICY = "stack_policy"
-""" \\- "stack_policy" """
+"""Deployspec stack policy parameter."""
 
 # Scopes
 SCOPE_CLIENT = "client"
-""" \\- "client" """
+"""Client scope level."""
+
 SCOPE_ZONE = "zone"
-""" \\- "zone" """
+"""Zone scope level."""
+
 SCOPE_PORTFOLIO = "portfolio"
-""" \\- "portfolio" """
+"""Portfolio scope level."""
+
 SCOPE_APP = "app"
-""" \\- "app" """
+"""App scope level."""
+
 SCOPE_BRANCH = "branch"
-""" \\- "branch" """
+"""Branch scope level."""
+
 SCOPE_BUILD = "build"
-""" \\- "build" """
+"""Build scope level."""
+
 SCOPE_COMPONENT = "component"
-""" \\- "component" """
+"""Component scope level."""
+
 SCOPE_ENVIRONMENT = "environment"
-""" \\- "environment" """
+"""Environment scope level."""
+
 SCOPE_SHARED = "shared"
-""" \\- "shared" """
+"""Shared scope level."""
+
 SCOPE_RELEASE = "release"
-""" \\- "release" """
+"""Release scope level."""
 
 # Object Types
 OBJ_FILES = "files"
-""" \\- "files" """
+"""Files object type."""
+
 OBJ_ARTEFACTS = "artefacts"
-""" \\- " artefacts " """
+"""Artefacts object type."""
+
 OBJ_PACKAGES = "packages"
-""" \\- "packages" """
+"""Packages object type."""
 
 # Task Results Object
 TASK_RESULTS = "Results"
-""" \\- "Results" """
+"""Task results field."""
 
 # Task Result Object
 TR_COMPILE_RESULTS = "CompileResults"
-""" \\- "CompileResults" """
+"""Task result compile results field."""
+
 TR_STATUS = "Status"
-""" \\- "Status" """
+"""Task result status field."""
+
 TR_MESSAGE = "Message"
-""" \\- "Message" """
+"""Task result message field."""
+
 TR_DETAILS = "Details"
-""" \\- "Details" """
+"""Task result details field."""
+
 TR_ERRORS = "Errors"
-""" \\- "Errors" """
+"""Task result errors field."""
+
 TR_WARNINGS = "Warnings"
-""" \\- "Warnings" """
+"""Task result warnings field."""
+
 TR_RESPONSE = "Response"
-""" \\- "Response" """
+"""Task result response field."""
 
 # Step Function Execution Object
 SF_EXECUTION_ARN = "StepFunctionArn"
-""" \\- "StepFunctionArn" """
+"""Step function execution ARN field."""
+
 SF_INPUT = "Input"
-""" \\- "Input" """
+"""Step function input field."""
 
 # Environment Variables
 ENV_AWS_PROFILE = "AWS_PROFILE"
-""" \\- "AWS_PROFILE". AWS Profile to use for UI and Commandline """
-ENV_AWS_REGION = "AWS_REGION"
-""" \\- "AWS_REGION". Master Region where the automation is running """
-ENV_CLIENT = "CLIENT"
-""" \\- "CLIENT".  The slug for the AWS orgnization """
-ENV_CLIENT_NAME = "CLIENT_NAME"
-""" \\- "CLIENT_NAME". The full name of the AWS orgnization """
-ENV_CLIENT_REGION = "CLIENT_REGION"
-""" \\- "CLIENT_REGION". The primary or default region for this AWS Organization (i.e. Client) """
-ENV_SCOPE = "SCOPE"
-""" \\- "SCOPE". Prefix or 'scope' of the core automation installation in the AWS Organization """
-ENV_PORTFOLIO = "PORTFOLIO"
-""" \\- "PORTFOLIO".  The portfolio name. Equal to the -p or --portfolio flag """
-ENV_APP = "APP"
-""" \\- "APP". The deployment app name. Equal to the -a or --app flag """
-ENV_BRANCH = "BRANCH"
-""" \\- "BRANCH". The app repository branch name. Equal to the -b or --branch flag """
-ENV_BUILD = "BUILD"
-""" \\- "BUILD". The build number, app version, or git commit hash. Equal to the -n or --build flag """
-ENV_COMPONENT = "COMPONENT"
-""" \\- "COMPONENT". The name of the component being deployed """
-ENV_ENVIRONMENT = "ENVIRONMENT"
-""" \\- "ENVIRONMENT". The environment being deployed to. Example: prod, dev, uat1, uat2. """
-ENV_TASKS = "TASKS"
-""" \\- "TASKS". Default tasks to perform on the CLI.  Tasks are separated by a comma. Values:  upload, compile, deploy, plan, apply, release, teardown """
-ENV_UNITS = "UNITS"
-""" \\- "UNITS". The default list of core automation deployment units to update in the CLI.  Default is 'all' """
-ENV_ENFORCE_VALIDATION = "ENFORCE_VALIDATION"
-""" \\- "ENFORCE_VALIDATION" """
-ENV_LOCAL_MODE = "LOCAL_MODE"
-""" \\- "LOCAL_MODE".  Run the automation in local mode.  Default is 'false'.  Supports container operation. No Lambda, No S3."""
-ENV_API_HOST_URL = "API_HOST_URL"
-""" \\- "API_HOST_URL". The URL of the API Gateway """
-ENV_API_LAMBDA_ARN = "API_LAMBDA_ARN"
-""" \\- "API_LAMBDA_ARN".  The ARN of the API Lambda function.  Used for the FastAPI server or the AWS API Gateway """
-ENV_API_LAMBDA_NAME = "API_LAMBDA_NAME"
-""" \\- "API_LAMBDA_NAME".  The Name of the Lambda function. Used for the AWS API Gateway deployment """
-ENV_INVOKER_LAMBDA_ARN = "INVOKER_LAMBDA_ARN"
-""" \\- "INVOKER_LAMBDA_ARN". The ARN of the Invoker Lambda function.  The Invoker ensures security and RBAC controls """
-ENV_INVOKER_LAMBDA_NAME = "INVOKER_LAMBDA_NAME"
-""" \\- "INVOKER_LAMBDA_NAME". The Name of the Invoker Lambda function. Called by the API Lambda """
-ENV_INVOKER_LAMBDA_REGION = "INVOKER_LAMBDA_REGION"
-""" \\- "INVOKER_LAMBDA_REGION". The Region of the Invoker Lambda function """
-ENV_DYNAMODB_REGION = "DYNAMODB_REGION"
-""" \\- "DYNAMODB_REGION". The Region of the DynamoDB service. """
-ENV_DYNAMODB_HOST = "DYNAMODB_HOST"
-""" \\- "DYNAMODB_HOST". THe URL of the DynamoDB service.  (Endpoint Service) """
-ENV_AUTOMATION_TYPE = "AUTOMATION_TYPE"
-""" \\- "AUTOMATION_TYPE". The type of automation being run.  Values:  pipeline, deployspec """
-ENV_BUCKET_NAME = "BUCKET_NAME"
-""" \\- "BUCKET_NAME". The name of the bucket to use for the automation artefacts """
-ENV_BUCKET_REGION = "BUCKET_REGION"
-""" \\- "BUCKET_REGION". The bucket region to use for the automation artefacts """
-ENV_EXECUTE_LAMBDA_ARN = "EXECUTE_LAMBDA_ARN"
-""" \\- "EXECUTE_LAMBDA_ARN". The ARN of the Core Execute Engine Lambda Step Function """
-ENV_START_RUNNER_LAMBDA_ARN = "START_RUNNER_LAMBDA_ARN"
-""" \\- "RUNNER_LAMBDA_ARN". The ARN of the Step Function Runner Lambda (function that runs the Step Function) """
-ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN = "DEPLOYSPEC_COMPILER_LAMBDA_ARN"
-""" \\- "DEPLOYSPEC_COMPILER_LAMBDA_ARN".  The ARN of the Deployspec Compiler Lambda """
-ENV_COMPONENT_COMPILER_LAMBDA_ARN = "COMPONENT_COMPILER_LAMBDA_ARN"
-""" \\- "COMPONENT_COMPILER_LAMBDA_ARN". The ARN of the Component Compiler Lambda """
-ENV_MASTER_REGION = "MASTER_REGION"
-""" \\- "MASTER_REGION". The master region for the Core automation services. """
-ENV_CDK_DEFAULT_ACCOUNT = "CDK_DEFAULT_ACCOUNT"
-""" \\- "CDK_DEFAULT_ACCOUNT". The default AWS Account ID for the CDK """
-ENV_CDK_DEFAULT_REGION = "CDK_DEFAULT_REGION"
-""" \\- "CDK_DEFAULT_REGION". The default AWS Region for the CDK """
-ENV_ORGANIZATION_ACCOUNT = "ORGANIZATION_ACCOUNT"
-""" \\- "ORGANIZATION_ACCOUNT". The AWS Account ID of the AWS Organization """
-ENV_ORGANIZATION_EMAIL = "ORGANIZATION_EMAIL"
-""" \\- "ORGANIZATION_EMAIL". The email address of the AWS Organization """
-ENV_ORGANIZATION_NAME = "ORGANIZATION_NAME"
-""" \\- "ORGANIZATION_NAME". The name of the AWS Organization """
-ENV_ORGANIZATION_ID = "ORGANIZATION_ID"
-""" \\- "ORGANIZATION_ID". The AWS Organization ID """
-ENV_AUTOMATION_ACCOUNT = "AUTOMATION_ACCOUNT"
-""" \\- "AUTOMATION_ACCOUNT". The AWS Account ID where the Core Automation services are deployed"""
-ENV_AUTOMATION_REGION = "AUTOMATION_REGION"
-""" \\- "AUTOMATION_REGION". The AWS Region where the Core Automation services are deployed """
-ENV_ARTEFACT_BUCKET_NAME = "ARTEFACT_BUCKET_NAME"
-""" \\- "ARTEFACT_BUCKET_NAME".  The name of the artefact bucket if different than the BUCKET_NAME """
-ENV_LOG_AS_JSON = "LOG_AS_JSON"
-""" \\- "LOG_AS_JSON". If set to True, the log output will be in JSON format """
-ENV_LOG_LEVEL = "LOG_LEVEL"
-""" \\- "LOG_LEVEL". The log level for the automation.  Default is "INFO" see core_logging module for more information """
-ENV_VOLUME = "VOLUME"
-""" \\- "VOLUME". If LOCAL_MODE=true, the VOLUME is where artefacts are stored.  Defaults to f"{os.getcwd()}/local" """
-ENV_DELIVERED_BY = "DELIVERED_BY"
-""" \\- "DELIVERED_BY". The name of the person, team, or system that ran a Task.  Defaults to 'automation'. """
-ENV_LOG_DIR = "LOG_DIR"
-""" \\- "LOG_DIR". if LOCAL_MODE=true, the LOG_DIR is where logs are stored.  Defaults to f"{os.getcwd()}/local/logs" """
-ENV_USE_S3 = "USE_S3"
-""" \\- "USE_S3". If set to True, the automation will use S3 for artefacts.  Defaults to "not LOCAL_MODE" """
-ENV_CORRELATION_ID = "CORRELATION_ID"
-""" \\- "CORRELATION_ID". The unique ID for the automation run.  Used for tracking and logging """
-ENV_IAM_ACCOUNT = "IAM_ACCOUNT"
-""" \\- "IAM_ACCOUNT". The AWS Account ID where the IAM logs are stored """
-ENV_AUDIT_ACCOUNT = "AUDIT_ACCOUNT"
-""" \\- "AUDIT_ACCOUNT". The AWS Account ID where the audit logs are stored """
-ENV_SECURITY_ACCOUNT = "SECURITY_ACCOUNT"
-""" \\- "SECURITY_ACCOUNT". The AWS Account ID where the security logs are stored """
-ENV_NETWORK_ACCOUNT = "NETWORK_ACCOUNT"
-""" \\- "NETWORK_ACCOUNT". The AWS Account ID where the network logs are stored """
-ENV_DOMAIN = "DOMAIN"
-""" \\- "DOMAIN". The domain name for the AWS Organization """
-ENV_DOCUMENT_BUCKET_NAME = "DOCUMENT_BUCKET_NAME"
-""" \\- "DOCUMENT_BUCKET_NAME". The name of the bucket where documents are stored """
-ENV_UI_BUCKET_NAME = "UI_BUCKET_NAME"
-""" \\- "UI_BUCKET_NAME". The name of the bucket where the UI is stored """
-ENV_CURRENT_ACCOUNT = "CURRENT_ACCOUNT"
-""" \\- "CURRENT_ACCOUNT". The AWS Account ID of the account running the automation """
-ENV_CDK_DEFAULT_ACCOUNT = "CDK_DEFAULT_ACCOUNT"
-""" \\- "CDK_DEFAULT_ACCOUNT". The default AWS Account ID for the CDK """
-ENV_CDK_DEFAULT_REGION = "CDK_DEFAULT_REGION"
-""" \\- "CDK_DEFAULT_REGION". The default AWS Region for the CDK """
-ENV_PROJECT = "PROJECT"
-""" \\- "PROJECT". The name of the project associated with the Bizapp/Portfolio """
-ENV_BIZAPP = "BIZAPP"
-""" \\- "BIZAPP". The name of the business application (portfolio) in a deployment """
-ENV_CONSOLE_LOG = "CONSOLE_LOG"
-""" \\- "CONSOLE_LOG". If set to True, the log output will be sent to the console """
-ENV_CONSOLE = "CONSOLE"
-""" \\- "CONSOLE". If set to 'interactive', the console will prompt for input.  If set to 'non-interactive', the console will not prompt for input. """
-ENV_AWS_ENDPOINT_URL = "AWS_ENDPOINT_URL"
-""" \\- "AWS_ENDPOINT_URL". The endpoint URL for the AWS services.  Used for local development or testing. """
+"""AWS Profile environment variable."""
 
-# Jina2 Context Fitler Constants
+ENV_AWS_REGION = "AWS_REGION"
+"""AWS Region environment variable."""
+
+ENV_CLIENT = "CLIENT"
+"""Client environment variable."""
+
+ENV_CLIENT_NAME = "CLIENT_NAME"
+"""Client name environment variable."""
+
+ENV_CLIENT_REGION = "CLIENT_REGION"
+"""Client region environment variable."""
+
+ENV_SCOPE = "SCOPE"
+"""Scope environment variable."""
+
+ENV_PORTFOLIO = "PORTFOLIO"
+"""Portfolio environment variable."""
+
+ENV_APP = "APP"
+"""App environment variable."""
+
+ENV_BRANCH = "BRANCH"
+"""Branch environment variable."""
+
+ENV_BUILD = "BUILD"
+"""Build environment variable."""
+
+ENV_COMPONENT = "COMPONENT"
+"""Component environment variable."""
+
+ENV_ENVIRONMENT = "ENVIRONMENT"
+"""Environment environment variable."""
+
+ENV_TASKS = "TASKS"
+"""Tasks environment variable."""
+
+ENV_UNITS = "UNITS"
+"""Units environment variable."""
+
+ENV_ENFORCE_VALIDATION = "ENFORCE_VALIDATION"
+"""Enforce validation environment variable."""
+
+ENV_LOCAL_MODE = "LOCAL_MODE"
+"""Local mode environment variable."""
+
+ENV_API_HOST_URL = "API_HOST_URL"
+"""API host URL environment variable."""
+
+ENV_API_LAMBDA_ARN = "API_LAMBDA_ARN"
+"""API Lambda ARN environment variable."""
+
+ENV_API_LAMBDA_NAME = "API_LAMBDA_NAME"
+"""API Lambda name environment variable."""
+
+ENV_INVOKER_LAMBDA_ARN = "INVOKER_LAMBDA_ARN"
+"""Invoker Lambda ARN environment variable."""
+
+ENV_INVOKER_LAMBDA_NAME = "INVOKER_LAMBDA_NAME"
+"""Invoker Lambda name environment variable."""
+
+ENV_INVOKER_LAMBDA_REGION = "INVOKER_LAMBDA_REGION"
+"""Invoker Lambda region environment variable."""
+
+ENV_DYNAMODB_REGION = "DYNAMODB_REGION"
+"""DynamoDB region environment variable."""
+
+ENV_DYNAMODB_HOST = "DYNAMODB_HOST"
+"""DynamoDB host environment variable."""
+
+ENV_AUTOMATION_TYPE = "AUTOMATION_TYPE"
+"""Automation type environment variable."""
+
+ENV_BUCKET_NAME = "BUCKET_NAME"
+"""Bucket name environment variable."""
+
+ENV_BUCKET_REGION = "BUCKET_REGION"
+"""Bucket region environment variable."""
+
+ENV_EXECUTE_LAMBDA_ARN = "EXECUTE_LAMBDA_ARN"
+"""Execute Lambda ARN environment variable."""
+
+ENV_START_RUNNER_LAMBDA_ARN = "START_RUNNER_LAMBDA_ARN"
+"""Start runner Lambda ARN environment variable."""
+
+ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN = "DEPLOYSPEC_COMPILER_LAMBDA_ARN"
+"""Deployspec compiler Lambda ARN environment variable."""
+
+ENV_COMPONENT_COMPILER_LAMBDA_ARN = "COMPONENT_COMPILER_LAMBDA_ARN"
+"""Component compiler Lambda ARN environment variable."""
+
+ENV_MASTER_REGION = "MASTER_REGION"
+"""Master region environment variable."""
+
+ENV_CDK_DEFAULT_ACCOUNT = "CDK_DEFAULT_ACCOUNT"
+"""CDK default account environment variable."""
+
+ENV_CDK_DEFAULT_REGION = "CDK_DEFAULT_REGION"
+"""CDK default region environment variable."""
+
+ENV_ORGANIZATION_ACCOUNT = "ORGANIZATION_ACCOUNT"
+"""Organization account environment variable."""
+
+ENV_ORGANIZATION_EMAIL = "ORGANIZATION_EMAIL"
+"""Organization email environment variable."""
+
+ENV_ORGANIZATION_NAME = "ORGANIZATION_NAME"
+"""Organization name environment variable."""
+
+ENV_ORGANIZATION_ID = "ORGANIZATION_ID"
+"""Organization ID environment variable."""
+
+ENV_AUTOMATION_ACCOUNT = "AUTOMATION_ACCOUNT"
+"""Automation account environment variable."""
+
+ENV_AUTOMATION_REGION = "AUTOMATION_REGION"
+"""Automation region environment variable."""
+
+ENV_ARTEFACT_BUCKET_NAME = "ARTEFACT_BUCKET_NAME"
+"""Artefact bucket name environment variable."""
+
+ENV_LOG_AS_JSON = "LOG_AS_JSON"
+"""Log as JSON environment variable."""
+
+ENV_LOG_LEVEL = "LOG_LEVEL"
+"""Log level environment variable."""
+
+ENV_VOLUME = "VOLUME"
+"""Volume environment variable."""
+
+ENV_DELIVERED_BY = "DELIVERED_BY"
+"""Delivered by environment variable."""
+
+ENV_LOG_DIR = "LOG_DIR"
+"""Log directory environment variable."""
+
+ENV_USE_S3 = "USE_S3"
+"""Use S3 environment variable."""
+
+ENV_CORRELATION_ID = "CORRELATION_ID"
+"""Correlation ID environment variable."""
+
+ENV_IAM_ACCOUNT = "IAM_ACCOUNT"
+"""IAM account environment variable."""
+
+ENV_AUDIT_ACCOUNT = "AUDIT_ACCOUNT"
+"""Audit account environment variable."""
+
+ENV_SECURITY_ACCOUNT = "SECURITY_ACCOUNT"
+"""Security account environment variable."""
+
+ENV_NETWORK_ACCOUNT = "NETWORK_ACCOUNT"
+"""Network account environment variable."""
+
+ENV_DOMAIN = "DOMAIN"
+"""Domain environment variable."""
+
+ENV_DOCUMENT_BUCKET_NAME = "DOCUMENT_BUCKET_NAME"
+"""Document bucket name environment variable."""
+
+ENV_UI_BUCKET_NAME = "UI_BUCKET_NAME"
+"""UI bucket name environment variable."""
+
+ENV_CURRENT_ACCOUNT = "CURRENT_ACCOUNT"
+"""Current account environment variable."""
+
+ENV_PROJECT = "PROJECT"
+"""Project environment variable."""
+
+ENV_BIZAPP = "BIZAPP"
+"""Business application environment variable."""
+
+ENV_CONSOLE_LOG = "CONSOLE_LOG"
+"""Console log environment variable."""
+
+ENV_CONSOLE = "CONSOLE"
+"""Console environment variable."""
+
+ENV_AWS_ENDPOINT_URL = "AWS_ENDPOINT_URL"
+"""AWS endpoint URL environment variable."""
+
+# Jinja2 Context Filter Constants
 CTX_TAGS = "tags"
-""" \\- "tags" """
+"""Context tags field."""
+
 CTX_APP = "app"
-""" \\- "app" """
+"""Context app field."""
+
 CTX_CONTEXT = "context"
-""" \\- "context" """
+"""Context context field."""
+
 CTX_VARS = "vars"
-""" \\- "vars" """
+"""Context vars field."""
+
 CTX_COMPONENT_NAME = "component_name"
-""" \\- "component_name" """
+"""Context component name field."""
+
 CTX_FILES_BUCKET_URL = "FilesBucketUrl"
-""" \\- "FilesBucketUrl" """
+"""Context files bucket URL field."""
+
 CTX_SHARED_FILES_PREFIX = "SharedFilesPrefix"
-""" \\- "SharedFilesPrefix" """
+"""Context shared files prefix field."""
+
 CTX_PORTFOLIO_FILES_PREFIX = "PortfolioFilesPrefix"
-""" \\- "PortfolioFilesPrefix" """
+"""Context portfolio files prefix field."""
+
 CTX_APP_FILES_PREFIX = "AppFilesPrefix"
-""" \\- "AppFilesPrefix" """
+"""Context app files prefix field."""
+
 CTX_BRANCH_FILES_PREFIX = "BranchFilesPrefix"
-""" \\- "BranchFilesPrefix" """
+"""Context branch files prefix field."""
+
 CTX_BUILD_FILES_PREFIX = "BuildFilesPrefix"
-""" \\- "BuildFilesPrefix" """
+"""Context build files prefix field."""
+
 CTX_SNAPSHOT_ALIASES = "SnapshotAliases"
-""" \\- "SnapshotAliases" """
+"""Context snapshot aliases field."""
+
 CTX_ACCOUNT_ALIASES = "AccountAliases"
-""" \\- "AccountAliases" """
+"""Context account aliases field."""
 
 # Source Types for security rules
 ST_CIDR = "cidr"
-""" \\- "cidr" """
+"""CIDR source type."""
+
 ST_IP_ADDRESS = "ip"
-""" \\- "ip" """
+"""IP address source type."""
+
 ST_COMPONENT = "component"
-""" \\- "component" """
+"""Component source type."""
+
 ST_PREFIX = "prefix"
-""" \\- "prefix" """
+"""Prefix source type."""
+
 ST_SECURITY_GROUP = "sg-attachment"
-""" \\- "sg-attachment" """
+"""Security group attachment source type."""
 
 # Facts
 FACTS_ACCOUNT = "AccountFacts"
-""" \\- "AccountFacts" """
+"""Account facts field."""
+
 FACTS_REGION = "RegionFacts"
-""" \\- "RegionFacts" """
+"""Region facts field."""
+
 FACTS_IMAGE = "ImageAliases"
-""" \\- "ImageAliases" """
+"""Image aliases facts field."""
+
 FACTS_TAGS = "Tags"
-""" \\- "Tags" """
+"""Tags facts field."""
+
 FACTS_VPC = "VpcAliases"
-""" \\- "VpcAliases" """
+"""VPC aliases facts field."""
+
 FACTS_SUBNET = "SubnetAliases"
-""" \\- "SubnetAliases" """
+"""Subnet aliases facts field."""
+
 FACTS_ENVIRONMENT = "Environment"
-""" \\- "Environment" """
+"""Environment facts field."""
+
 FACTS_SECURITY = "SecurityAliases"
-""" \\- "SecurityAliases" """
+"""Security aliases facts field."""
+
 FACTS_SECURITY_GROUP = "SecurityGroupAliases"
-""" \\- "SecurityGroupAliases" """
+"""Security group aliases facts field."""
 
-# In Development
+# Core Automation Roles
 CORE_AUTOMATION_ADMIN_ROLE = "Administrator"
-""" \\- "Administrator" """
-CORE_AUTOMATION_API_WRITE_ROLE = "CoreAutomationApiWrite"
-""" \\- "CoreAutomationApiWrite" """
-CORE_AUTOMATION_API_READ_ROLE = "CoreAutomationApiRead"
-""" \\- "CoreAutomationApiRead" """
-CORE_AUTOMATION_DEPLOYMENT_WRITE_ROLE = "CoreAutomationDeploymentWrite"
-""" \\- "CoreAutomationDeploymentWrite" """
-CORE_AUTOMATION_DEPLOYMENT_READ_ROLE = "CoreAutomationDeploymentRead"
-""" \\- "CoreAutomationDeploymentRead" """
-CORE_AUTOMATION_SESSION_ID_PREFIX = "Pipeline"
-""" \\- "Pipeline" """
-CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE = "PipelineProvisioning"
-""" \\- "PipelineProvisioning" """
+"""Core automation administrator role."""
 
-# Properties in snake-case. Also used in argparse "dest" parameter in the CLI and "RESTful JSON".
-# Used as snake_case function paramter names (especially in **kwargs)
+CORE_AUTOMATION_API_WRITE_ROLE = "CoreAutomationApiWrite"
+"""Core automation API write role."""
+
+CORE_AUTOMATION_API_READ_ROLE = "CoreAutomationApiRead"
+"""Core automation API read role."""
+
+CORE_AUTOMATION_DEPLOYMENT_WRITE_ROLE = "CoreAutomationDeploymentWrite"
+"""Core automation deployment write role."""
+
+CORE_AUTOMATION_DEPLOYMENT_READ_ROLE = "CoreAutomationDeploymentRead"
+"""Core automation deployment read role."""
+
+CORE_AUTOMATION_SESSION_ID_PREFIX = "Pipeline"
+"""Core automation session ID prefix."""
+
+CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE = "PipelineProvisioning"
+"""Core automation pipeline provisioning role."""
+
+# Properties (snake_case for CLI and API)
 P_AWS_PROFILE = "aws_profile"
-""" \\- "aws_profile" """
+"""AWS profile property."""
+
 P_AWS_REGION = "aws_region"
-""" \\- "aws_region" """
+"""AWS region property."""
+
 P_SCOPE = "scope"
-""" \\- "scope" """
+"""Scope property."""
+
 P_CLIENT = "client"
-""" \\- "client" """
+"""Client property."""
+
 P_CLIENT_NAME = "client_name"
-""" \\- "client_name" """
+"""Client name property."""
+
 P_DOMAIN = "domain"
-""" \\- "domain" """
+"""Domain property."""
+
 P_CLIENT_REGION = "client_region"
-""" \\- "client_region" """
+"""Client region property."""
+
 P_ORGANIZATION_ID = "organization_id"
-""" \\- "organization_id" """
+"""Organization ID property."""
+
 P_USERNAME = "username"
-""" \\- "username" """
+"""Username property."""
+
 P_CURRENT_ACCOUNT = "current_account"
-""" \\- "current_account" """
+"""Current account property."""
+
 P_CDK_DEFAULT_ACCOUNT = "cdk_default_account"
-""" \\- "cdk_default_account" """
+"""CDK default account property."""
+
 P_CDK_DEFAULT_REGION = "cdk_default_region"
-""" \\- "cdk_default_region" """
+"""CDK default region property."""
+
 P_IAM_ACCOUNT = "iam_account"
-""" \\- "iam_account" """
+"""IAM account property."""
+
 P_AUTOMATION_ACCOUNT = "automation_account"
-""" \\- "automation_account" """
+"""Automation account property."""
+
 P_SECURITY_ACCOUNT = "security_account"
-""" \\- "security_account" """
+"""Security account property."""
+
 P_AUDIT_ACCOUNT = "audit_account"
-""" \\- "audit_account" """
+"""Audit account property."""
+
 P_NETWORK_ACCOUNT = "network_account"
-""" \\- "network_account" """
+"""Network account property."""
+
 P_IDENTITY = "identity"
-""" \\- "identity" """
+"""Identity property."""
+
 P_CREDENTIALS = "credentials"
-""" \\- "credentials" """
+"""Credentials property."""
+
 P_REGION = "region"
-""" \\- "region" """
+"""Region property."""
+
 P_MASTER_REGION = "master_region"
-""" \\- "master_region" """
+"""Master region property."""
+
 P_DOCUMENT_BUCKET_NAME = "docs_bucket_name"
-""" \\- "docs_bucket_name" """
+"""Document bucket name property."""
+
 P_UI_BUCKET_NAME = "ui_bucket_name"
-""" \\- "ui_bucket_name" """
+"""UI bucket name property."""
+
 P_ARTEFACT_BUCKET_NAME = "artefact_bucket_name"
-""" \\- "artefact_bucket_name" """
+"""Artefact bucket name property."""
+
 P_BUCKET_NAME = "bucket_name"
-""" \\- "bucket_name" """
+"""Bucket name property."""
+
 P_BUCKET_REGION = "bucket_region"
-""" \\- "bucket_region" """
+"""Bucket region property."""
+
 P_TEMPLATE = "template"
-""" \\- "template" """
+"""Template property."""
+
 P_STACK_NAME = "stack_name"
-""" \\- "stack_name" """
+"""Stack name property."""
+
 P_STACK_PARAMETERS = "stack_parameters"
-""" \\- "stack_parameters" """
-P_ORGANIZATION_ID = "organization_id"
-""" \\- "organization_id" """
+"""Stack parameters property."""
+
 P_ORGANIZATION_NAME = "organization_name"
-""" \\- "organization_name" """
+"""Organization name property."""
+
 P_ORGANIZATION_EMAIL = "organization_email"
-""" \\- "organization_email" """
+"""Organization email property."""
+
 P_ORGANIZATION_ACCOUNT = "organization_account"
-""" \\- "organization_account" """
+"""Organization account property."""
+
 P_AUTOMATION_TYPE = "automation_type"
-""" \\- "automation_type" """
+"""Automation type property."""
+
 P_TASKS = "tasks"
-""" \\- "tasks" """
+"""Tasks property."""
+
 P_UNITS = "units"
-""" \\- "units" """
+"""Units property."""
+
 P_PORTFOLIO = "portfolio"
-""" \\- "portfolio" """
+"""Portfolio property."""
+
 P_APP = "app"
-""" \\- "app" """
+"""App property."""
+
 P_BRANCH = "branch"
-""" \\- "branch" """
+"""Branch property."""
+
 P_BUILD = "build"
-""" \\- "build" """
+"""Build property."""
+
 P_COMPONENT = "component"
-""" \\- "component" """
+"""Component property."""
+
 P_ENVIRONMENT = "environment"
-""" \\- "environment" """
+"""Environment property."""
+
 P_DYNAMODB_HOST = "dynamodb_host"
-""" \\- "dynamodb_host" """
+"""DynamoDB host property."""
+
 P_DYNAMODB_REGION = "dynamodb_region"
-""" \\- "dynamodb_region" """
+"""DynamoDB region property."""
+
 P_LOG_AS_JSON = "log_as_json"
-""" \\- "log_as_json" """
+"""Log as JSON property."""
+
 P_VOLUME = "volume"
-""" \\- "volume" """
+"""Volume property."""
+
 P_LOG_DIR = "log_dir"
-""" \\- "log_dir" """
+"""Log directory property."""
+
 P_DELIVERED_BY = "delivered_by"
-""" \\- "delivered_by" """
+"""Delivered by property."""
+
 P_LOCAL_MODE = "local_mode"
-""" \\- "local_mode" """
+"""Local mode property."""
+
 P_USE_S3 = "use_s3"
-""" \\- "use_s3" """
+"""Use S3 property."""
+
 P_ENFORCE_VALIDATION = "enforce_validation"
-""" \\- "enforce_validation" """
+"""Enforce validation property."""
+
 P_INVOKER_ARN = "invoker_arn"
-""" \\- "invoker_lambda_arn" """
+"""Invoker ARN property."""
+
 P_INVOKER_NAME = "invoker_name"
-""" \\- "invoker_lambda_name" """
+"""Invoker name property."""
+
 P_INVOKER_REGION = "invoker_region"
-""" \\- "invoker_lambda_region" """
+"""Invoker region property."""
+
 P_API_LAMBDA_ARN = "api_lambda_arn"
-""" \\- "api_lambda_arn" """
+"""API Lambda ARN property."""
+
 P_API_LAMBDA_NAME = "api_lambda_name"
-""" \\- "api_lambda_name" """
+"""API Lambda name property."""
+
 P_API_HOST_URL = "api_host_url"
-""" \\- "api_host_url" """
+"""API host URL property."""
+
 P_EXECUTE_LAMBDA_ARN = "execute_lambda_arn"
-""" \\- "execute_lambda_arn" """
+"""Execute Lambda ARN property."""
+
 P_START_RUNNER_LAMBDA_ARN = "start_runner_lambda_arn"
-""" \\- "start_runner_lambda_arn" """
+"""Start runner Lambda ARN property."""
+
 P_DEPLOYSPEC_COMPILER_LAMBDA_ARN = "deployspec_compiler_lambda_arn"
-""" \\- "deployspec_compiler_lambda_arn" """
+"""Deployspec compiler Lambda ARN property."""
+
 P_COMPONENT_COMPILER_LAMBDA_ARN = "component_compiler_lambda_arn"
-""" \\- "component_compiler_lambda_arn" """
+"""Component compiler Lambda ARN property."""
+
 P_START_RUNNER_STEP_FUNCTION_ARN = "runner_step_function_arn"
-""" \\- "runner_step_function_arn" """
+"""Start runner Step Function ARN property."""
+
 P_TAGS = "tags"
-""" \\- "tags" """
+"""Tags property."""
+
 P_CORRELATION_ID = "correlation_id"
-""" \\- "correlation_id" """
+"""Correlation ID property."""
+
 P_PROJECT = "project"
-""" \\- "project" """
+"""Project property."""
+
 P_BIZAPP = "bizapp"
-""" \\- "bizapp" """
+"""Business application property."""
+
 P_PRN = "prn"
-""" \\- "prn" """
+"""PRN property."""
+
 P_CONSOLE_LOG = "console_log"
-""" \\- "console_log" """
+"""Console log property."""
+
 P_CONSOLE = "console"
-""" \\- "console" .  Values are "interactive" or "non-interactive" """
+"""Console property."""
+
 P_LOG_LEVEL = "log_level"
-""" \\- "log_level" . See core_logging module for more information """
+"""Log level property."""
+
 P_CLIENT_TABLE_NAME = "clients_table_name"
-""" \\- "clients_table_name" == f"{scope}core-automation-clients" """
+"""Client table name property - {scope}core-automation-clients.
+
+Global table.  Does not include {client} name in scope.
+"""
+
 P_PORTFOLIOS_TABLE_NAME = "portfolios_table_name"
-""" \\- "portfolios_table_name" == f"{scope}core-automation-portfolios" """
+"""Portfolios table name property - {scope}{client}-core-automation-portfolios."""
+
 P_APPS_TABLE_NAME = "apps_table_name"
-""" \\- "apps_table_name" == f"{scope}core-automation-apps" """
+"""Apps table name property - {scope}{client}-core-automation-apps."""
+
 P_ZONES_TABLE_NAME = "zones_table_name"
-""" \\- "zones_table_name" == f"{scope}core-automation-zones" """
+"""Zones table name property - {scope}{client}-core-automation-zones."""
+
 P_ITEMS_TABLE_NAME = "items_table_name"
-""" \\- "items_table_name" == f"{scope}{client}-core-automation-items" """
+"""Items table name property - {scope}{client}-core-automation-items."""
+
 P_EVENTS_TABLE_NAME = "events_table_name"
-""" \\- "events_table_name" == f"{scope}{client}-core-automation-events" """
+"""Events table name property - {scope}{client}-core-automation-events."""

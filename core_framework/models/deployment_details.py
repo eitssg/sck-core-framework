@@ -1,42 +1,67 @@
-"""
-DeploymentDetails Model Module
-==============================
+"""DeploymentDetails Model Module for Simple Cloud Kit Framework.
 
-This module contains the DeploymentDetails class which provides a model for how deployment
-details are to be provided to the core-execute library.
+This module contains the DeploymentDetails class which provides a comprehensive model for
+deployment details used throughout the core-execute library and deployment automation system.
+It serves as the central data structure for identifying deployment context and generating
+resource identifiers across the Simple Cloud Kit ecosystem.
 
 The DeploymentDetails class identifies the Client, Portfolio, App, Branch, Build, Component,
 Environment, DataCenter, Scope, Tags, and StackFile for a deployment. It provides methods
-for generating resource identifiers and S3 object keys.
+for generating resource identifiers, S3 object keys, and deployment paths with support for
+hierarchical deployment structures and multi-tenant environments.
 
-Classes
--------
-DeploymentDetails : BaseModel
-    Model for deployment details with validation and utility methods.
+Key Features:
+    - **Hierarchical Deployment Model**: Client → Portfolio → App → Branch → Build → Component
+    - **Resource Identifier Generation**: PRN (Portfolio Resource Name) generation at all levels
+    - **S3 Object Key Generation**: Intelligent path generation for storage and retrieval
+    - **Scope Management**: Automatic scope determination based on deployment depth
+    - **Multi-Tenant Support**: Client-based isolation and resource organization
+    - **Flexible Factory Methods**: Multiple ways to create instances from various sources
 
-Examples
---------
-Creating a DeploymentDetails instance::
+Deployment Hierarchy:
+    ```
+    Client (acme-corp)
+    └── Portfolio (ecommerce)
+        └── App (web-frontend)
+            └── Branch (feature/checkout)
+                └── Build (v1.2.3-beta.5+abc123)
+                    └── Component (load-balancer)
+    ```
 
+Examples:
+    >>> from core_framework.models import DeploymentDetails
+
+    >>> # Create basic deployment details
     >>> dd = DeploymentDetails(
-    ...     client="my-client",
-    ...     portfolio="my-portfolio",
-    ...     app="my-app",
-    ...     branch="feature/new-feature",
-    ...     build="1.0.0"
+    ...     client="acme-corp",
+    ...     portfolio="ecommerce",
+    ...     app="web-frontend",
+    ...     branch="main",
+    ...     build="v1.2.3"
     ... )
 
-Creating from arguments with automatic defaults::
+    >>> # Generate resource identifiers
+    >>> print(dd.get_build_prn())  # "prn:ecommerce:web-frontend:main:v1.2.3"
 
-    >>> dd = DeploymentDetails.from_arguments(
-    ...     portfolio="my-portfolio",
-    ...     app="my-app"
-    ... )
-
-Generating S3 keys::
-
+    >>> # Generate S3 object keys
     >>> key = dd.get_object_key("artefacts", "deploy.yaml")
-    >>> print(key)  # artefacts/my-portfolio/my-app/feature-new-feature/1.0.0/deploy.yaml
+    >>> print(key)  # "artefacts/ecommerce/web-frontend/main/v1.2.3/deploy.yaml"
+
+    >>> # Create from flexible arguments
+    >>> dd = DeploymentDetails.from_arguments(
+    ...     portfolio="mobile-apps",
+    ...     app="ios-client"
+    ... )
+
+Related Classes:
+    - ActionDetails: Uses DeploymentDetails for action file path generation
+    - FileDetails: Base class for file storage and retrieval operations
+    - ActionSpec: Uses deployment context for action specification loading
+
+Note:
+    DeploymentDetails enforces hierarchical dependencies where each level requires
+    all parent levels to be present. This ensures consistent resource organization
+    and prevents invalid deployment configurations.
 """
 
 from typing import Self
@@ -59,296 +84,340 @@ from core_framework.constants import (
 
 
 class DeploymentDetails(BaseModel):
-    """
-    DeploymentDetails identifies deployment context and generates resource identifiers.
+    """Comprehensive model for deployment details with validation and utility methods.
 
-    This class provides a comprehensive model for deployment details including client
-    information, application hierarchy (portfolio/app/branch/build), deployment context,
-    and utility methods for generating S3 keys and resource identifiers.
+    DeploymentDetails serves as the central data structure for deployment context throughout
+    the Simple Cloud Kit framework. It provides a hierarchical model for organizing
+    deployments from client-level down to individual components, with automatic validation
+    and intelligent resource identifier generation.
 
-    Attributes
-    ----------
-    client : str
-        The name of the client or customer (installation or AWS Organization)
-    portfolio : str
-        Portfolio name is the BizApp name
-    app : str | None
-        The name of the part of the BizApp. The deployment unit.
-    branch : str | None
-        The name of the branch of the deployment unit being deployed
-    branch_short_name : str | None
-        The short name of the branch suitable for AWS resource names
-    build : str | None
-        The build number, version number, or repo tag
-    component : str | None
-        The item deployed (EC2, Volume, ResourceGroup, etc)
-    environment : str | None
-        Related to the Zone (Prod, Dev, Non-Prod, UAT, PEN, PERF, PT, etc)
-    data_center : str | None
-        The physical location, similar to AWS region (us-east-1, us-west-2, etc)
-    scope : str | None
-        The deployment scope (portfolio, app, branch, build)
-    tags : dict[str, str] | None
-        Key-value pairs that can be applied to resources
-    stack_file : str | None
-        The name of the CloudFormation stack file used in deployment
-    delivered_by : str | None
-        The name of the person or system that delivered the deployment
+    The class enforces a strict hierarchy: Client → Portfolio → App → Branch → Build → Component,
+    ensuring consistent organization and preventing invalid deployment configurations.
 
-    Notes
-    -----
-    Hierarchical Dependencies:
-        - Component requires Build
-        - Build requires Branch
-        - Branch requires App
-        - App requires Portfolio
+    Attributes:
+        client (str): Client identifier for multi-tenant deployments and billing isolation.
+                     Defaults to framework client configuration if not provided.
+        portfolio (str): Portfolio name representing the business application or project group.
+                        Required field that serves as the primary organizational unit.
+        app (str, optional): Application name within the portfolio representing a deployment unit.
+                            Can be None for portfolio-level operations.
+        branch (str, optional): Source code branch name for version control integration.
+                               Can be None for app-level operations.
+        branch_short_name (str, optional): AWS-compatible short branch name without special characters.
+                                          Auto-generated from branch if not provided.
+        build (str, optional): Build number, version, or repository tag for release tracking.
+                              Can be None for branch-level operations.
+        component (str, optional): Specific component within a build (EC2, Volume, ResourceGroup).
+                                  Represents the finest granularity of deployment.
+        environment (str, optional): Deployment environment (Prod, Dev, Staging, UAT, etc.).
+                                    Related to zone configuration.
+        data_center (str, optional): Physical location or AWS region (us-east-1, eu-west-1).
+                                    Used for geographic deployment distribution.
+        scope (str, optional): Deployment scope determining storage hierarchy level.
+                              Auto-determined if not provided.
+        tags (dict[str, str], optional): Key-value pairs for resource tagging and metadata.
+        stack_file (str, optional): CloudFormation stack file name for infrastructure deployment.
+        delivered_by (str, optional): Person or system responsible for the deployment.
+
+    Examples:
+        >>> # Complete deployment hierarchy
+        >>> dd = DeploymentDetails(
+        ...     client="acme-corp",
+        ...     portfolio="ecommerce",
+        ...     app="web-frontend",
+        ...     branch="feature/new-checkout",
+        ...     build="v2.1.0-beta.3+f9a8b7c",
+        ...     component="load-balancer",
+        ...     environment="staging",
+        ...     data_center="us-east-1"
+        ... )
+
+        >>> # Portfolio-level deployment
+        >>> dd = DeploymentDetails(
+        ...     client="acme-corp",
+        ...     portfolio="data-analytics"
+        ... )
+
+        >>> # App-level deployment
+        >>> dd = DeploymentDetails(
+        ...     client="acme-corp",
+        ...     portfolio="mobile-apps",
+        ...     app="ios-client"
+        ... )
+
+        >>> # With custom tags and metadata
+        >>> dd = DeploymentDetails(
+        ...     client="acme-corp",
+        ...     portfolio="ecommerce",
+        ...     app="payment-service",
+        ...     tags={"Team": "payments", "CostCenter": "engineering"},
+        ...     delivered_by="jenkins-ci"
+        ... )
+
+    Validation Rules:
+        - **Component requires Build**: Cannot specify component without build
+        - **Build requires Branch**: Cannot specify build without branch
+        - **Branch requires App**: Cannot specify branch without app
+        - **Portfolio always required**: Portfolio must always be provided
 
     Scope Determination:
-        The scope is automatically determined based on the most specific level provided,
-        unless explicitly overridden via environment variable or parameter.
+        Scope is automatically determined by the deepest level provided:
+        - "build": When build is specified
+        - "branch": When branch is specified but not build
+        - "app": When app is specified but not branch
+        - "portfolio": When only portfolio is specified
 
-    Examples
-    --------
-    Basic deployment details::
-
-        >>> dd = DeploymentDetails(
-        ...     client="acme-corp",
-        ...     portfolio="ecommerce",
-        ...     app="web-frontend",
-        ...     branch="main",
-        ...     build="v1.2.3"
-        ... )
-
-    Component-level deployment::
-
-        >>> dd = DeploymentDetails(
-        ...     client="acme-corp",
-        ...     portfolio="ecommerce",
-        ...     app="web-frontend",
-        ...     branch="main",
-        ...     build="v1.2.3",
-        ...     component="load-balancer"
-        ... )
-
-    Generating resource identifiers::
-
-        >>> prn = dd.get_build_prn()
-        >>> print(prn)  # prn:ecommerce:web-frontend:main:v1.2.3
-
-    Generating S3 keys::
-
-        >>> key = dd.get_artefacts_key("deploy.yaml")
-        >>> print(key)  # artefacts/ecommerce/web-frontend/main/v1.2.3/deploy.yaml
+    Resource Identifier Format:
+        PRNs (Portfolio Resource Names) follow this hierarchical format:
+        - Portfolio: "prn:portfolio"
+        - App: "prn:portfolio:app"
+        - Branch: "prn:portfolio:app:branch"
+        - Build: "prn:portfolio:app:branch:build"
+        - Component: "prn:portfolio:app:branch:build:component"
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
     client: str = Field(
-        alias="Client",  # Alias for PascalCase compatibility
-        description="Client is the name of the client or customer (installation or AWS Organizatoion)",
-        default=lambda: util.get_client(),  # Default to util.get_client()
+        alias="Client",
+        description="Client identifier for multi-tenant deployments and billing isolation",
+        default_factory=lambda: util.get_client(),
     )
 
     portfolio: str = Field(
-        alias="Portfolio",  # Alias for PascalCase compatibility
-        description="Portfolio name is the BizApp name",
+        alias="Portfolio",
+        description="Portfolio name representing the business application or project group",
     )
 
     app: str | None = Field(
-        alias="App",  # Alias for PascalCase compatibility
-        description="App is the name of the part of the BizApp.  The deployment unit.",
+        alias="App",
+        description="Application name within the portfolio representing a deployment unit",
         default=None,
     )
 
     branch: str | None = Field(
-        alias="Branch",  # Alias for PascalCase compatibility
-        description="Branch is the name of the branch of the deployment unit being deployed",
+        alias="Branch",
+        description="Source code branch name for version control integration",
         default=None,
     )
 
     branch_short_name: str | None = Field(
-        alias="BranchShortName",  # Alias for PascalCase compatibility
-        description="BranchShortName is the short name of the branch of the deployment unit being deployed.  "
-        "Done because of special characters that cannot be used as AWS resource names",
+        alias="BranchShortName",
+        description="AWS-compatible short branch name without special characters",
         default=None,
     )
 
     build: str | None = Field(
-        alias="Build",  # Alias for PascalCase compatibility
-        description="Build is the build number, version number.  Or repo tag.  May even have the repository "
-        "commit ID in the name.  (Ex. 0.0.6-pre.204+f9908cc6)",
+        alias="Build",
+        description="Build number, version, or repository tag for release tracking",
         default=None,
     )
 
     component: str | None = Field(
-        alias="Component",  # Alias for PascalCase compatibility
-        description="Component is the item deployed (EC2, Volumne, ResourceGrooup, etc).  "
-        "These are parts of the deploment unit.",
+        alias="Component",
+        description="Specific component within a build (EC2, Volume, ResourceGroup)",
         default=None,
     )
 
     environment: str | None = Field(
-        alias="Environment",  # Alias for PascalCase compatibility
-        description="Environment is related to the Zone.  Examples are Prod, Dev, Non-Prod, UAT, PEN, PERF, PT, etc",
+        alias="Environment",
+        description="Deployment environment (Prod, Dev, Staging, UAT, etc.)",
         default=None,
     )
 
     data_center: str | None = Field(
-        alias="DataCenter",  # Alias for PascalCase compatibility
-        description="DataCenter is the physical location.  This is almost identical to an AWS region, but different.  "
-        "Examples are us-east-1, us-west-2, etc",
+        alias="DataCenter",
+        description="Physical location or AWS region (us-east-1, eu-west-1)",
         default=None,
     )
 
     scope: str | None = Field(
-        alias="Scope",  # Alias for PascalCase compatibility
-        description="Scope is the deployment scope from the values: portfolio, app, branch, build.  It does not "
-        "include the component or environment. It's primarily used to determine the location in S3 folder hierarchy "
-        "to store packages, artefacts, and files for the deployment.",
+        alias="Scope",
+        description="Deployment scope determining storage hierarchy level",
         default=None,
     )
 
     tags: dict[str, str] | None = Field(
-        alias="Tags",  # Alias for PascalCase compatibility
-        description="Tags are key value pairs that can be applied to resources.  These values can come from the "
-        "FACTS database from Apps or Zone defaults.  Your deployment may specify additional tags.",
+        alias="Tags",
+        description="Key-value pairs for resource tagging and metadata",
         default=None,
     )
 
     stack_file: str | None = Field(
-        alias="StackFile",  # Alias for PascalCase compatibility
-        description="StackFile is the name of the CloudFormation stack file that was used in the deployment.",
+        alias="StackFile",
+        description="CloudFormation stack file name for infrastructure deployment",
         default=None,
     )
 
     delivered_by: str | None = Field(
-        alias="DeliveredBy",  # Alias for PascalCase compatibility
-        description="DeliveredBy is the name of the person or system that delivered the deployment.",
+        alias="DeliveredBy",
+        description="Person or system responsible for the deployment",
         default=None,
     )
 
     def get_portfolio_prn(self) -> str:
-        """
-        Get the Portfolio Resource Name (PRN) for the deployment.
+        """Get the Portfolio Resource Name (PRN) for the deployment.
 
-        Returns
-        -------
-        str
-            The portfolio PRN in format 'prn:portfolio'.
+        Generates a PRN identifying the portfolio level of the deployment hierarchy.
+        This is the most basic resource identifier in the system.
 
-        Examples
-        --------
-        ::
+        Returns:
+            str: Portfolio PRN in format 'prn:portfolio' (lowercase).
 
-            >>> dd = DeploymentDetails(portfolio="my-portfolio")
+        Examples:
+            >>> dd = DeploymentDetails(portfolio="ecommerce-platform")
             >>> print(dd.get_portfolio_prn())
-            prn:my-portfolio
+            "prn:ecommerce-platform"
+
+            >>> dd = DeploymentDetails(portfolio="Mobile-Apps")
+            >>> print(dd.get_portfolio_prn())
+            "prn:mobile-apps"
         """
         return f"prn:{self.portfolio}".lower()
 
     def get_app_prn(self) -> str:
-        """
-        Get the App Resource Name (PRN) for the deployment.
+        """Get the App Resource Name (PRN) for the deployment.
 
-        Returns
-        -------
-        str
-            The app PRN in format 'prn:portfolio:app'.
+        Generates a PRN identifying the app level of the deployment hierarchy.
+        If app is not specified, the app portion will be empty.
 
-        Examples
-        --------
-        ::
+        Returns:
+            str: App PRN in format 'prn:portfolio:app' (lowercase).
 
-            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app")
+        Examples:
+            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web-frontend")
             >>> print(dd.get_app_prn())
-            prn:my-portfolio:my-app
+            "prn:ecommerce:web-frontend"
+
+            >>> dd = DeploymentDetails(portfolio="ecommerce", app=None)
+            >>> print(dd.get_app_prn())
+            "prn:ecommerce:"
         """
         return f"prn:{self.portfolio}:{self.app or ''}".lower()
 
     def get_branch_prn(self) -> str:
-        """
-        Get the Branch Resource Name (PRN) for the deployment.
+        """Get the Branch Resource Name (PRN) for the deployment.
 
-        Returns
-        -------
-        str
-            The branch PRN in format 'prn:portfolio:app:branch'.
+        Generates a PRN identifying the branch level of the deployment hierarchy.
+        Uses branch_short_name for AWS compatibility. If branch_short_name is not
+        specified, the branch portion will be empty.
 
-        Examples
-        --------
-        ::
+        Returns:
+            str: Branch PRN in format 'prn:portfolio:app:branch' (lowercase).
 
-            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app", branch_short_name="main")
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web-frontend",
+            ...     branch_short_name="main"
+            ... )
             >>> print(dd.get_branch_prn())
-            prn:my-portfolio:my-app:main
+            "prn:ecommerce:web-frontend:main"
+
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web-frontend",
+            ...     branch="feature/user-auth",
+            ...     branch_short_name="feature-user-auth"
+            ... )
+            >>> print(dd.get_branch_prn())
+            "prn:ecommerce:web-frontend:feature-user-auth"
         """
         return f"prn:{self.portfolio}:{self.app or ''}:{self.branch_short_name or ''}".lower()
 
     def get_build_prn(self) -> str:
-        """
-        Get the Build Resource Name (PRN) for the deployment.
+        """Get the Build Resource Name (PRN) for the deployment.
 
-        Returns
-        -------
-        str
-            The build PRN in format 'prn:portfolio:app:branch:build'.
+        Generates a PRN identifying the build level of the deployment hierarchy.
+        This is the most commonly used PRN for deployment operations.
 
-        Examples
-        --------
-        ::
+        Returns:
+            str: Build PRN in format 'prn:portfolio:app:branch:build' (lowercase).
 
-            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app",
-            ...                       branch_short_name="main", build="1.0.0")
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="api-gateway",
+            ...     branch_short_name="main",
+            ...     build="v1.2.3"
+            ... )
             >>> print(dd.get_build_prn())
-            prn:my-portfolio:my-app:main:1.0.0
+            "prn:ecommerce:api-gateway:main:v1.2.3"
+
+            >>> dd = DeploymentDetails(
+            ...     portfolio="mobile-apps",
+            ...     app="ios-client",
+            ...     branch_short_name="release-2.0",
+            ...     build="2.0.1-beta.4+abc123"
+            ... )
+            >>> print(dd.get_build_prn())
+            "prn:mobile-apps:ios-client:release-2.0:2.0.1-beta.4+abc123"
         """
         return f"prn:{self.portfolio}:{self.app or ''}:{self.branch_short_name or ''}:{self.build or ''}".lower()
 
     def get_component_prn(self) -> str:
-        """
-        Get the Component Resource Name (PRN) for the deployment.
+        """Get the Component Resource Name (PRN) for the deployment.
 
-        Returns
-        -------
-        str
-            The component PRN in format 'prn:portfolio:app:branch:build:component'.
+        Generates a PRN identifying the component level of the deployment hierarchy.
+        This is the most specific resource identifier in the system.
 
-        Examples
-        --------
-        ::
+        Returns:
+            str: Component PRN in format 'prn:portfolio:app:branch:build:component' (lowercase).
 
-            >>> dd = DeploymentDetails(portfolio="my-portfolio", app="my-app",
-            ...                       branch_short_name="main", build="1.0.0", component="web")
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web-frontend",
+            ...     branch_short_name="main",
+            ...     build="v1.2.3",
+            ...     component="load-balancer"
+            ... )
             >>> print(dd.get_component_prn())
-            prn:my-portfolio:my-app:main:1.0.0:web
+            "prn:ecommerce:web-frontend:main:v1.2.3:load-balancer"
+
+            >>> dd = DeploymentDetails(
+            ...     portfolio="data-platform",
+            ...     app="etl-pipeline",
+            ...     branch_short_name="main",
+            ...     build="v3.1.0",
+            ...     component="postgres-db"
+            ... )
+            >>> print(dd.get_component_prn())
+            "prn:data-platform:etl-pipeline:main:v3.1.0:postgres-db"
         """
         return f"prn:{self.portfolio}:{self.app or ''}:{self.branch_short_name or ''}:{self.build or ''}:{self.component or ''}".lower()
 
     @model_validator(mode="before")
     @classmethod
     def validate_model_before(cls, values: dict) -> dict:
-        """
-        Validate and populate missing fields before model creation.
+        """Validate and populate missing fields before model creation.
 
-        This validator ensures that required fields are properly populated by applying
-        intelligent defaults when values are missing.
+        Performs pre-validation processing to apply intelligent defaults and normalize
+        field values. Handles both snake_case and PascalCase field names for compatibility
+        with various input sources.
 
-        Parameters
-        ----------
-        values : dict
-            The input values for model creation.
+        Args:
+            values (dict): Raw field values for model creation, which may include:
+                          - client/Client: Client identifier
+                          - branch/Branch: Source branch name
+                          - branch_short_name/BranchShortName: AWS-compatible branch name
+                          - delivered_by/DeliveredBy: Delivery person/system
 
-        Returns
-        -------
-        dict
-            The validated and potentially modified values.
+        Returns:
+            dict: Processed and normalized field values with:
+                 - client: Populated from framework default if missing
+                 - branch_short_name: Generated from branch if not provided
+                 - delivered_by: Populated from framework default if missing
 
-        Notes
-        -----
+        Examples:
+            >>> # Called automatically during instance creation
+            >>> values = {"portfolio": "test", "branch": "feature/user-login"}
+            >>> processed = DeploymentDetails.validate_model_before(values)
+            >>> print(processed["branch_short_name"])  # "feature-user-login"
+
         Side Effects:
-            - Populates missing client with util.get_client()
-            - Generates branch_short_name from branch if branch is provided
-            - Populates missing delivered_by with util.get_delivered_by()
+            Modifies the provided values dictionary by adding missing defaults
+            and normalizing field names.
         """
         if isinstance(values, dict):
             # Set client if not provided
@@ -373,32 +442,49 @@ class DeploymentDetails(BaseModel):
 
     @model_validator(mode="after")
     def check_conditional_fields(self) -> Self:
-        """
-        Validate hierarchical dependencies between fields.
+        """Validate hierarchical dependencies between fields.
 
-        This validator ensures that the deployment hierarchy is maintained:
-        Component -> Build -> Branch -> App -> Portfolio
+        Ensures that the deployment hierarchy is maintained and sets automatic
+        scope determination based on the deepest level provided.
 
-        Returns
-        -------
-        Self
-            The validated DeploymentDetails instance.
+        Returns:
+            Self: The validated DeploymentDetails instance.
 
-        Raises
-        ------
-        ValueError
-            If hierarchical dependencies are not satisfied.
+        Raises:
+            ValueError: If hierarchical dependencies are not satisfied:
+                       - Component provided without Build
+                       - Build provided without Branch
+                       - Branch provided without App
 
-        Notes
-        -----
+        Examples:
+            >>> # Valid hierarchy
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     branch="main",
+            ...     build="v1.0",
+            ...     component="lb"
+            ... )  # Success
+
+            >>> # Invalid: component without build
+            >>> try:
+            ...     dd = DeploymentDetails(
+            ...         portfolio="ecommerce",
+            ...         app="web",
+            ...         component="lb"
+            ...     )
+            ... except ValueError as e:
+            ...     print(e)  # "Build is required when Component is provided"
+
         Validation Rules:
-            - Component requires Build
-            - Build requires Branch
-            - Branch requires App
-            - App requires Portfolio (implicitly required by field definition)
+            - **Component → Build**: Component requires build to be specified
+            - **Build → Branch**: Build requires branch to be specified
+            - **Branch → App**: Branch requires app to be specified
+            - **App → Portfolio**: App requires portfolio (enforced by field definition)
 
         Side Effects:
-            - Sets scope if not provided based on available fields
+            Sets the scope attribute if not already provided based on the deepest
+            level of the hierarchy that is populated.
         """
         if self.component and not self.build:
             raise ValueError("Build is required when Component is provided")
@@ -416,50 +502,70 @@ class DeploymentDetails(BaseModel):
         return self
 
     def get_scope(self) -> str:
-        """
-        Get the deployment scope based on available fields.
+        """Get the deployment scope based on available fields.
 
-        Returns
-        -------
-        str
-            The deployment scope (portfolio, app, branch, or build).
+        Determines the deployment scope by examining the hierarchy depth and
+        returning the most specific level available. Can be overridden by
+        the ENV_SCOPE environment variable.
 
-        Notes
-        -----
-        Scope is determined by the most specific level available:
-            - build: if build is provided
-            - branch: if branch is provided but not build
-            - app: if app is provided but not branch
-            - portfolio: if only portfolio is provided
+        Returns:
+            str: Deployment scope - one of:
+                - "build": Most specific, when build is provided
+                - "branch": When branch provided but not build
+                - "app": When app provided but not branch
+                - "portfolio": When only portfolio provided
 
-        Environment variable ENV_SCOPE can override this logic.
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     branch="main",
+            ...     build="v1.0"
+            ... )
+            >>> print(dd.get_scope())  # "build"
+
+            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web")
+            >>> print(dd.get_scope())  # "app"
+
+            >>> dd = DeploymentDetails(portfolio="ecommerce")
+            >>> print(dd.get_scope())  # "portfolio"
+
+        Environment Override:
+            The ENV_SCOPE environment variable can override automatic determination:
+            ```bash
+            export SCOPE=branch
+            ```
         """
         return DeploymentDetails.get_scope_from(self.portfolio, self.app, self.branch, self.build)
 
     @staticmethod
     def get_scope_from(portfolio: str | None, app: str | None, branch: str | None, build: str | None) -> str:
-        """
-        Determine the standard scope based on provided deployment fields.
+        """Determine deployment scope from individual hierarchy components.
 
-        Parameters
-        ----------
-        portfolio : str | None
-            The portfolio name.
-        app : str | None
-            The app name.
-        branch : str | None
-            The branch name.
-        build : str | None
-            The build identifier.
+        Static method for determining scope without requiring a DeploymentDetails instance.
+        Useful for scope calculation during instance creation or validation.
 
-        Returns
-        -------
-        str
-            The determined scope (portfolio, app, branch, or build).
+        Args:
+            portfolio (str, optional): Portfolio name.
+            app (str, optional): Application name.
+            branch (str, optional): Branch name.
+            build (str, optional): Build identifier.
 
-        Notes
-        -----
-        The ENV_SCOPE environment variable can override the automatic determination.
+        Returns:
+            str: Determined scope based on deepest level provided.
+
+        Examples:
+            >>> scope = DeploymentDetails.get_scope_from("ecom", "web", "main", "v1.0")
+            >>> print(scope)  # "build"
+
+            >>> scope = DeploymentDetails.get_scope_from("ecom", "web", None, None)
+            >>> print(scope)  # "app"
+
+            >>> scope = DeploymentDetails.get_scope_from("ecom", None, None, None)
+            >>> print(scope)  # "portfolio"
+
+        Environment Override:
+            The ENV_SCOPE environment variable takes precedence over automatic determination.
         """
         if ENV_SCOPE in os.environ:
             return os.getenv(ENV_SCOPE, SCOPE_BUILD)
@@ -474,21 +580,38 @@ class DeploymentDetails(BaseModel):
         return SCOPE_BUILD
 
     def get_identity(self) -> str:
-        """
-        Get the deployment identity as a PRN with wildcards for missing fields.
+        """Get deployment identity as a PRN with wildcards for missing fields.
 
-        Returns
-        -------
-        str
-            The deployment identity in PRN format with '*' for missing fields.
+        Generates a complete PRN representation using wildcards (*) for missing
+        hierarchy levels. Useful for pattern matching and resource queries.
 
-        Examples
-        --------
-        ::
+        Returns:
+            str: Complete PRN with wildcards for missing fields.
 
+        Examples:
             >>> dd = DeploymentDetails(portfolio="ecommerce", app="web")
             >>> print(dd.get_identity())
-            prn:ecommerce:web:*:*
+            "prn:ecommerce:web:*:*"
+
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     branch_short_name="main",
+            ...     build="v1.0"
+            ... )
+            >>> print(dd.get_identity())
+            "prn:ecommerce:web:main:v1.0"
+
+            >>> dd = DeploymentDetails(portfolio="mobile-apps")
+            >>> print(dd.get_identity())
+            "prn:mobile-apps:*:*:*"
+
+        Usage Patterns:
+            Identity PRNs are commonly used for:
+            - Resource query patterns
+            - Access control policy matching
+            - Deployment target specification
+            - Audit trail generation
         """
         portfolio = self.portfolio or "*"
         app = self.app or "*"
@@ -499,62 +622,111 @@ class DeploymentDetails(BaseModel):
 
     @classmethod
     def from_arguments(cls, **kwargs) -> "DeploymentDetails":
-        """
-        Create a DeploymentDetails instance from keyword arguments.
+        """Create DeploymentDetails instance from flexible keyword arguments.
 
-        This factory method provides a flexible way to create DeploymentDetails instances
-        by accepting various parameter combinations and applying intelligent defaults.
+        Factory method providing intelligent DeploymentDetails creation by accepting
+        various parameter combinations and applying defaults. Supports both direct
+        parameter specification and PRN parsing for maximum flexibility.
 
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments that can include:
-                - client/Client (str): Client identifier
-                - prn (str): Complete PRN to parse
-                - portfolio/Portfolio (str): Portfolio name
-                - app/App (str): Application name
-                - branch/Branch (str): Branch name
-                - branch_short_name/BranchShortName (str): Short branch name
-                - build/Build (str): Build identifier
-                - component/Component (str): Component name
-                - scope/Scope (str): Deployment scope
-                - environment/Environment (str): Environment name
-                - data_center/DataCenter (str): Data center location
-                - tags/Tags (dict): Resource tags
-                - stack_file/StackFile (str): Stack file name
-                - delivered_by/DeliveredBy (str): Delivery person/system
+        Args:
+            **kwargs: Flexible keyword arguments supporting multiple naming conventions:
 
-        Returns
-        -------
-        DeploymentDetails
-            A new DeploymentDetails instance with populated fields.
+                     **Core Hierarchy Parameters:**
+                     - client/Client (str): Client identifier
+                     - portfolio/Portfolio (str): Portfolio name (required)
+                     - app/App (str): Application name
+                     - branch/Branch (str): Branch name
+                     - branch_short_name/BranchShortName (str): AWS-compatible branch name
+                     - build/Build (str): Build identifier
+                     - component/Component (str): Component name
 
-        Raises
-        ------
-        ValueError
-            If required client parameter is missing or invalid.
+                     **Context Parameters:**
+                     - environment/Environment (str): Deployment environment
+                     - data_center/DataCenter (str): Data center location
+                     - scope/Scope (str): Deployment scope override
 
-        Examples
-        --------
-        Create from individual parameters::
+                     **Special Parameters:**
+                     - prn (str): Complete PRN to parse instead of individual fields
+                     - tags/Tags (dict): Resource tags
+                     - stack_file/StackFile (str): CloudFormation stack file
+                     - delivered_by/DeliveredBy (str): Delivery person/system
 
+        Returns:
+            DeploymentDetails: Fully configured instance with all fields populated.
+
+        Raises:
+            ValueError: If required client parameter cannot be determined or if
+                       PRN parsing fails.
+
+        Examples:
+            >>> # Create from individual parameters
             >>> dd = DeploymentDetails.from_arguments(
-            ...     client="my-client",
-            ...     portfolio="my-portfolio",
-            ...     app="my-app"
+            ...     client="acme-corp",
+            ...     portfolio="ecommerce",
+            ...     app="web-frontend"
             ... )
 
-        Create from PRN::
-
+            >>> # Create from PRN string
             >>> dd = DeploymentDetails.from_arguments(
-            ...     client="my-client",
-            ...     prn="prn:portfolio:app:branch:build:component"
+            ...     client="acme-corp",
+            ...     prn="prn:ecommerce:web-frontend:main:v1.0.0:load-balancer"
             ... )
+
+            >>> # Create with framework defaults
+            >>> dd = DeploymentDetails.from_arguments(
+            ...     portfolio="mobile-apps"
+            ...     # client, app, branch, build from framework defaults
+            ... )
+
+            >>> # Create with mixed case parameters (API compatibility)
+            >>> dd = DeploymentDetails.from_arguments(
+            ...     Client="AcmeCorp",
+            ...     Portfolio="Ecommerce",
+            ...     App="WebFrontend",
+            ...     Branch="feature/checkout",
+            ...     Build="v2.1.0"
+            ... )
+
+            >>> # Create with environment context
+            >>> dd = DeploymentDetails.from_arguments(
+            ...     portfolio="data-platform",
+            ...     app="etl-pipeline",
+            ...     environment="production",
+            ...     data_center="us-east-1",
+            ...     tags={"Team": "data-engineering", "Environment": "prod"}
+            ... )
+
+        Parameter Resolution Priority:
+            1. **PRN Parsing**: If prn parameter provided, parse hierarchy from it
+            2. **Explicit Parameters**: Use provided portfolio, app, branch, build, component
+            3. **Framework Defaults**: Apply defaults from framework configuration
+            4. **Intelligent Defaults**: Generate missing values (e.g., branch_short_name)
+
+        Factory Patterns:
+            ```python
+            # Pattern 1: Minimal creation with defaults
+            dd = DeploymentDetails.from_arguments(portfolio="web-services")
+
+            # Pattern 2: Complete hierarchy specification
+            dd = DeploymentDetails.from_arguments(
+                client="acme", portfolio="ecom", app="web",
+                branch="main", build="v1.0", component="db"
+            )
+
+            # Pattern 3: PRN-based creation
+            dd = DeploymentDetails.from_arguments(
+                client="acme", prn="prn:ecom:web:main:v1.0:db"
+            )
+
+            # Pattern 4: CLI integration with PascalCase
+            dd = DeploymentDetails.from_arguments(**cli_args)
+            ```
         """
 
-        def _get(key1: str, key2: str, defualt: str | None, can_be_empty: bool = False) -> str:
+        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+            """Extract parameter with fallback and default handling."""
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
-            return value if value or can_be_empty else defualt
+            return value if value or can_be_empty else default
 
         client = _get("client", "Client", util.get_client())
 
@@ -598,32 +770,42 @@ class DeploymentDetails(BaseModel):
             delivered_by=_get("delivered_by", "DeliveredBy", None),
         )
 
-    # Override
     def model_dump(self, **kwargs) -> dict:
-        """
-        Override to exclude None values by default.
+        """Serialize model to dictionary with customized defaults.
 
-        This method customizes the default serialization behavior to exclude
-        None values unless explicitly requested.
+        Overrides the default Pydantic serialization to exclude None values by default
+        and use field aliases, providing cleaner output for API responses and logging.
 
-        Parameters
-        ----------
-        **kwargs : dict
-            Keyword arguments passed to the parent model_dump method.
-            All standard Pydantic model_dump parameters are supported.
+        Args:
+            **kwargs: Keyword arguments passed to parent model_dump method.
+                     Standard Pydantic serialization options are supported:
+                     - exclude_none (bool): Exclude None values (default: True)
+                     - by_alias (bool): Use field aliases (default: True)
+                     - include (set): Fields to include
+                     - exclude (set): Fields to exclude
 
-        Returns
-        -------
-        dict
-            Dictionary representation of the model with None values excluded by default.
+        Returns:
+            dict: Dictionary representation with None values excluded by default.
 
-        Examples
-        --------
-        ::
-
-            >>> dd = DeploymentDetails(portfolio="ecom", app="web", component=None)
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web",
+            ...     branch=None,
+            ...     build=None
+            ... )
             >>> result = dd.model_dump()
-            >>> # component will not be in the result dict
+            >>> print(result)
+            # Only portfolio and app included, branch/build excluded
+
+            >>> # Include None values explicitly
+            >>> result = dd.model_dump(exclude_none=False)
+            >>> print(result)
+            # All fields included, branch/build as null
+
+            >>> # Use original field names
+            >>> result = dd.model_dump(by_alias=False)
+            >>> # Fields use snake_case names instead of PascalCase aliases
         """
         if "exclude_none" not in kwargs:
             kwargs["exclude_none"] = True
@@ -638,47 +820,57 @@ class DeploymentDetails(BaseModel):
         scope: str | None = None,
         s3: bool | None = None,
     ) -> str:
-        """
-        Get the object path from the deployment details.
+        """Generate object path from deployment details for storage operations.
 
-        This method generates paths suitable for S3 keys or local filesystem paths
-        based on the deployment hierarchy and scope.
+        Creates hierarchical paths suitable for S3 keys or local filesystem paths
+        based on deployment context and scope. Supports flexible scope overrides
+        for different storage patterns.
 
-        Parameters
-        ----------
-        object_type : str
-            The type of object to get the path for (files, packages, artefacts).
-        name : str | None, optional
-            The name of the object to get the path for. If None, returns the directory path.
-        scope : str | None, optional
-            The scope override. If None, uses the deployment's scope.
-            Valid values: portfolio, app, branch, build.
-        s3 : bool | None, optional
-            Forces forward slashes for S3 instead of OS-dependent separators.
-            If None, determined by util.is_use_s3().
+        Args:
+            object_type (str): Type of object for path prefix (files, packages, artefacts).
+            name (str, optional): Specific object name to append. If None, returns
+                                 directory path only.
+            scope (str, optional): Scope override for path depth. If None, uses
+                                  deployment's scope. Valid values: portfolio, app, branch, build.
+            s3 (bool, optional): Force forward slashes for S3 compatibility. If None,
+                               determined by util.is_use_s3().
 
-        Returns
-        -------
-        str
-            The path to the object in the specified format.
+        Returns:
+            str: Generated path suitable for storage operations.
 
-        Examples
-        --------
-        Get artefacts directory path::
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="web-frontend",
+            ...     branch_short_name="main",
+            ...     build="v1.2.3"
+            ... )
 
-            >>> dd = DeploymentDetails(portfolio="ecom", app="web", branch="main", build="1.0")
+            >>> # Get artefacts directory path
             >>> path = dd.get_object_key("artefacts")
-            >>> print(path)  # artefacts/ecom/web/main/1.0
+            >>> print(path)  # "artefacts/ecommerce/web-frontend/main/v1.2.3"
 
-        Get specific file path::
-
+            >>> # Get specific file path
             >>> path = dd.get_object_key("artefacts", "deploy.yaml")
-            >>> print(path)  # artefacts/ecom/web/main/1.0/deploy.yaml
+            >>> print(path)  # "artefacts/ecommerce/web-frontend/main/v1.2.3/deploy.yaml"
 
-        Override scope::
+            >>> # Override scope for app-level storage
+            >>> path = dd.get_object_key("config", "app.json", scope="app")
+            >>> print(path)  # "config/ecommerce/web-frontend/app.json"
 
-            >>> path = dd.get_object_key("artefacts", "app-config.yaml", scope="app")
-            >>> print(path)  # artefacts/ecom/web/app-config.yaml
+            >>> # Portfolio-level shared resources
+            >>> path = dd.get_object_key("shared", "common.yaml", scope="portfolio")
+            >>> print(path)  # "shared/ecommerce/common.yaml"
+
+        Scope Behavior:
+            - **portfolio**: object_type/portfolio[/name]
+            - **app**: object_type/portfolio/app[/name]
+            - **branch**: object_type/portfolio/app/branch[/name]
+            - **build**: object_type/portfolio/app/branch/build[/name]
+
+        Path Separators:
+            - S3 mode: Always uses forward slashes (/)
+            - Local mode: Uses OS-appropriate separators (\ on Windows, / on Unix)
         """
         portfolio = self.portfolio or V_EMPTY
         portfolio = portfolio.lower()
@@ -719,32 +911,38 @@ class DeploymentDetails(BaseModel):
         scope: str | None = None,
         s3: bool | None = None,
     ) -> str:
-        """
-        Get the artefacts path in the core automation storage.
+        """Get artefacts path in the core automation storage.
 
-        This is a convenience method that calls get_object_key with object_type="artefacts".
+        Convenience method for generating artefacts storage paths. Artefacts typically
+        include deployment specifications, configuration files, and build outputs.
 
-        Parameters
-        ----------
-        name : str | None, optional
-            The name of the artefacts file or directory.
-        scope : str | None, optional
-            The scope override. If None, uses the deployment's scope.
-        s3 : bool | None, optional
-            Forces forward slashes for S3 instead of OS-dependent separators.
+        Args:
+            name (str, optional): Artefacts file or directory name.
+            scope (str, optional): Scope override for path depth.
+            s3 (bool, optional): Force S3-compatible path separators.
 
-        Returns
-        -------
-        str
-            The path to the artefacts location.
+        Returns:
+            str: Path to artefacts location.
 
-        Examples
-        --------
-        ::
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="ecommerce",
+            ...     app="api-gateway",
+            ...     branch_short_name="main",
+            ...     build="v2.1.0"
+            ... )
 
-            >>> dd = DeploymentDetails(portfolio="ecom", app="web", branch="main", build="1.0")
+            >>> # Artefacts directory
+            >>> path = dd.get_artefacts_key()
+            >>> print(path)  # "artefacts/ecommerce/api-gateway/main/v2.1.0"
+
+            >>> # Deployment specification file
             >>> path = dd.get_artefacts_key("deploy.yaml")
-            >>> print(path)  # artefacts/ecom/web/main/1.0/deploy.yaml
+            >>> print(path)  # "artefacts/ecommerce/api-gateway/main/v2.1.0/deploy.yaml"
+
+            >>> # App-level configuration
+            >>> path = dd.get_artefacts_key("app-config.yaml", scope="app")
+            >>> print(path)  # "artefacts/ecommerce/api-gateway/app-config.yaml"
         """
         return self.get_object_key(OBJ_ARTEFACTS, name, scope, s3)
 
@@ -754,44 +952,66 @@ class DeploymentDetails(BaseModel):
         scope: str | None = None,
         s3: bool | None = None,
     ) -> str:
-        """
-        Get the files path in the core automation storage.
+        """Get files path in the core automation storage.
 
-        This is a convenience method that calls get_object_key with object_type="files".
+        Convenience method for generating files storage paths. Files typically
+        include documentation, logs, and supplementary resources.
 
-        Parameters
-        ----------
-        name : str | None, optional
-            The name of the file or directory.
-        scope : str | None, optional
-            The scope override. If None, uses the deployment's scope.
-        s3 : bool | None, optional
-            Forces forward slashes for S3 instead of OS-dependent separators.
+        Args:
+            name (str, optional): File or directory name.
+            scope (str, optional): Scope override for path depth.
+            s3 (bool, optional): Force S3-compatible path separators.
 
-        Returns
-        -------
-        str
-            The path to the files location.
+        Returns:
+            str: Path to files location.
 
-        Examples
-        --------
-        ::
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     portfolio="data-platform",
+            ...     app="etl-pipeline",
+            ...     branch_short_name="main",
+            ...     build="v1.5.2"
+            ... )
 
-            >>> dd = DeploymentDetails(portfolio="ecom", app="web", branch="main", build="1.0")
-            >>> path = dd.get_files_key("config.json")
-            >>> print(path)  # files/ecom/web/main/1.0/config.json
+            >>> # Files directory
+            >>> path = dd.get_files_key()
+            >>> print(path)  # "files/data-platform/etl-pipeline/main/v1.5.2"
+
+            >>> # Configuration file
+            >>> path = dd.get_files_key("database.conf")
+            >>> print(path)  # "files/data-platform/etl-pipeline/main/v1.5.2/database.conf"
+
+            >>> # Deployment logs
+            >>> path = dd.get_files_key("deployment.log")
+            >>> print(path)  # "files/data-platform/etl-pipeline/main/v1.5.2/deployment.log"
         """
         return self.get_object_key(OBJ_FILES, name, scope, s3)
 
     def get_client_portfolio_key(self) -> str:
-        """
-        Return the client portfolio key for the deployment details `AppFacts`
+        """Generate client-portfolio composite key for database operations.
 
-        The key is in the format: key = {client}:{portfolio}
-
-        Example: client:portfolio
+        Creates a composite key used for AppFactsModel retrieval and other
+        database operations that require client-portfolio identification.
 
         Returns:
-            str: The key for AppFacts retrieval
+            str: Composite key in format "client:portfolio".
+
+        Examples:
+            >>> dd = DeploymentDetails(
+            ...     client="acme-corp",
+            ...     portfolio="ecommerce"
+            ... )
+            >>> key = dd.get_client_portfolio_key()
+            >>> print(key)  # "acme-corp:ecommerce"
+
+            >>> # Use for database lookup
+            >>> app_facts = AppFactsModel.get(key, app_name)
+
+        Usage:
+            This key format is used throughout the Simple Cloud Kit for:
+            - Database record identification
+            - Multi-tenant data isolation
+            - Resource access control
+            - Billing and cost tracking
         """
         return f"{self.client}:{self.portfolio}"

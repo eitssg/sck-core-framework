@@ -1,5 +1,21 @@
 """
-This module contains the Jinja2Renderer class which is used to render Jinja2 CloudFormation templates within the Core Automation context.
+Jinja2 Template Renderer for Core Automation Framework.
+
+This module provides the Jinja2Renderer class for rendering Jinja2 templates within
+the Core Automation context. It supports rendering CloudFormation templates, configuration
+files, and other text-based resources with Core Automation's custom filters and
+deployment context.
+
+Key Features:
+    - **Multiple Input Sources**: File system and dictionary-based template loading
+    - **Context-Aware Rendering**: Integration with Core Automation deployment context
+    - **Custom Filters**: Automatic loading of Core Automation Jinja2 filters
+    - **Flexible Output**: String, object, file, and batch rendering capabilities
+    - **Error Handling**: Strict undefined variable handling for reliable templates
+    - **Cross-Platform**: Proper path handling for Windows and Unix systems
+
+The renderer is optimized for AWS CloudFormation template generation but can be used
+for any text-based template rendering within the Core Automation framework.
 """
 
 from typing import Any
@@ -13,9 +29,21 @@ from .filters import load_filters
 
 
 class Jinja2Renderer:
-    """
-    Jinja2Renderer is a class that provides methods to render Jinja2 templates.
-    It can render strings, objects, and files using a Jinja2 environment.
+    """Jinja2 template renderer with Core Automation integration.
+
+    Provides comprehensive template rendering capabilities for CloudFormation templates,
+    configuration files, and other text-based resources. Integrates seamlessly with
+    Core Automation's deployment context and custom filters.
+
+    The renderer supports multiple template sources and output formats:
+    - File system-based templates for development and structured projects
+    - Dictionary-based templates for dynamic or embedded scenarios
+    - String rendering for simple template operations
+    - Object rendering for complex data structure templating
+    - Batch file rendering for entire template directories
+
+    All rendering operations include Core Automation's custom Jinja2 filters for
+    AWS resource management, security rules, networking, and deployment context.
     """
 
     # Jinja2 environment for rendering templates
@@ -32,6 +60,22 @@ class Jinja2Renderer:
         template_path: str | None = None,
         dictionary: dict[str, str] | None = None,
     ):
+        """Initialize the Jinja2 renderer with template source configuration.
+
+        Creates a Jinja2 environment with Core Automation filters and strict
+        undefined variable handling. Templates can be loaded from either a
+        file system directory or a dictionary of template strings.
+
+        Args:
+            template_path: Path to directory containing template files. If provided,
+                          templates are loaded from the file system using relative paths.
+            dictionary: Dictionary mapping template names to template strings. Used
+                       when templates are embedded or generated dynamically.
+
+        Note:
+            Exactly one of template_path or dictionary must be provided. The renderer
+            cannot be initialized with both or neither source types.
+        """
         self.template_path = template_path
         self.dictionary = dictionary
 
@@ -53,28 +97,43 @@ class Jinja2Renderer:
         load_filters(self.env)
 
     def render_string(self, string: str, context: dict[str, Any]) -> str:
-        """
-        Render a Jinja2 template string using the provided context.
+        """Render a Jinja2 template string using the provided context.
 
-        :param string: The Jinja2 template string to render.
-        :param context: The context to use for rendering the template string.
-        :return: The rendered string.
+        Processes a template string directly without loading from file system
+        or dictionary sources. Useful for dynamic template generation and
+        simple string templating operations.
+
+        Args:
+            string: Jinja2 template string containing variables and expressions
+                   to be rendered.
+            context: Dictionary of variables and values to substitute in the
+                    template during rendering.
+
+        Returns:
+            Rendered string with all template variables and expressions resolved.
         """
         return self.env.from_string(string).render(context)
 
-    def render_object(
-        self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]
-    ) -> list[Any] | dict[str, Any] | str:
-        """
-        Render a dictionary using the provided context.
+    def render_object(self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]) -> list[Any] | dict[str, Any] | str:
+        """Render a Python object (list, dict, or string) using the provided context.
 
-        :param data: The data to render, which can be a list, dictionary, or string.
-        :param context: The context to use for rendering the data.
-        :return: A dictionary with the rendered data.
+        Recursively processes complex data structures to render embedded template
+        strings while preserving the overall structure. Handles nested dictionaries,
+        lists, and string values that may contain Jinja2 template syntax.
 
-        This method is used to render a Python object (list, dict, or string) into a Jinja2 template format.
-        It converts the object to YAML format and then renders it using the provided context.
+        Args:
+            data: Python object to render. Can be:
+                 - str: Rendered directly as template string
+                 - list: Each element rendered recursively
+                 - dict: Converted to JSON, rendered, then parsed back
+            context: Dictionary of variables for template rendering.
 
+        Returns:
+            Rendered object with same structure as input but with all template
+            strings resolved using the provided context.
+
+        Raises:
+            TypeError: If data type is not supported for rendering.
         """
         if isinstance(data, str):
             # If data is a string, render it directly
@@ -95,17 +154,23 @@ class Jinja2Renderer:
             rendered_json = self.render_json(json_data, context)
             return json.loads(rendered_json)
         else:
-            raise TypeError(
-                "Unsupported data type for rendering: {}".format(type(data))
-            )
+            raise TypeError("Unsupported data type for rendering: {}".format(type(data)))
 
     def render_json(self, json_data: str, context: dict[str, Any]) -> dict | None:
-        """
-        Render a JSON string using the Jinja2 environment.
+        """Render a JSON string using the Jinja2 environment.
 
-        :param json_data: The JSON string to render.
-        :param context: The context to use for rendering the JSON string.
-        :return: The rendered JSON converted to a dictionary, or None if parsing fails.
+        Processes JSON strings that may contain Jinja2 template syntax by
+        rendering the JSON as a template string and then parsing the result
+        back to a Python dictionary.
+
+        Args:
+            json_data: JSON string that may contain Jinja2 template variables
+                      and expressions.
+            context: Dictionary of variables for template rendering.
+
+        Returns:
+            Parsed dictionary from rendered JSON, or None if JSON parsing fails
+            after template rendering.
         """
         try:
             return json.loads(self.render_string(json.dumps(json_data), context))
@@ -113,26 +178,47 @@ class Jinja2Renderer:
             return None
 
     def render_file(self, filename: str, context: dict[str, Any]) -> str:
-        """
-        Render a tempalte file using the Jinja2 environment.  If you have initaialize the Jinja2Renderer
-        with a dictionary, this will be the dictionary key (a.k.a filename) for the template.
+        """Render a template file using the Jinja2 environment.
 
-        :param filename: The name of the template to render (a filename or a dictionary key depending on how this class was initialized).
-        :param context: The context (variables) to use for rendering the file.
-        :return: The rendered content of the template.
+        Loads and renders a single template file using the configured template
+        source (file system or dictionary). The filename interpretation depends
+        on the renderer initialization method.
+
+        Args:
+            filename: Template identifier for rendering:
+                     - File system mode: Relative path from template_path
+                     - Dictionary mode: Key in the template dictionary
+            context: Dictionary of variables and values for template rendering.
+
+        Returns:
+            Rendered template content as a string with all variables and
+            expressions resolved.
+
+        Raises:
+            jinja2.TemplateNotFound: If the specified template cannot be found.
         """
         template = self.env.get_template(filename)
         return template.render(context)
 
     def render_files(self, path: str, context: dict[str, Any]) -> dict[str, str]:
-        """
-        Render all the jinja2 templates in the spacified path using the context provided.
+        """Render all Jinja2 templates in the specified path using the provided context.
 
-        The ouptuput is a dictionary of each template name and its rendered content.
+        Recursively processes all files in a directory tree, rendering each file
+        as a Jinja2 template. Only works with file system-based template loading.
+        Handles cross-platform path separators for consistent operation.
 
-        :param path: The path to the directory containing the templates.
-        :param context: The context to use for rendering the files.
-        :return: A dictionary of rendered files.
+        Args:
+            path: Relative path from template_path to the directory containing
+                 templates to render. Use empty string for template_path root.
+            context: Dictionary of variables for template rendering across all files.
+
+        Returns:
+            Dictionary mapping relative file paths to rendered content strings.
+            Paths use forward slashes regardless of platform for consistency.
+
+        Note:
+            Only regular files are processed; directories and special files are
+            skipped. Files are processed recursively through subdirectories.
         """
         log.debug("Rendering files in path: {}", path)
 
@@ -160,9 +246,7 @@ class Jinja2Renderer:
             renderer_path = renderer_path.replace("\\", "/")
 
             # Load and render the files
-            log.debug(
-                "Rendering file '{}' with short_path '{}'", renderer_path, short_path
-            )
+            log.debug("Rendering file '{}' with short_path '{}'", renderer_path, short_path)
 
             rendered_template = self.render_file(renderer_path, context)
 

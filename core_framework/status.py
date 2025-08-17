@@ -1,37 +1,68 @@
-"""This module provides the BuildStatus class which is used to track the status of a build."""
+"""Build status tracking for the Core Automation framework.
+
+Provides comprehensive status management for build lifecycle operations including
+deployment, release, teardown, and compilation processes. Status values track
+the current state and control workflow progression with validation rules.
+
+Status Categories:
+    - **INIT**: Initial state before any operations
+    - **DEPLOY**: Deployment lifecycle states (requested, in progress, complete, failed)
+    - **COMPILE**: Compilation process states (in progress, complete, failed)
+    - **RELEASE**: Release lifecycle states (requested, in progress, complete, failed)
+    - **TEARDOWN**: Teardown lifecycle states (requested, in progress, complete, failed)
+
+Workflow Control:
+    Status values determine which operations are permitted at each stage,
+    preventing invalid state transitions and ensuring proper build lifecycle management.
+"""
 
 RELEASE_IN_PROGRESS = "RELEASE_IN_PROGRESS"
-""":const RELEASE_IN_PROGRESS: The release process is currently in progress."""
+"""Release process is currently executing."""
+
 RELEASE_COMPLETE = "RELEASE_COMPLETE"
-""":const RELEASE_COMPLETE: The release process has completed successfully."""
+"""Release process completed successfully."""
+
 RELEASE_FAILED = "RELEASE_FAILED"
-""":const RELEASE_FAILED: The release process has failed."""
+"""Release process failed with errors."""
+
 RELEASE_REQUESTED = "RELEASE_REQUESTED"
-""":const RELEASE_REQUESTED: A release has been requested."""
+"""Release operation has been requested."""
+
 TEARDOWN_COMPLETE = "TEARDOWN_COMPLETE"
-""":const TEARDOWN_COMPLETE: The teardown process has completed successfully."""
+"""Teardown process completed successfully."""
+
 TEARDOWN_FAILED = "TEARDOWN_FAILED"
-""":const TEARDOWN_FAILED: The teardown process has failed."""
+"""Teardown process failed with errors."""
+
 TEARDOWN_IN_PROGRESS = "TEARDOWN_IN_PROGRESS"
-""":const TEARDOWN_IN_PROGRESS: The teardown process is currently in progress."""
+"""Teardown process is currently executing."""
+
 TEARDOWN_REQUESTED = "TEARDOWN_REQUESTED"
-""":const TEARDOWN_REQUESTED: A teardown has been requested."""
+"""Teardown operation has been requested."""
+
 COMPILE_COMPLETE = "COMPILE_COMPLETE"
-""":const COMPILE_COMPLETE: The compile process has completed successfully."""
+"""Compilation process completed successfully."""
+
 COMPILE_FAILED = "COMPILE_FAILED"
-""":const COMPILE_FAILED: The compile process has failed."""
+"""Compilation process failed with errors."""
+
 COMPILE_IN_PROGRESS = "COMPILE_IN_PROGRESS"
-""":const COMPILE_IN_PROGRESS: The compile process is currently in progress."""
+"""Compilation process is currently executing."""
+
 DEPLOY_COMPLETE = "DEPLOY_COMPLETE"
-""":const DEPLOY_COMPLETE: The deployment process has completed successfully."""
+"""Deployment process completed successfully."""
+
 DEPLOY_FAILED = "DEPLOY_FAILED"
-""":const DEPLOY_FAILED: The deployment process has failed."""
+"""Deployment process failed with errors."""
+
 DEPLOY_IN_PROGRESS = "DEPLOY_IN_PROGRESS"
-""":const DEPLOY_IN_PROGRESS: The deployment process is currently in progress."""
+"""Deployment process is currently executing."""
+
 DEPLOY_REQUESTED = "DEPLOY_REQUESTED"
-""":const DEPLOY_REQUESTED: A deployment has been requested."""
+"""Deployment operation has been requested."""
+
 INIT = "INIT"
-""":const INIT: The initial state before any action has been taken."""
+"""Initial state before any operations have been performed."""
 
 
 STATUS_LIST = [
@@ -52,50 +83,97 @@ STATUS_LIST = [
     TEARDOWN_COMPLETE,
     TEARDOWN_FAILED,
 ]
-""":const STATUS_LIST: A list of all valid status strings."""
+"""Complete list of valid build status values."""
 
 
-class BuildStatus(object):
-    """Provides a class to manage the status of a build.
+class BuildStatus:
+    """Manages build lifecycle status with workflow validation.
 
-    The status is used to track the current state of the build process and
-    ensure that each step is completed successfully before moving on to the
-    next step. If the status is not one of the valid status strings, it will
-    be set to INIT by default.
+    Tracks the current state of build operations and provides validation methods
+    to ensure proper workflow progression. Invalid status values are automatically
+    normalized to INIT state for safety.
 
-    :ivar value: The status of the build. This is a string that is one of the valid status values.
-    :vartype value: str
+    The status system enforces proper build lifecycle management by controlling
+    which operations are permitted based on the current state.
+
+    Attributes:
+        value: The current status string, guaranteed to be a valid status value.
+
+    Examples:
+        >>> status = BuildStatus("DEPLOY_COMPLETE")
+        >>> print(status.value)
+        'DEPLOY_COMPLETE'
+        >>> print(status.is_allowed_to_release())
+        True
+
+        >>> # Invalid status normalized to INIT
+        >>> status = BuildStatus("INVALID_STATUS")
+        >>> print(status.value)
+        'INIT'
+
+        >>> # Status validation
+        >>> status = BuildStatus.from_str("DEPLOY_FAILED")
+        >>> print(status.is_deploy())
+        True
+        >>> print(status.is_failed())
+        True
     """
 
-    def __init__(self, value: str):
-        """Initializes a BuildStatus object.
+    def __init__(self, value: str) -> None:
+        """Initialize BuildStatus with automatic validation.
 
-        The value must be one of the valid status strings, otherwise it will be set to INIT.
+        Args:
+            value: Status string to set. If invalid, defaults to INIT.
 
-        :param value: A string representing the status of the build.
-        :type value: str
+        Examples:
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.value)
+            'DEPLOY_COMPLETE'
+
+            >>> # Invalid values default to INIT
+            >>> status = BuildStatus("invalid")
+            >>> print(status.value)
+            'INIT'
         """
         self.value = value.upper() if value in STATUS_LIST else INIT
 
     def __str__(self) -> str:
-        """Returns the string representation of the status value."""
+        """Return string representation of the status value.
+
+        Returns:
+            The current status value as a string.
+        """
         return self.value
 
     def __repr__(self) -> str:
-        """Returns the developer-friendly representation of the BuildStatus object."""
+        """Return developer-friendly representation.
+
+        Returns:
+            Formatted string showing the BuildStatus object and its value.
+        """
         return f"<BuildStatus value={self.value}>"
 
     @classmethod
     def from_str(cls, value: str) -> "BuildStatus":
-        """Creates a BuildStatus object from a string.
+        """Create BuildStatus with strict validation.
 
-        This is the same as ``__init__()`` but raises an exception if the value is not valid.
+        Args:
+            value: Status string that must be valid.
 
-        :param value: A valid BuildStatus string.
-        :type value: str
-        :raises ValueError: If the build status is not valid.
-        :return: The :class:`BuildStatus` object.
-        :rtype: BuildStatus
+        Returns:
+            New BuildStatus instance with the specified value.
+
+        Raises:
+            ValueError: If the value is not a valid status string.
+
+        Examples:
+            >>> status = BuildStatus.from_str("DEPLOY_COMPLETE")
+            >>> print(status.value)
+            'DEPLOY_COMPLETE'
+
+            >>> # This raises ValueError
+            >>> status = BuildStatus.from_str("INVALID")
+            ValueError: 'INVALID' is not a valid status
         """
         status = cls(value)
         if status.value != INIT or value.upper() == INIT:
@@ -103,18 +181,34 @@ class BuildStatus(object):
         raise ValueError(f"'{value}' is not a valid status")
 
     def is_init(self) -> bool:
-        """Checks if the build is in the INIT state.
+        """Check if status is in initial state.
 
-        :return: True if the value is INIT.
-        :rtype: bool
+        Returns:
+            True if the status is INIT.
+
+        Examples:
+            >>> status = BuildStatus("INIT")
+            >>> print(status.is_init())
+            True
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_init())
+            False
         """
         return self.value == INIT
 
     def is_deploy(self) -> bool:
-        """Checks if the build is in any of the DEPLOY states.
+        """Check if status is in any deployment state.
 
-        :return: True if in one of the 4 DEPLOY states.
-        :rtype: bool
+        Returns:
+            True if status is one of the 4 deployment states.
+
+        Examples:
+            >>> status = BuildStatus("DEPLOY_IN_PROGRESS")
+            >>> print(status.is_deploy())
+            True
+            >>> status = BuildStatus("RELEASE_COMPLETE")
+            >>> print(status.is_deploy())
+            False
         """
         return self.value in [
             DEPLOY_REQUESTED,
@@ -124,10 +218,18 @@ class BuildStatus(object):
         ]
 
     def is_release(self) -> bool:
-        """Checks if the build is in any of the RELEASE states.
+        """Check if status is in any release state.
 
-        :return: True if in one of the 4 RELEASE states.
-        :rtype: bool
+        Returns:
+            True if status is one of the 4 release states.
+
+        Examples:
+            >>> status = BuildStatus("RELEASE_IN_PROGRESS")
+            >>> print(status.is_release())
+            True
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_release())
+            False
         """
         return self.value in [
             RELEASE_REQUESTED,
@@ -137,10 +239,18 @@ class BuildStatus(object):
         ]
 
     def is_teardown(self) -> bool:
-        """Checks if the build is in any of the TEARDOWN states.
+        """Check if status is in any teardown state.
 
-        :return: True if in one of the 4 TEARDOWN states.
-        :rtype: bool
+        Returns:
+            True if status is one of the 4 teardown states.
+
+        Examples:
+            >>> status = BuildStatus("TEARDOWN_IN_PROGRESS")
+            >>> print(status.is_teardown())
+            True
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_teardown())
+            False
         """
         return self.value in [
             TEARDOWN_REQUESTED,
@@ -150,10 +260,18 @@ class BuildStatus(object):
         ]
 
     def is_in_progress(self) -> bool:
-        """Checks if the build is in any of the IN_PROGRESS or REQUESTED states.
+        """Check if any operation is currently active.
 
-        :return: True if in one of the 6 IN_PROGRESS or REQUESTED states.
-        :rtype: bool
+        Returns:
+            True if status indicates an operation is requested or in progress.
+
+        Examples:
+            >>> status = BuildStatus("DEPLOY_IN_PROGRESS")
+            >>> print(status.is_in_progress())
+            True
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_in_progress())
+            False
         """
         return self.value in [
             DEPLOY_REQUESTED,
@@ -166,10 +284,18 @@ class BuildStatus(object):
         ]
 
     def is_complete(self) -> bool:
-        """Checks if the build is in any of the COMPLETE states.
+        """Check if any operation has completed successfully.
 
-        :return: True if in one of the 4 COMPLETE states.
-        :rtype: bool
+        Returns:
+            True if status indicates successful completion of any operation.
+
+        Examples:
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_complete())
+            True
+            >>> status = BuildStatus("DEPLOY_FAILED")
+            >>> print(status.is_complete())
+            False
         """
         return self.value in [
             COMPILE_COMPLETE,
@@ -179,10 +305,18 @@ class BuildStatus(object):
         ]
 
     def is_failed(self) -> bool:
-        """Checks if the build is in any of the FAILED states.
+        """Check if any operation has failed.
 
-        :return: True if in one of the 4 FAILED states.
-        :rtype: bool
+        Returns:
+            True if status indicates failure of any operation.
+
+        Examples:
+            >>> status = BuildStatus("DEPLOY_FAILED")
+            >>> print(status.is_failed())
+            True
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_failed())
+            False
         """
         return self.value in [
             COMPILE_FAILED,
@@ -192,10 +326,34 @@ class BuildStatus(object):
         ]
 
     def is_allowed_to_teardown(self) -> bool:
-        """Checks if the current status allows a teardown to proceed.
+        """Check if teardown operation is permitted.
 
-        :return: True if it's ok to proceed with a teardown.
-        :rtype: bool
+        Teardown is allowed from most states except when another operation
+        is actively in progress or has completed successfully.
+
+        Returns:
+            True if teardown operation can proceed safely.
+
+        Examples:
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_allowed_to_teardown())
+            True
+            >>> status = BuildStatus("RELEASE_IN_PROGRESS")
+            >>> print(status.is_allowed_to_teardown())
+            False
+
+        Workflow Rules:
+            - ✅ **INIT**: Fresh state, teardown allowed
+            - ✅ **DEPLOY_IN_PROGRESS**: Can interrupt deployment
+            - ✅ **DEPLOY_COMPLETE**: Can teardown successful deployment
+            - ✅ **DEPLOY_FAILED**: Can cleanup failed deployment
+            - ✅ **RELEASE_REQUESTED**: Can teardown before release starts
+            - ✅ **RELEASE_COMPLETE**: Can teardown released resources
+            - ✅ **RELEASE_FAILED**: Can cleanup failed release
+            - ✅ **TEARDOWN_REQUESTED**: Can retry teardown
+            - ✅ **TEARDOWN_FAILED**: Can retry failed teardown
+            - ❌ **RELEASE_IN_PROGRESS**: Cannot interrupt active release
+            - ❌ **TEARDOWN_IN_PROGRESS**: Already tearing down
         """
         return self.value in [
             INIT,
@@ -210,10 +368,33 @@ class BuildStatus(object):
         ]
 
     def is_allowed_to_release(self) -> bool:
-        """Checks if the current status allows a release to proceed.
+        """Check if release operation is permitted.
 
-        :return: True if it's ok to proceed with a release.
-        :rtype: bool
+        Release requires successful deployment or can retry from certain states.
+        Cannot release while other operations are in progress.
+
+        Returns:
+            True if release operation can proceed safely.
+
+        Examples:
+            >>> status = BuildStatus("DEPLOY_COMPLETE")
+            >>> print(status.is_allowed_to_release())
+            True
+            >>> status = BuildStatus("DEPLOY_IN_PROGRESS")
+            >>> print(status.is_allowed_to_release())
+            False
+
+        Workflow Rules:
+            - ✅ **INIT**: Fresh state, release allowed
+            - ✅ **DEPLOY_COMPLETE**: Normal path after successful deployment
+            - ✅ **RELEASE_REQUESTED**: Can retry release
+            - ✅ **RELEASE_COMPLETE**: Can re-release if needed
+            - ✅ **RELEASE_FAILED**: Can retry failed release
+            - ✅ **TEARDOWN_REQUESTED**: Can release before teardown
+            - ❌ **DEPLOY_IN_PROGRESS**: Must wait for deployment completion
+            - ❌ **DEPLOY_FAILED**: Cannot release failed deployment
+            - ❌ **RELEASE_IN_PROGRESS**: Already releasing
+            - ❌ **TEARDOWN_IN_PROGRESS**: Cannot release during teardown
         """
         return self.value in [
             INIT,
