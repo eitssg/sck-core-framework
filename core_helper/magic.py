@@ -291,7 +291,9 @@ class MagicObject(BaseModel):
                 raise ValueError("Destination Bucket key has not been specified")
 
             if source_bucket != self.bucket_name:
-                raise ValueError(f"Source S3 bucket '{source_bucket}' must be in same bucket as the target '{self.bucket_name}'")
+                raise ValueError(
+                    f"Source S3 bucket '{source_bucket}' must be in same bucket as the target '{self.bucket_name}'"
+                )
 
             source_fn = os.path.join(self.data_path, source_bucket, source_key)
             target_fn = os.path.join(self.data_path, self.bucket_name, self.key)
@@ -307,7 +309,11 @@ class MagicObject(BaseModel):
         except Exception as e:
             self.error = "\n".join([self.error or "", str(e)])
 
-        dt = datetime.fromtimestamp(int(self.version_id)).isoformat() if self.version_id else None
+        dt = (
+            datetime.fromtimestamp(int(self.version_id)).isoformat()
+            if self.version_id
+            else None
+        )
 
         rv = {
             "CopyObjectResult": {
@@ -481,7 +487,9 @@ class MagicObject(BaseModel):
             key = os.path.join(self.data_path, self.bucket_name, self.key)
 
             if not os.path.exists(key):
-                raise FileNotFoundError(f"Object {self.key} does not exist in bucket {self.bucket_name}")
+                raise FileNotFoundError(
+                    f"Object {self.key} does not exist in bucket {self.bucket_name}"
+                )
 
             # the get_object method returns a stream in the Body field
             self.body = FileStreamingBody(key)
@@ -528,7 +536,9 @@ class MagicObject(BaseModel):
                 self.version_id = None
                 self.etag = None
             else:
-                raise FileNotFoundError(f"Object {self.key} does not exist in bucket {self.bucket_name}")
+                raise FileNotFoundError(
+                    f"Object {self.key} does not exist in bucket {self.bucket_name}"
+                )
 
         except Exception as e:
             self.error = "\n".join([self.error or "", str(e)])
@@ -586,7 +596,9 @@ class MagicBucket(BaseModel):
         """
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
-        return obj.download_fileobj(**kwargs).model_dump(exclude_none=True, by_alias=True)
+        return obj.download_fileobj(**kwargs).model_dump(
+            exclude_none=True, by_alias=True
+        )
 
     def put_object(self, **kwargs) -> MagicObject:
         """Emulate the S3 put_object() method at bucket level.
@@ -676,9 +688,21 @@ class MagicS3Client(BaseModel):
         data_path: The root directory for local storage.
     """
 
-    region: str = Field(default_factory=get_region, alias="Region", description="The AWS region for the client.")
-    role_arn: str | None = Field(default=None, alias="RoleArn", description="The ARN of the role to assume for the client.")
-    data_path: str | None = Field(alias="DataPath", default=None, description="The local storage path if not using S3.")
+    region: str = Field(
+        default_factory=get_region,
+        alias="Region",
+        description="The AWS region for the client.",
+    )
+    role_arn: str | None = Field(
+        default=None,
+        alias="RoleArn",
+        description="The ARN of the role to assume for the client.",
+    )
+    data_path: str | None = Field(
+        alias="DataPath",
+        default=None,
+        description="The local storage path if not using S3.",
+    )
 
     def head_object(self, **kwargs) -> dict:
         """Emulate the S3 client.head_object() method.
@@ -773,7 +797,9 @@ class MagicS3Client(BaseModel):
         return MagicBucket(Bucket=bucket_name, DataPath=self.data_path)
 
     @staticmethod
-    def get_bucket(Region: str, BucketName: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
+    def get_bucket(
+        Region: str, BucketName: str, RoleArn: str = None, DataPath: str | None = None
+    ) -> Any:
         """Get a Bucket object, either real S3 or MagicBucket based on configuration.
 
         Provides transparent switching between real S3 and local storage based
@@ -807,7 +833,9 @@ class MagicS3Client(BaseModel):
         return bucket
 
     @staticmethod
-    def get_client(Region: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
+    def get_client(
+        Region: str, RoleArn: str = None, DataPath: str | None = None
+    ) -> Any:
         """Get an S3 client, either real boto3 or MagicS3Client based on configuration.
 
         Provides transparent switching between real S3 and local storage based

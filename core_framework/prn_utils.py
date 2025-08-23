@@ -42,7 +42,9 @@ BRANCH_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
 BUILD_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
 """Build-level PRN regex pattern."""
 
-COMPONENT_PRN_REGEX = r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
+COMPONENT_PRN_REGEX = (
+    r"prn:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+:[a-zA-Z0-9\-]+"
+)
 """Component-level PRN regex pattern."""
 
 # Constant for the PRN key

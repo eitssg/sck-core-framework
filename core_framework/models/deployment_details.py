@@ -428,12 +428,16 @@ class DeploymentDetails(BaseModel):
 
             # Generate branch_short_name from branch
             branch = values.get("Branch", None) or values.get("branch", None)
-            branch_short_name = values.get("BranchShortName", None) or values.get("branch_short_name", None)
+            branch_short_name = values.get("BranchShortName", None) or values.get(
+                "branch_short_name", None
+            )
             if not branch_short_name:
                 values["branch_short_name"] = util.branch_short_name(branch)
 
             # Set delivered_by if not provided
-            delivered_by = values.get("DeliveredBy", None) or values.get("delivered_by", None)
+            delivered_by = values.get("DeliveredBy", None) or values.get(
+                "delivered_by", None
+            )
             if not delivered_by:
                 values["delivered_by"] = util.get_delivered_by()
             values["delivered_by"] = delivered_by
@@ -536,10 +540,14 @@ class DeploymentDetails(BaseModel):
             export SCOPE=branch
             ```
         """
-        return DeploymentDetails.get_scope_from(self.portfolio, self.app, self.branch, self.build)
+        return DeploymentDetails.get_scope_from(
+            self.portfolio, self.app, self.branch, self.build
+        )
 
     @staticmethod
-    def get_scope_from(portfolio: str | None, app: str | None, branch: str | None, build: str | None) -> str:
+    def get_scope_from(
+        portfolio: str | None, app: str | None, branch: str | None, build: str | None
+    ) -> str:
         """Determine deployment scope from individual hierarchy components.
 
         Static method for determining scope without requiring a DeploymentDetails instance.
@@ -723,7 +731,9 @@ class DeploymentDetails(BaseModel):
             ```
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(
+            key1: str, key2: str, default: str | None, can_be_empty: bool = False
+        ) -> str:
             """Extract parameter with fallback and default handling."""
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
@@ -745,14 +755,18 @@ class DeploymentDetails(BaseModel):
             branch = _get("branch", "Branch", util.get_branch(), True)
 
             # If supplied a branch short name, use it.  Otherwise, generate from branch.
-            branch_short_name = _get("branch_short_name", "BranchShortName", util.branch_short_name(branch))
+            branch_short_name = _get(
+                "branch_short_name", "BranchShortName", util.branch_short_name(branch)
+            )
 
             # You are allow to set build to None or empty string.  Only call for default if not provided.
             build = _get("build", "Build", util.get_build(), True)
 
             component = _get("component", "Component", None)
 
-        scope = _get("scope", "Scope", cls.get_scope_from(portfolio, app, branch, build))
+        scope = _get(
+            "scope", "Scope", cls.get_scope_from(portfolio, app, branch, build)
+        )
 
         return cls(
             client=client,

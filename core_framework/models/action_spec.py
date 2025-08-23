@@ -96,8 +96,16 @@ class ActionParams(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    account: str = Field(..., alias="Account", description="AWS account ID where this action should be executed")
-    region: str = Field(..., alias="Region", description="AWS region where this action should be executed")
+    account: str = Field(
+        ...,
+        alias="Account",
+        description="AWS account ID where this action should be executed",
+    )
+    region: str = Field(
+        ...,
+        alias="Region",
+        description="AWS region where this action should be executed",
+    )
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
         """Serialize model with optimized defaults.
@@ -240,7 +248,11 @@ class ActionSpec(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    apiVersion: str = Field(alias="ApiVersion", description="The API version of the actions API", default="v1")
+    apiVersion: str = Field(
+        alias="ApiVersion",
+        description="The API version of the actions API",
+        default="v1",
+    )
 
     name: str = Field(
         ...,
@@ -303,7 +315,9 @@ class ActionSpec(BaseModel):
     )
 
     metadata: dict[str, Any] | None = Field(
-        alias="Metadata", description="Arbitrary metadata about this action for documentation and tooling", default=None
+        alias="Metadata",
+        description="Arbitrary metadata about this action for documentation and tooling",
+        default=None,
     )
 
     depends_on: list[str] = Field(
@@ -955,7 +969,8 @@ class ActionSpec(BaseModel):
 
             if label_value and not name_value:
                 warnings.warn(
-                    "The 'label' field is deprecated and will be removed in a future version. " "Please use 'name' instead.",
+                    "The 'label' field is deprecated and will be removed in a future version. "
+                    "Please use 'name' instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -980,7 +995,8 @@ class ActionSpec(BaseModel):
 
             if type_value and not kind_value:
                 warnings.warn(
-                    "The 'type' field is deprecated and will be removed in a future version. " "Please use 'kind' instead.",
+                    "The 'type' field is deprecated and will be removed in a future version. "
+                    "Please use 'kind' instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -1034,9 +1050,13 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(f"All items in depends_on must be strings, got {type(item)}")
+                    raise ValueError(
+                        f"All items in depends_on must be strings, got {type(item)}"
+                    )
             return value
-        raise ValueError(f"Invalid depends_on value: {value}. Must be a string or a list of strings")
+        raise ValueError(
+            f"Invalid depends_on value: {value}. Must be a string or a list of strings"
+        )
 
     @field_validator("kind", mode="before")
     @classmethod
@@ -1128,11 +1148,15 @@ class ActionSpec(BaseModel):
 
         # Cannot start or end with hyphen or forward slash
         if value.startswith(("-", "/")) or value.endswith(("-", "/")):
-            raise ValueError(f"Name '{value}' cannot start or end with a hyphen or forward slash")
+            raise ValueError(
+                f"Name '{value}' cannot start or end with a hyphen or forward slash"
+            )
 
         # Check for consecutive separators or invalid separator combinations
         if "//" in value or ":/" in value or "/:" in value:
-            raise ValueError(f"Name '{value}' cannot contain consecutive separators or invalid separator combinations")
+            raise ValueError(
+                f"Name '{value}' cannot contain consecutive separators or invalid separator combinations"
+            )
 
         # Validate individual path components
         parts = value.split("/")
@@ -1150,7 +1174,9 @@ class ActionSpec(BaseModel):
 
             # Each part cannot start or end with hyphen
             if part.startswith("-") or part.endswith("-"):
-                raise ValueError(f"Name '{value}' part '{part}' cannot start or end with a hyphen")
+                raise ValueError(
+                    f"Name '{value}' part '{part}' cannot start or end with a hyphen"
+                )
 
             # Each part must contain only valid characters
             valid_chars = r"^[a-zA-Z0-9_:-]+$" if i == 0 else r"^[a-zA-Z0-9_-]+$"
@@ -1160,23 +1186,31 @@ class ActionSpec(BaseModel):
                     if i == 0
                     else "alphanumeric characters, hyphens, and underscores"
                 )
-                raise ValueError(f"Name '{value}' part '{part}' must contain only {char_desc}")
+                raise ValueError(
+                    f"Name '{value}' part '{part}' must contain only {char_desc}"
+                )
 
         # AWS resource name compatibility
         if len(value) > 63:
-            raise ValueError(f"Name '{value}' is too long. Maximum length is 63 characters.")
+            raise ValueError(
+                f"Name '{value}' is too long. Maximum length is 63 characters."
+            )
 
         # Validate that if colons are used, they follow the expected pattern
         if ":" in value:
             namespace_part = parts[0]
             if namespace_part.count(":") > 1:
-                raise ValueError(f"Name '{value}' namespace part '{namespace_part}' can contain at most one colon")
+                raise ValueError(
+                    f"Name '{value}' namespace part '{namespace_part}' can contain at most one colon"
+                )
 
             # If colon exists, validate the format (should be like "namespace:type")
             if ":" in namespace_part:
                 ns_parts = namespace_part.split(":")
                 if len(ns_parts) != 2 or not ns_parts[0] or not ns_parts[1]:
-                    raise ValueError(f"Name '{value}' namespace part '{namespace_part}' must follow format 'namespace:type'")
+                    raise ValueError(
+                        f"Name '{value}' namespace part '{namespace_part}' must follow format 'namespace:type'"
+                    )
 
         return value
 
@@ -1211,7 +1245,9 @@ class ActionSpec(BaseModel):
             # Validate all items are strings
             for item in value:
                 if not isinstance(item, str):
-                    raise ValueError(f"All items in list must be strings, got {type(item)}")
+                    raise ValueError(
+                        f"All items in list must be strings, got {type(item)}"
+                    )
             return value
         raise ValueError("Must be a string or a list of strings")
 
@@ -1454,7 +1490,10 @@ class ActionSpec(BaseModel):
             if hasattr(value, "model_dump"):
                 value = value.model_dump(exclude_none=exclude_none, by_alias=by_alias)
             elif isinstance(value, list) and value and hasattr(value[0], "model_dump"):
-                value = [item.model_dump(exclude_none=exclude_none, by_alias=by_alias) for item in value]
+                value = [
+                    item.model_dump(exclude_none=exclude_none, by_alias=by_alias)
+                    for item in value
+                ]
 
             out[key] = value
         return out
@@ -1470,7 +1509,9 @@ class ActionSpec(BaseModel):
             >>> str(action)
             "ActionSpec(name='deploy-stack', kind='AWS::CreateStack', scope='build')"
         """
-        return f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
+        return (
+            f"ActionSpec(name='{self.name}', kind='{self.kind}', scope='{self.scope}')"
+        )
 
     def __repr__(self) -> str:
         """Return a detailed string representation for debugging.

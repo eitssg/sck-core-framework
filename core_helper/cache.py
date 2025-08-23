@@ -220,7 +220,9 @@ class InMemoryCache:
         self._stop_event.set()
         self._purge_thread.join()
 
-    def store_session(self, key: str, session: boto3.Session, ttl: int = DEFAULT_TTL) -> str:
+    def store_session(
+        self, key: str, session: boto3.Session, ttl: int = DEFAULT_TTL
+    ) -> str:
         """Store a Boto3 Session object in the cache with type safety.
 
         Provides a type-safe wrapper around the generic store() method specifically

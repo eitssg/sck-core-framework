@@ -212,7 +212,9 @@ class TaskPayload(BaseModel):
         """
         valid_tasks = get_valid_tasks()
         if value not in valid_tasks:
-            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{value}'")
+            raise ValueError(
+                f"Task must be one of {', '.join(valid_tasks)}, got '{value}'"
+            )
         return value
 
     @model_validator(mode="before")
@@ -240,7 +242,9 @@ class TaskPayload(BaseModel):
         if isinstance(values, dict):
             client = values.get("Client") or values.get("client") or util.get_client()
 
-            dd = values.get("DeploymentDetails", None) or values.get("deployment_details", None)
+            dd = values.get("DeploymentDetails", None) or values.get(
+                "deployment_details", None
+            )
 
             if isinstance(dd, dict):
                 dd = DeploymentDetails(**dd)
@@ -260,11 +264,15 @@ class TaskPayload(BaseModel):
 
             fc = values.get("FlowControl", values.get("flow_control"))
             if fc and fc not in FLOW_CONTROLS:
-                raise ValueError(f"FlowControl must be one of {', '.join(FLOW_CONTROLS)}, got '{fc}'")
+                raise ValueError(
+                    f"FlowControl must be one of {', '.join(FLOW_CONTROLS)}, got '{fc}'"
+                )
 
             typ = values.get("Type", values.get("type", V_PIPELINE))
             if typ and typ not in [V_PIPELINE, V_DEPLOYSPEC]:
-                raise ValueError(f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'")
+                raise ValueError(
+                    f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'"
+                )
 
         return values
 
@@ -417,7 +425,9 @@ class TaskPayload(BaseModel):
         # Validate task value early
         valid_tasks = get_valid_tasks()
         if task not in valid_tasks:
-            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{task}'")
+            raise ValueError(
+                f"Task must be one of {', '.join(valid_tasks)}, got '{task}'"
+            )
 
         # Handle deployment details
         dd = _get("deployment_details", "DeploymentDetails", None)
@@ -448,7 +458,9 @@ class TaskPayload(BaseModel):
         elif not isinstance(st, StateDetails):
             st = StateDetails.from_arguments(**kwargs)
 
-        typ = _get("type", "Type", _get("automation_type", "AutomationType", V_PIPELINE))
+        typ = _get(
+            "type", "Type", _get("automation_type", "AutomationType", V_PIPELINE)
+        )
 
         force = _get("force", "Force", False)
 

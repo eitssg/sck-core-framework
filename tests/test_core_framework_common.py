@@ -98,6 +98,7 @@ from core_framework.constants import (
     ENV_COMPONENT_COMPILER_LAMBDA_ARN,
     ENV_CORRELATION_ID,
     ENV_ENVIRONMENT,
+    V_CORE_AUTOMATION,
     V_INTERACTIVE,
     V_DEPLOYSPEC,
     V_PIPELINE,
@@ -147,19 +148,19 @@ def test_get_configuration_bucket_name():
 
     bucket_name = util.generate_bucket_name("Example_Client", "Example_Branch", "scope-")
 
-    assert bucket_name == "scope-example_client-core-automation-example_branch"
+    assert bucket_name == f"scope-example_client-{V_CORE_AUTOMATION}-example_branch"
 
     bucket_name = util.get_bucket_name("baskets")
 
-    assert bucket_name == "baskets-core-automation-ap-southeast-1"
+    assert bucket_name == f"baskets-{V_CORE_AUTOMATION}-ap-southeast-1"
 
     bucket_name = util.get_bucket_name()
 
     client = util.get_client()
     if client:
-        assert bucket_name == f"{client}-core-automation-ap-southeast-1"
+        assert bucket_name == f"{client}-{V_CORE_AUTOMATION}-ap-southeast-1"
     else:
-        assert bucket_name == "core-automation-master"
+        assert bucket_name == f"core-{V_CORE_AUTOMATION}-master"
 
 
 def test_generate_branch_short_name():
@@ -789,7 +790,9 @@ def test_generate_bucket_name():
 
     bucket_name = util.generate_bucket_name(client="example_client", scope_prefix="scope-", region="example_region")
 
-    assert bucket_name == "scope-example_client-core-automation-example_region", "1 - Bucket name should match the expected format"
+    assert (
+        bucket_name == f"scope-example_client-{V_CORE_AUTOMATION}-example_region"
+    ), "1 - Bucket name should match the expected format"
 
     # Test that the default region is used if not specified.  Scope prefix comes from menvironment
     # variable "SCOPE" and a dash will be added automatically
@@ -797,7 +800,7 @@ def test_generate_bucket_name():
     bucket_name = util.generate_bucket_name(client="test")
 
     assert (
-        bucket_name == "test_scope-test-core-automation-test_region"
+        bucket_name == f"test_scope-test-{V_CORE_AUTOMATION}-test_region"
     ), "2 - Bucket name should match the expected format with default scoope and region from env variables"
 
     # Test that the default region is used if not specified.  Scope prefix will be set to blank
@@ -805,7 +808,7 @@ def test_generate_bucket_name():
     bucket_name = util.generate_bucket_name(client="test", scope_prefix="")
 
     assert (
-        bucket_name == "test-core-automation-test_region"
+        bucket_name == f"test-{V_CORE_AUTOMATION}-test_region"
     ), "3 - Bucket name should match the expected format with default scoope and region from env variables"
 
     # test that the default client is used if not specified.  Kill the scope and to eliminate scope prefix
@@ -815,7 +818,7 @@ def test_generate_bucket_name():
     bucket_name = util.generate_bucket_name()
 
     assert (
-        bucket_name == "default_client-core-automation-test_region"
+        bucket_name == f"default_client-{V_CORE_AUTOMATION}-test_region"
     ), "4 - Bucket name should match the expected format with the no scope, client and test region from env variables"
 
 
@@ -827,7 +830,7 @@ def test_get_bucket_name():
 
     bucket_name = util.get_bucket_name(client="example_client", region="example_region")
     assert (
-        bucket_name == "test-scope-example_client-core-automation-example_region"
+        bucket_name == f"test-scope-example_client-{V_CORE_AUTOMATION}-example_region"
     ), "1 - Bucket name should match the expected format"
 
     # Test with defaults
@@ -836,7 +839,7 @@ def test_get_bucket_name():
     os.environ[ENV_BUCKET_REGION] = ""
     bucket_name = util.get_bucket_name()
     assert (
-        bucket_name == "test-client-core-automation-ap-southeast-1"
+        bucket_name == f"test-client-{V_CORE_AUTOMATION}-ap-southeast-1"
     ), "2 - Bucket name should match the expected format with default client and region"
 
 
@@ -856,7 +859,7 @@ def test_get_document_bucket_name():
     bucket_name = util.get_document_bucket_name()
 
     assert (
-        bucket_name == "example_scope-example_client-core-automation-example_region"
+        bucket_name == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
     ), "2 - Document bucket name should match the expected format with scope and region from env variables"
 
 
@@ -876,7 +879,7 @@ def test_get_ui_bucket_name():
     bucket_name = util.get_ui_bucket_name()
 
     assert (
-        bucket_name == "example_scope-example_client-core-automation-example_region"
+        bucket_name == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
     ), "2 - UI bucket name should match the expected format with scope and region from env variables"
 
 
@@ -895,8 +898,8 @@ def test_get_artefact_bucket_name():
     bucket_name = util.get_artefact_bucket_name()
 
     assert (
-        bucket_name == "example_scope-example_client-core-automation-example_region"
-    ), "2 - Artefactr bucket name should match the expected format with scope and region from env variables"
+        bucket_name == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
+    ), "2 - Artefact bucket name should match the expected format with scope and region from env variables"
 
 
 def test_get_artefact_bucket_region():
@@ -1618,13 +1621,13 @@ def test_get_step_function_arn():
 def test_get_invoker_lambda_name():
 
     os.environ[ENV_INVOKER_LAMBDA_NAME] = "example_invoker_lambda"
-    invoker_lambda_name = util.get_invoker_lambda_name()
+    invoker_lambda_name = util.get_invoker_lambda_name("core")
     assert (
         invoker_lambda_name == "example_invoker_lambda"
     ), "1 - Invoker Lambda name should match the expected format with default invoker lambda name"
 
     del os.environ[ENV_INVOKER_LAMBDA_NAME]
-    invoker_lambda_name = util.get_invoker_lambda_name()
+    invoker_lambda_name = util.get_invoker_lambda_name("core")
     assert (
         invoker_lambda_name == "core-automation-invoker"
     ), "2 - Invoker Lambda name should be 'core-automation-invoker' if ENV_INVOKER_LAMBDA_NAME is not set"
@@ -1639,7 +1642,7 @@ def test_get_api_lambda_name():
     ), "1 - API Lambda name should match the expected format with default API lambda name"
 
     del os.environ[ENV_API_LAMBDA_NAME]
-    api_lambda_name = util.get_api_lambda_name()
+    api_lambda_name = util.get_api_lambda_name("core")
     assert (
         api_lambda_name == "core-automation-api"
     ), "2 - API Lambda name should be 'core-automation-api' if ENV_API_LAMBDA_NAME is not set"
@@ -1656,7 +1659,7 @@ def test_get_api_lambda_arn():
     ), "1 - API Lambda ARN should match the expected format with default API lambda ARN"
 
     del os.environ[ENV_API_LAMBDA_ARN]
-    api_lambda_arn = util.get_api_lambda_arn()
+    api_lambda_arn = util.get_api_lambda_arn("core")
     assert (
         api_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-api"
     ), "2 - API Lambda ARN should be None if ENV_API_LAMBDA_ARN is not set"
@@ -1684,7 +1687,7 @@ def test_get_invoker_lambda_arn():
     ), "1 - Invoker Lambda ARN should match the expected format with default invoker lambda ARN"
 
     del os.environ[ENV_INVOKER_LAMBDA_ARN]
-    invoker_lambda_arn = util.get_invoker_lambda_arn()
+    invoker_lambda_arn = util.get_invoker_lambda_arn("core")
     assert (
         invoker_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-invoker"
     ), "2 - Invoker Lambda ARN should be None if ENV_INVOKER_LAMBDA_ARN is not set"
@@ -1700,7 +1703,7 @@ def test_get_execute_lambda_arn():
         execute_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_execute_lambda"
     ), "1 - Execute Lambda ARN should match the expected format with default execute lambda ARN"
     del os.environ[ENV_EXECUTE_LAMBDA_ARN]
-    execute_lambda_arn = util.get_execute_lambda_arn()
+    execute_lambda_arn = util.get_execute_lambda_arn("core")
     assert (
         execute_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-execute"
     ), "2 - Execute Lambda ARN should be None if ENV_EXECUTE_LAMBDA_ARN is not set"
@@ -1716,7 +1719,7 @@ def test_get_start_runner_lambda_arn():
         start_runner_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_start_runner_lambda"
     ), "1 - Start Runner Lambda ARN should match the expected format with default start runner lambda ARN"
     del os.environ[ENV_START_RUNNER_LAMBDA_ARN]
-    start_runner_lambda_arn = util.get_start_runner_lambda_arn()
+    start_runner_lambda_arn = util.get_start_runner_lambda_arn("core")
     assert (
         start_runner_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-runner"
     ), "2 - Start Runner Lambda ARN should be None if ENV_START_RUNNER_LAMBDA_ARN is not set"
@@ -1761,7 +1764,7 @@ def test_get_deployspec_compiler_lambda_arn():
     ), "1 - DeploySpec Compiler Lambda ARN should match the expected format with default deployspec compiler lambda ARN"
 
     del os.environ[ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN]
-    deployspec_compiler_lambda_arn = util.get_deployspec_compiler_lambda_arn()
+    deployspec_compiler_lambda_arn = util.get_deployspec_compiler_lambda_arn("core")
     assert (
         deployspec_compiler_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-deployspec-compiler"
     ), "2 - DeploySpec Compiler Lambda ARN should be None if ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN is not set"
@@ -1780,7 +1783,7 @@ def test_get_component_compiler_lambda_arn():
     ), "1 - Component Compiler Lambda ARN should match the expected format with default component compiler lambda ARN"
 
     del os.environ[ENV_COMPONENT_COMPILER_LAMBDA_ARN]
-    component_compiler_lambda_arn = util.get_component_compiler_lambda_arn()
+    component_compiler_lambda_arn = util.get_component_compiler_lambda_arn("core")
     assert (
         component_compiler_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-component-compiler"
     ), "2 - Component Compiler Lambda ARN should be None if ENV_COMPONENT_COMPILER_LAMBDA_ARN is not set"
@@ -1898,7 +1901,10 @@ def test_to_yaml():
         "datetime": datetime(2023, 10, 1, 12, 0),
         "date": date(2023, 10, 1),
         "time": time(12, 0),
-        "datalist": [{"name": "string1", "value": "value1"}, {"name": "string2", "value": "value2"}],
+        "datalist": [
+            {"name": "string1", "value": "value1"},
+            {"name": "string2", "value": "value2"},
+        ],
         "value": 42.1,
         "quoted_number": "00000432.1",
         "decimal": Decimal("41.5"),

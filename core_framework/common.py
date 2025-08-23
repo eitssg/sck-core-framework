@@ -5,6 +5,7 @@ other very common tasks.
 
 """
 
+from pydoc import cli
 import warnings
 from typing import Any, IO, Dict
 import uuid
@@ -1224,7 +1225,7 @@ def get_step_function_arn() -> str:
     )
 
 
-def get_invoker_lambda_name() -> str:
+def get_invoker_lambda_name(client: str = None) -> str:
     """Get invoker lambda name from INVOKER_LAMBDA_NAME environment variable.
 
     Returns
@@ -1237,10 +1238,12 @@ def get_invoker_lambda_name() -> str:
     >>> get_invoker_lambda_name()
     'core-automation-invoker'
     """
-    return os.getenv(ENV_INVOKER_LAMBDA_NAME, f"{V_CORE_AUTOMATION}-invoker")
+    if not client:
+        client = get_client() or "core"
+    return os.getenv(ENV_INVOKER_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-invoker")
 
 
-def get_api_lambda_name() -> str:
+def get_api_lambda_name(client: str = None) -> str:
     """Get API lambda name from API_LAMBDA_NAME environment variable.
 
     Returns
@@ -1253,10 +1256,12 @@ def get_api_lambda_name() -> str:
     >>> get_api_lambda_name()
     'core-automation-api'
     """
-    return os.getenv(ENV_API_LAMBDA_NAME, f"{V_CORE_AUTOMATION}-api")
+    if not client:
+        client = get_client() or "core"
+    return os.getenv(ENV_API_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-api")
 
 
-def get_api_lambda_arn() -> str:
+def get_api_lambda_arn(client: str = None) -> str:
     """Get API lambda ARN from API_LAMBDA_ARN environment variable.
 
     Returns
@@ -1271,7 +1276,7 @@ def get_api_lambda_arn() -> str:
     """
     region = get_region()
     account = get_automation_account()
-    name = get_api_lambda_name()
+    name = get_api_lambda_name(client)
     return os.getenv(
         ENV_API_LAMBDA_ARN,
         f"arn:aws:lambda:{region}:{account}:function:{name}",
@@ -1294,7 +1299,7 @@ def get_api_host_url() -> str | None:
     return os.getenv(ENV_API_HOST_URL, None)
 
 
-def get_invoker_lambda_arn() -> str:
+def get_invoker_lambda_arn(client: str = None) -> str:
     """Get invoker lambda ARN from INVOKER_LAMBDA_ARN environment variable.
 
     Returns
@@ -1309,14 +1314,14 @@ def get_invoker_lambda_arn() -> str:
     """
     region = get_region()
     account = get_automation_account()
-    invoker_name = get_invoker_lambda_name()
+    invoker_name = get_invoker_lambda_name(client)
     return os.getenv(
         ENV_INVOKER_LAMBDA_ARN,
         f"arn:aws:lambda:{region}:{account}:function:{invoker_name}",
     )
 
 
-def get_execute_lambda_arn() -> str:
+def get_execute_lambda_arn(client: str = None) -> str:
     """Get execute lambda ARN from EXECUTE_LAMBDA_ARN environment variable.
 
     Returns
@@ -1329,15 +1334,17 @@ def get_execute_lambda_arn() -> str:
     >>> get_execute_lambda_arn()
     'arn:aws:lambda:us-east-1:123456789012:function:core-automation-execute'
     """
+    if client is None:
+        client = get_client() or "core"
     region = get_region()
     account = get_automation_account()
     return os.getenv(
         ENV_EXECUTE_LAMBDA_ARN,
-        f"arn:aws:lambda:{region}:{account}:function:{V_CORE_AUTOMATION}-execute",
+        f"arn:aws:lambda:{region}:{account}:function:{client}-{V_CORE_AUTOMATION}-execute",
     )
 
 
-def get_start_runner_lambda_arn() -> str:
+def get_start_runner_lambda_arn(client: str = None) -> str:
     """Get start runner lambda ARN from START_RUNNER_LAMBDA_ARN environment variable.
 
     Returns
@@ -1350,11 +1357,13 @@ def get_start_runner_lambda_arn() -> str:
     >>> get_start_runner_lambda_arn()
     'arn:aws:lambda:us-east-1:123456789012:function:core-automation-runner'
     """
+    if client is None:
+        client = get_client() or "core"
     region = get_region()
     account = get_automation_account()
     return os.getenv(
         ENV_START_RUNNER_LAMBDA_ARN,
-        f"arn:aws:lambda:{region}:{account}:function:{V_CORE_AUTOMATION}-runner",
+        f"arn:aws:lambda:{region}:{account}:function:{client}-{V_CORE_AUTOMATION}-runner",
     )
 
 
@@ -1390,7 +1399,7 @@ def get_bizapp() -> str | None:
     return os.getenv(ENV_BIZAPP, None)
 
 
-def get_deployspec_compiler_lambda_arn() -> str:
+def get_deployspec_compiler_lambda_arn(client: str = None) -> str:
     """Get deployspec compiler lambda ARN.
 
     Returns
@@ -1403,15 +1412,17 @@ def get_deployspec_compiler_lambda_arn() -> str:
     >>> get_deployspec_compiler_lambda_arn()
     'arn:aws:lambda:us-east-1:123456789012:function:core-automation-deployspec-compiler'
     """
+    if client is None:
+        client = get_client() or "core"
     region = get_region()
     account = get_automation_account()
     return os.getenv(
         ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN,
-        f"arn:aws:lambda:{region}:{account}:function:{V_CORE_AUTOMATION}-deployspec-compiler",
+        f"arn:aws:lambda:{region}:{account}:function:{client}-{V_CORE_AUTOMATION}-deployspec-compiler",
     )
 
 
-def get_component_compiler_lambda_arn() -> str:
+def get_component_compiler_lambda_arn(client: str = None) -> str:
     """Get component compiler lambda ARN.
 
     Returns
@@ -1424,11 +1435,13 @@ def get_component_compiler_lambda_arn() -> str:
     >>> get_component_compiler_lambda_arn()
     'arn:aws:lambda:us-east-1:123456789012:function:core-automation-component-compiler'
     """
+    if client is None:
+        client = get_client() or "core"
     region = get_region()
     account = get_automation_account()
     return os.getenv(
         ENV_COMPONENT_COMPILER_LAMBDA_ARN,
-        f"arn:aws:lambda:{region}:{account}:function:{V_CORE_AUTOMATION}-component-compiler",
+        f"arn:aws:lambda:{region}:{account}:function:{client}-{V_CORE_AUTOMATION}-component-compiler",
     )
 
 

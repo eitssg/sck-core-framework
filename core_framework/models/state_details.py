@@ -113,7 +113,9 @@ class StateDetails(FileDetails):
             'application/yaml'
         """
         if isinstance(values, dict):
-            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
+            content_type = values.pop("content_type", None) or values.pop(
+                "ContentType", None
+            )
             if not content_type:
                 content_type = "application/yaml"
             values["content_type"] = content_type
@@ -252,7 +254,9 @@ class StateDetails(FileDetails):
             - **Task**: 'deploy' if not specified
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(
+            key1: str, key2: str, default: str | None, can_be_empty: bool = False
+        ) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
 
@@ -279,7 +283,9 @@ class StateDetails(FileDetails):
             if dd:
                 key = dd.get_object_key(OBJ_ARTEFACTS, state_file)
 
-        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
+        bucket_region = _get(
+            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
+        )
 
         bucket_name = _get(
             "bucket_name",
