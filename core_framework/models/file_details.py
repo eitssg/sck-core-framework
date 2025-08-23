@@ -300,7 +300,9 @@ class FileDetails(BaseModel):
             - **"service"**: AWS S3 storage for production deployments
         """
         if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'")
+            raise ValueError(
+                f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'"
+            )
         return value
 
     version_id: str | None = Field(
@@ -363,7 +365,9 @@ class FileDetails(BaseModel):
         """
         allowed_types = util.get_valid_mimetypes()
         if value not in allowed_types:
-            raise ValueError(f"ContentType must be one of {allowed_types}, got: {value}")
+            raise ValueError(
+                f"ContentType must be one of {allowed_types}, got: {value}"
+            )
         return value
 
     @model_validator(mode="before")
@@ -425,13 +429,17 @@ class FileDetails(BaseModel):
             values["client"] = client
 
             # Set bucket region if not provided
-            region = values.pop("BucketRegion", None) or values.pop("bucket_region", None)
+            region = values.pop("BucketRegion", None) or values.pop(
+                "bucket_region", None
+            )
             if not region:
                 region = util.get_bucket_region()
             values["bucket_region"] = region
 
             # Set bucket name if not provided
-            bucket_name = values.pop("BucketName", None) or values.pop("bucket_name", None)
+            bucket_name = values.pop("BucketName", None) or values.pop(
+                "bucket_name", None
+            )
             if not bucket_name:
                 bucket_name = util.get_bucket_name(client, region)
             values["bucket_name"] = bucket_name

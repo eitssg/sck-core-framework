@@ -3,7 +3,7 @@ import pytest
 import os
 
 import core_framework as util
-from core_framework.constants import ENV_LOCAL_MODE
+from core_framework.constants import ENV_LOCAL_MODE, V_CORE_AUTOMATION
 
 from core_framework.models import (
     ActionSpec,
@@ -50,9 +50,7 @@ def deployspec_sample():
     data_path = os.path.dirname(os.path.realpath(__file__))
     file_path = os.path.join(data_path, "deployspec_yaml", "deployspec.yaml")
 
-    deployspec = util.load_yaml_file(
-        file_path
-    )  # Load the YAML file to ensure it exists
+    deployspec = util.load_yaml_file(file_path)  # Load the YAML file to ensure it exists
 
     return deployspec
 
@@ -88,29 +86,17 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload.identity == "prn:my-portfolio:my-app:my-branch:my-build"
 
-        assert (
-            task_payload.actions.bucket_name
-            == "my-client-core-automation-specified_region"
-        )
+        assert task_payload.actions.bucket_name == f"my-client-{V_CORE_AUTOMATION}-specified_region"
 
         assert task_payload.actions.bucket_region == "specified_region"
 
-        assert (
-            task_payload.actions.key
-            == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.actions"
-        )
+        assert task_payload.actions.key == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.actions"
 
-        assert (
-            task_payload.package.bucket_name
-            == "my-client-core-automation-specified_region"
-        )
+        assert task_payload.package.bucket_name == "my-client-automation-specified_region"
 
         assert task_payload.package.bucket_region == "specified_region"
 
-        assert (
-            task_payload.package.key
-            == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
-        )
+        assert task_payload.package.key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
 
         assert task_payload.deployment_details.client == "my-client"
 
@@ -124,10 +110,7 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload.state.bucket_region == "specified_region"
 
-        assert (
-            task_payload.state.key
-            == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.state"
-        )
+        assert task_payload.state.key == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.state"
 
         assert task_payload.flow_control is None
 
@@ -164,18 +147,13 @@ def test_package_details_model(runtime_arguments):
 
         assert package_details is not None
 
-        assert (
-            package_details.bucket_name == "my-client-core-automation-specified_region"
-        )
+        assert package_details.bucket_name == f"my-client-{V_CORE_AUTOMATION}-specified_region"
 
         assert package_details.bucket_region == "specified_region"
 
         # The scope is "portfolio"
 
-        assert (
-            package_details.key
-            == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
-        )
+        assert package_details.key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
 
     except ValidationError as e:
         print(e.erros())
@@ -258,9 +236,7 @@ def test_action_spec_validation():
         assert False, "Expected validation error for DependsOn field"
 
     except ValidationError as e:
-        assert (
-            e.errors() is not None
-        ), "Expected validation error for non-existent action"
+        assert e.errors() is not None, "Expected validation error for non-existent action"
 
 
 def test_action_spec_validation_invalid_scope():
@@ -278,9 +254,7 @@ def test_action_spec_validation_invalid_scope():
         # Should have a validation error on Scope since it is not a valid value
         assert False, "Expected validation error for invalid scope"
     except ValidationError as e:
-        assert (
-            e.errors() is not None
-        ), "Expected validation error for invalid scope value"
+        assert e.errors() is not None, "Expected validation error for invalid scope value"
 
 
 def test_action_spec_model(deployspec_sample):

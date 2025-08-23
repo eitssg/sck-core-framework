@@ -186,7 +186,9 @@ class ActionDetails(FileDetails):
             of AWS services returning capitalized field names that need normalization.
         """
         if isinstance(values, dict):
-            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
+            content_type = values.pop("content_type", None) or values.pop(
+                "ContentType", None
+            )
             if not content_type:
                 content_type = "application/yaml"
             values["content_type"] = content_type
@@ -347,7 +349,9 @@ class ActionDetails(FileDetails):
             ```
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(
+            key1: str, key2: str, default: str | None, can_be_empty: bool = False
+        ) -> str:
             """Extract parameter with fallback and default handling."""
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
@@ -375,7 +379,9 @@ class ActionDetails(FileDetails):
             key = dd.get_object_key(OBJ_ARTEFACTS, action_file)
 
         # Bucket region must be populated before bucket_name
-        bucket_region = _get("bucket_region", "BucketRegion", util.get_artefact_bucket_region())
+        bucket_region = _get(
+            "bucket_region", "BucketRegion", util.get_artefact_bucket_region()
+        )
 
         # Bucket name must also be populated before creating ActionDetails
         bucket_name = _get(

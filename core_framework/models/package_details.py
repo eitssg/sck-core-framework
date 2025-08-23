@@ -163,7 +163,9 @@ class PackageDetails(FileDetails):
             ValueError: Compile mode must be 'full' or 'incremental', got 'invalid'
         """
         if value not in [V_FULL, V_INCREMENTAL, V_EMPTY]:
-            raise ValueError(f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'")
+            raise ValueError(
+                f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'"
+            )
         return value
 
     @model_validator(mode="before")
@@ -187,7 +189,9 @@ class PackageDetails(FileDetails):
             'application/zip'
         """
         if isinstance(values, dict):
-            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
+            content_type = values.pop("content_type", None) or values.pop(
+                "ContentType", None
+            )
             if not content_type:
                 content_type = "application/zip"
             values["content_type"] = content_type
@@ -345,7 +349,9 @@ class PackageDetails(FileDetails):
             - **None**: Creates empty DeploySpec with no actions
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(
+            key1: str, key2: str, default: str | None, can_be_empty: bool = False
+        ) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
 

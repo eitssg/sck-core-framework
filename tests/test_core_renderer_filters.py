@@ -119,7 +119,9 @@ def test_filter_aws_tags(render_context):
     assert {"Key": TAG_APP, "Value": "test-app"} in result
     assert {"Key": TAG_COMPONENT, "Value": "web-server"} in result
     assert {"Key": "CustomTag", "Value": "CustomValue"} in result
-    assert len(result) == 8  # portfolio, app, branch, build, env, name, component, custom
+    assert (
+        len(result) == 8
+    )  # portfolio, app, branch, build, env, name, component, custom
 
 
 def test_filter_docker_image(render_context):
@@ -200,7 +202,10 @@ def test_filter_iam_rules(render_context):
     }
     result = filter_iam_rules(render_context, resource)
     assert len(result) == 2
-    assert result[0]["Value"] == "test-portfolio-test-app-feature-component-a-security:RoleName"
+    assert (
+        result[0]["Value"]
+        == "test-portfolio-test-app-feature-component-a-security:RoleName"
+    )
     assert result[0]["Allow"] == ["s3:GetObject"]
     assert result[1]["SourceType"] == "aws-ec2-instance"
     assert result[1]["Allow"] == ["sqs:SendMessage", "sqs:ReceiveMessage"]
@@ -295,7 +300,10 @@ def test_filter_ip_rules(render_context):
 
     # From component
     assert result[1]["Type"] == "component"
-    assert result[1]["Value"] == "test-portfolio-test-app-feature-component-a-security:SecurityGroupId"
+    assert (
+        result[1]["Value"]
+        == "test-portfolio-test-app-feature-component-a-security:SecurityGroupId"
+    )
     assert result[1]["FromPort"] == "8080"
     assert result[1]["ToPort"] == "8090"
     assert result[1]["Description"] == "Component component-a"
@@ -318,7 +326,10 @@ def test_filter_ip_rules(render_context):
 
     # From component
     assert result[1]["Type"] == "component"
-    assert result[1]["Value"] == "test-portfolio-test-app-feature-component-a-security:SecurityGroupId"
+    assert (
+        result[1]["Value"]
+        == "test-portfolio-test-app-feature-component-a-security:SecurityGroupId"
+    )
     assert result[1]["Description"] == "Component component-a"
 
     # delete the app context to test edge case
@@ -340,7 +351,10 @@ def test_filter_lookup(render_context):
     assert filter_lookup(render_context, CTX_COMPONENT_NAME) == "test-component"
 
     # wrap the text in double-quotes so the dash wont be interpreted as a minus sign
-    assert filter_lookup(render_context, '"non-existent-key"', default="default") == "default"
+    assert (
+        filter_lookup(render_context, '"non-existent-key"', default="default")
+        == "default"
+    )
     with pytest.raises(jinja2.exceptions.UndefinedError):
         filter_lookup(render_context, '"non-existent-key"')
 
@@ -440,7 +454,10 @@ def test_filter_policy_statements(render_context):
     assert result["Effect"] == "Allow"
     assert len(result["Resource"]) == 2  # s3 and sqs are grouped
     assert "arn:aws:s3:::test-portfolio-test-app-feature-*" in result["Resource"]
-    assert "arn:aws:sqs:us-east-1:123456789012:test-portfolio-test-app-feature-*" in result["Resource"]
+    assert (
+        "arn:aws:sqs:us-east-1:123456789012:test-portfolio-test-app-feature-*"
+        in result["Resource"]
+    )
 
     # Remove the facts from the context to test edge case
     render_context.vars[CTX_CONTEXT] = None
@@ -456,7 +473,9 @@ def test_filter_process_cfn_init(render_context):
     """
     cfn_init = {
         "install_packages": {
-            "sources": {"/etc/yum.repos.d": {"Fn::Pipeline::FileUrl": {"Path": "my.repo"}}},
+            "sources": {
+                "/etc/yum.repos.d": {"Fn::Pipeline::FileUrl": {"Path": "my.repo"}}
+            },
             "files": {
                 "/etc/portfolio-config.conf": {
                     "source": {
@@ -501,7 +520,10 @@ def test_filter_process_cfn_init(render_context):
     }
     result = filter_process_cfn_init(render_context, cfn_init)
 
-    assert result["install_packages"]["sources"]["/etc/yum.repos.d"] == "eits-core-automation-ap-southeast-1/files/build/my.repo"
+    assert (
+        result["install_packages"]["sources"]["/etc/yum.repos.d"]
+        == "eits-core-automation-ap-southeast-1/files/build/my.repo"
+    )
     assert (
         result["install_packages"]["files"]["/etc/portfolio-config.conf"]["source"]
         == "eits-core-automation-ap-southeast-1/files/portfolio/portfolio-config.conf"
@@ -582,7 +604,9 @@ def test_filter_snapshot_id(render_context):
         jinja2.exceptions.UndefinedError,
         match='Must specify {"Fn::Pipeline::SnapshotId": {}} dictionary for lookup',
     ):
-        filter_snapshot_id(render_context, {"Fn::Pipeline::SnapshotId": "invalid"}, "rds")
+        filter_snapshot_id(
+            render_context, {"Fn::Pipeline::SnapshotId": "invalid"}, "rds"
+        )
 
     # Set the facts facts account aliases to None to test edge case
     render_context[CTX_CONTEXT][CTX_ACCOUNT_ALIASES] = None
@@ -590,7 +614,9 @@ def test_filter_snapshot_id(render_context):
     result = filter_snapshot_id(render_context, spec, "rds")
     assert result == expected
 
-    render_context[CTX_CONTEXT][CTX_SNAPSHOT_ALIASES]["rds"]["prod-snapshot"]["SnapshotIdentifier"] = None
+    render_context[CTX_CONTEXT][CTX_SNAPSHOT_ALIASES]["rds"]["prod-snapshot"][
+        "SnapshotIdentifier"
+    ] = None
     result = filter_snapshot_id(render_context, spec, "rds")
     assert result is None
 
@@ -686,7 +712,9 @@ def test_filter_subnet_network_zone():
     assert filter_subnet_network_zone({"Fn::Pipeline::SubnetId": {}}) == "private"
     assert filter_subnet_network_zone(None) == "private"
     # Error case
-    assert filter_subnet_network_zone({}) == "private"  # Should return default if no NetworkZone
+    assert (
+        filter_subnet_network_zone({}) == "private"
+    )  # Should return default if no NetworkZone
 
 
 def test_filter_subnet_az_index():
@@ -833,13 +861,18 @@ def test_private_file_url(render_context):
     """
     facts = render_context.get(CTX_CONTEXT)
     spec = {"Fn::Pipeline::FileUrl": {"Path": "script.sh", "Scope": SCOPE_SHARED}}
-    assert __file_url(facts, spec) == "eits-core-automation-ap-southeast-1/files/shared/script.sh"
+    assert (
+        __file_url(facts, spec)
+        == "eits-core-automation-ap-southeast-1/files/shared/script.sh"
+    )
 
     # Test non-FileUrl spec (should return unchanged)
     assert __file_url(facts, {"key": "value"}) == {"key": "value"}
 
     # Test invalid scope
-    invalid_spec = {"Fn::Pipeline::FileUrl": {"Path": "script.sh", "Scope": "invalid-scope"}}
+    invalid_spec = {
+        "Fn::Pipeline::FileUrl": {"Path": "script.sh", "Scope": "invalid-scope"}
+    }
     with pytest.raises(jinja2.exceptions.UndefinedError):
         __file_url(facts, invalid_spec)
 
@@ -850,7 +883,9 @@ def test_private_format_arn():
     """
     arn = __format_arn("s3", "", "", "my-bucket")
     assert arn == "arn:aws:s3:::my-bucket"
-    arn_with_type = __format_arn("dynamodb", "us-west-2", "111122223333", "my-table", "table")
+    arn_with_type = __format_arn(
+        "dynamodb", "us-west-2", "111122223333", "my-table", "table"
+    )
     assert arn_with_type == "arn:aws:dynamodb:us-west-2:111122223333:table/my-table"
 
 

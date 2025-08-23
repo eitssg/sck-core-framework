@@ -226,7 +226,9 @@ class DeploySpec(BaseModel):
 
         for action in self.actions:
             # Extract stack name with parameter name flexibility
-            stack_name = action.params.get("stack_name") or action.params.get("StackName")
+            stack_name = action.params.get("stack_name") or action.params.get(
+                "StackName"
+            )
 
             # Only validate if a stack name is provided
             if not stack_name:
@@ -307,7 +309,9 @@ class DeploySpec(BaseModel):
         return util.to_json(self.model_dump())
 
     @classmethod
-    def from_stream(cls, stream: TextIO | str, mimetype: str = "application/yaml") -> "DeploySpec":
+    def from_stream(
+        cls, stream: TextIO | str, mimetype: str = "application/yaml"
+    ) -> "DeploySpec":
         """Load a DeploySpec from a stream or string with specified mimetype.
 
         Args:
@@ -361,7 +365,9 @@ class DeploySpec(BaseModel):
             return cls.from_json(stream)
         else:
             supported_types = yaml_types + json_types
-            raise ValueError(f"Unsupported mimetype: {mimetype}. Supported types: {supported_types}")
+            raise ValueError(
+                f"Unsupported mimetype: {mimetype}. Supported types: {supported_types}"
+            )
 
     @classmethod
     def from_yaml(cls, stream: TextIO | str) -> "DeploySpec":

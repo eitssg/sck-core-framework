@@ -162,7 +162,9 @@ class CoreLogFormatter(logging.Formatter):
         """
         return t.strftime(date_format or DEFAULT_DATE_FORMAT)
 
-    def formatTime(self, record: logging.LogRecord, date_format: str | None = None) -> str:  # NOSONAR: python:S100
+    def formatTime(
+        self, record: logging.LogRecord, date_format: str | None = None
+    ) -> str:  # NOSONAR: python:S100
         """Extract the created timestamp from LogRecord and convert to datetime string.
 
         Converts the timestamp from the log record to a formatted datetime string
@@ -337,7 +339,11 @@ class CoreLogTextFormatter(CoreLogFormatter):
         if not isinstance(record.args, tuple):
             record.args = (record.args,)
 
-        if record.levelno == STATUS and hasattr(record, "status") and hasattr(record, "reason"):
+        if (
+            record.levelno == STATUS
+            and hasattr(record, "status")
+            and hasattr(record, "reason")
+        ):
             record.msg = f"{record.status} {record.reason}"
 
         # The user can send a list of replacement values if the "msg" contains "{}"
@@ -357,7 +363,11 @@ class CoreLogTextFormatter(CoreLogFormatter):
 
         if hasattr(record, L_DETAILS):
             details = getattr(record, L_DETAILS)
-            if details and (isinstance(details, dict) or isinstance(details, OrderedDict) or isinstance(details, list)):
+            if details and (
+                isinstance(details, dict)
+                or isinstance(details, OrderedDict)
+                or isinstance(details, list)
+            ):
                 data = data + "\n" + self._indent_yaml(details)
 
         return data
@@ -452,7 +462,9 @@ class CoreLogJsonFormatter(CoreLogFormatter):
         super().__init__(text_format, datefmt)
 
     @staticmethod
-    def set_element(data: dict, record: logging.LogRecord, key: str, alternate: str | None = None):
+    def set_element(
+        data: dict, record: logging.LogRecord, key: str, alternate: str | None = None
+    ):
         """Add an element to the JSON data dictionary if it exists in the log record.
 
         Conditionally adds fields to the JSON output by checking for their
@@ -527,7 +539,11 @@ class CoreLogJsonFormatter(CoreLogFormatter):
         if not isinstance(record.args, tuple):
             record.args = (record.args,)
 
-        if record.levelno == STATUS and hasattr(record, "status") and hasattr(record, "reason"):
+        if (
+            record.levelno == STATUS
+            and hasattr(record, "status")
+            and hasattr(record, "reason")
+        ):
             record.msg = f"{record.status} {record.reason}"
 
         # The user can send a list of replacement values if the "msg" contains "{}"
@@ -672,7 +688,9 @@ class CoreLogger(logging.Logger):
         for handler in self.handlers:
             handler.setLevel(level)
 
-    def core_log(self, level: int, message: str | dict | None, args: tuple, **kwargs) -> None:
+    def core_log(
+        self, level: int, message: str | dict | None, args: tuple, **kwargs
+    ) -> None:
         """Core logging method that processes messages and metadata.
 
         This is the central logging method that handles all the custom
