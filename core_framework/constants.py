@@ -86,7 +86,7 @@ TASK_TEARDOWN = "teardown"
 """Teardown task type identifier."""
 
 # Field values
-V_CORE_AUTOMATION = "core-automation"
+V_CORE_AUTOMATION = "automation"
 """Core automation service identifier."""
 
 V_PACKAGE_ZIP = "package.zip"
