@@ -198,6 +198,8 @@ from .common import (
     get_organization_name,
     get_organization_account,
     get_organization_email,
+    get_auth_lambda_arn,
+    get_auth_lambda_name,
     get_api_lambda_name,
     get_api_lambda_arn,
     get_api_host_url,
@@ -345,6 +347,8 @@ __all__ = [
     # AWS Lambda Functions
     "get_api_lambda_name",
     "get_api_lambda_arn",
+    "get_auth_lambda_name",
+    "get_auth_lambda_arn",
     "get_api_host_url",
     "get_invoker_lambda_arn",
     "get_invoker_lambda_name",

@@ -20,6 +20,7 @@ from botocore.exceptions import ProfileNotFound
 
 from .constants import (
     # Environment Variables
+    ENV_AUTH_LAMBDA_NAME,
     ENV_AUTOMATION_ACCOUNT,
     ENV_AUTOMATION_REGION,
     ENV_API_LAMBDA_NAME,
@@ -1243,6 +1244,24 @@ def get_invoker_lambda_name(client: str = None) -> str:
     return os.getenv(ENV_INVOKER_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-invoker")
 
 
+def get_auth_lambda_name(client: str = None) -> str:
+    """Get Auth lambda name from AUTH_LAMBDA_NAME environment variable.
+
+    Returns
+    -------
+    str
+        The name of the Auth lambda, defaults to "core-automation-auth"
+
+    Examples
+    --------
+    >>> get_auth_lmbda_name()
+    'core-automation-auth'
+    """
+    if not client:
+        client = get_client() or "core"
+    return os.getenv(ENV_AUTH_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-auth")
+
+
 def get_api_lambda_name(client: str = None) -> str:
     """Get API lambda name from API_LAMBDA_NAME environment variable.
 
@@ -1259,6 +1278,16 @@ def get_api_lambda_name(client: str = None) -> str:
     if not client:
         client = get_client() or "core"
     return os.getenv(ENV_API_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-api")
+
+
+def get_auth_lambda_arn(client: str = None) -> str:
+    region = get_region()
+    account = get_automation_account()
+    name = get_auth_lambda_name(client)
+    return os.getenv(
+        ENV_AUTH_LAMBDA_NAME,
+        f"arn:aws:lambda:{region}:{account}:function:{name}",
+    )
 
 
 def get_api_lambda_arn(client: str = None) -> str:

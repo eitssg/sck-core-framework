@@ -592,6 +592,9 @@ ENV_API_HOST_URL = "API_HOST_URL"
 ENV_API_LAMBDA_ARN = "API_LAMBDA_ARN"
 """API Lambda ARN environment variable."""
 
+ENV_AUTH_LAMBDA_NAME = "AUTH_LAMBDA_NAME"
+"""Auth Lambda name environment variable."""
+
 ENV_API_LAMBDA_NAME = "API_LAMBDA_NAME"
 """API Lambda name environment variable."""
 
