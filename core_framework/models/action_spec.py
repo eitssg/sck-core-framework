@@ -55,7 +55,7 @@ Note:
     by the core-execute library for action execution and orchestration.
 """
 
-from typing import Any
+from typing import Any, Optional, Dict
 import warnings
 from collections import OrderedDict
 from pydantic import (
@@ -67,6 +67,36 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+
+class ActionMetadata(BaseModel):
+    """Action metadata following Kubernetes/Helm conventions."""
+
+    model_config = ConfigDict(validate_assignment=True, extra="allow")
+
+    name: str = Field(
+        description="Action name",
+    )
+    namespace: Optional[str] = Field(
+        default=None,
+        description="Action namespace",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Human-readable description",
+    )
+    labels: Optional[Dict[str, str]] = Field(
+        default_factory=dict,
+        description="Key-value labels",
+    )
+    annotations: Optional[Dict[str, str]] = Field(
+        default_factory=dict,
+        description="Additional annotations",
+    )
+    save_outputs: Optional[bool] = Field(
+        default=None,
+        description="Override save_outputs at metadata level",
+    )
 
 
 class ActionParams(BaseModel):
@@ -314,7 +344,7 @@ class ActionSpec(BaseModel):
         min_length=1,
     )
 
-    metadata: dict[str, Any] | None = Field(
+    metadata: ActionMetadata | None = Field(
         alias="Metadata",
         description="Arbitrary metadata about this action for documentation and tooling",
         default=None,
@@ -358,14 +388,14 @@ class ActionSpec(BaseModel):
     - Consider using ``before``/``after`` for simple ordering without failure propagation""",
     )
 
-    params: dict[str, Any] = Field(
+    spec: dict[str, Any] = Field(
         ...,
-        alias="Params",
+        alias="Spec",
         description="""Parameters dictionary containing action-specific configuration and inputs.
 
     **Parameter Structure:**
     
-    The params dictionary contains all configuration needed for action execution.
+    The spec dictionary contains all configuration needed for action execution.
     Each action kind defines its own parameter schema through Pydantic models.
     
     **Common Parameter Patterns:**
@@ -936,36 +966,12 @@ class ActionSpec(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def handle_deprecations(cls, values: Any) -> Any:
-        """Handle the deprecation of 'label' and 'type' fields in favor of 'name' and 'kind'.
-
-        This validator provides backward compatibility by mapping deprecated field names
-        to their new equivalents and issuing appropriate warnings.
-
-        Args:
-            values: The input values for model creation. Expected to be a dict for processing,
-                   but other types are passed through unchanged.
-
-        Returns:
-            The validated and potentially modified values with deprecated fields
-            mapped to their new equivalents.
-
-        Raises:
-            ValueError: If conflicting values are provided for both old and new field names.
-
-        Examples:
-            >>> # Handles legacy field names automatically
-            >>> legacy_data = {"label": "my-action", "type": "AWS::CreateStack"}
-            >>> values = ActionSpec.handle_deprecations(legacy_data)
-            >>> print(values["name"])
-            'my-action'
-
-        Warnings:
-            Issues DeprecationWarning when deprecated fields are used.
-        """
+        """Handle the deprecation of 'label' and 'type' fields in favor of 'name' and 'kind'."""
         if isinstance(values, dict):
             # Handle label -> name deprecation
+            # Check for deprecated field names (case-sensitive)
             label_value = values.pop("label", None) or values.pop("Label", None)
-            name_value = values.pop("name", None) or values.pop("Name", None)
+            name_value = values.get("name") or values.get("Name")
 
             if label_value and not name_value:
                 warnings.warn(
@@ -974,7 +980,8 @@ class ActionSpec(BaseModel):
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                name_value = label_value
+                # Set using the proper alias
+                values["Name"] = label_value
             elif label_value and name_value:
                 if label_value != name_value:
                     raise ValueError(
@@ -987,11 +994,9 @@ class ActionSpec(BaseModel):
                     stacklevel=2,
                 )
 
-            values["name"] = name_value
-
             # Handle type -> kind deprecation
             type_value = values.pop("type", None) or values.pop("Type", None)
-            kind_value = values.pop("kind", None) or values.pop("Kind", None)
+            kind_value = values.get("kind") or values.get("Kind")
 
             if type_value and not kind_value:
                 warnings.warn(
@@ -1000,7 +1005,8 @@ class ActionSpec(BaseModel):
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                kind_value = type_value
+                # Set using the proper alias
+                values["Kind"] = type_value
             elif type_value and kind_value:
                 if type_value != kind_value:
                     raise ValueError(
@@ -1012,8 +1018,6 @@ class ActionSpec(BaseModel):
                     DeprecationWarning,
                     stacklevel=2,
                 )
-
-            values["kind"] = kind_value
 
         return values
 

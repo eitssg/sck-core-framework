@@ -118,7 +118,7 @@ from .package_details import PackageDetails
 from .action_details import ActionDetails
 from .state_details import StateDetails
 from .deploy_spec import DeploySpec
-from .action_spec import ActionSpec, ActionParams
+from .action_spec import ActionSpec, ActionMetadata, ActionParams
 
 from .models import (
     get_artefacts_path,
@@ -172,6 +172,7 @@ SPECIFICATION_MODELS = [
     "DeploySpec",
     "ActionSpec",
     "ActionParams",
+    "ActionMetadata",
 ]
 
 #: Utility functions for path resolution and artifact management

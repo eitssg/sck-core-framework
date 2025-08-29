@@ -435,7 +435,7 @@ DS_TYPE_AWS_CREATE_USER = "aws.create_user"
 DS_TYPE_CREATE_USER = "create_user"
 """Create user deployspec type."""
 
-# Deployspec Params Object
+# Deployspec Spec Object
 DSP_TEMPLATE = "template"
 """Deployspec template parameter."""
 
@@ -812,10 +812,10 @@ FACTS_SECURITY_GROUP = "SecurityGroupAliases"
 CORE_AUTOMATION_ADMIN_ROLE = "Administrator"
 """Core automation administrator role."""
 
-CORE_AUTOMATION_API_WRITE_ROLE = "CoreAutomationApiWrite"
+CORE_AUTOMATION_API_WRITE_ROLE = "CoreAutomationApiWriteRole"
 """Core automation API write role."""
 
-CORE_AUTOMATION_API_READ_ROLE = "CoreAutomationApiRead"
+CORE_AUTOMATION_API_READ_ROLE = "CoreAutomationApiReadRole"
 """Core automation API read role."""
 
 CORE_AUTOMATION_DEPLOYMENT_WRITE_ROLE = "CoreAutomationDeploymentWrite"
@@ -915,7 +915,7 @@ P_TEMPLATE = "template"
 P_STACK_NAME = "stack_name"
 """Stack name property."""
 
-P_STACK_PARAMETERS = "stack_parameters"
+P_STACK_PARAMETERS = "parameters"
 """Stack parameters property."""
 
 P_ORGANIZATION_NAME = "organization_name"

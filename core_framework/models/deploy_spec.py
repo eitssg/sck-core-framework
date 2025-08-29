@@ -334,7 +334,7 @@ class DeploySpec(BaseModel):
             ... Actions:
             ...   - Name: create-vpc
             ...     Kind: create_stack
-            ...     Params:
+            ...     Spec:
             ...       stack_name: vpc-stack
             ... '''
             >>> deploy_spec = DeploySpec.from_stream(yaml_content, "application/yaml")
@@ -392,7 +392,7 @@ class DeploySpec(BaseModel):
             ... Actions:
             ...   - Name: create-vpc
             ...     Kind: create_stack
-            ...     Params:
+            ...     Spec:
             ...       stack_name: vpc-stack
             ... '''
             >>> deploy_spec = DeploySpec.from_yaml(yaml_content)
@@ -442,7 +442,7 @@ class DeploySpec(BaseModel):
             ...     {
             ...       "Name": "create-vpc",
             ...       "Kind": "create_stack",
-            ...       "Params": {
+            ...       "Spec": {
             ...         "stack_name": "vpc-stack"
             ...       }
             ...     }

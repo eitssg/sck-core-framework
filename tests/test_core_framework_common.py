@@ -146,7 +146,9 @@ def test_get_identity():
 
 def test_get_configuration_bucket_name():
 
-    bucket_name = util.generate_bucket_name("Example_Client", "Example_Branch", "scope-")
+    bucket_name = util.generate_bucket_name(
+        "Example_Client", "Example_Branch", "scope-"
+    )
 
     assert bucket_name == f"scope-example_client-{V_CORE_AUTOMATION}-example_branch"
 
@@ -165,22 +167,36 @@ def test_get_configuration_bucket_name():
 
 def test_generate_branch_short_name():
     # Test with a normal branch name
-    assert util.generate_branch_short_name("feature/new-feature") == "feature-new-feature"
+    assert (
+        util.generate_branch_short_name("feature/new-feature") == "feature-new-feature"
+    )
 
     # Test with a branch name containing uppercase letters
-    assert util.generate_branch_short_name("Feature/New-Feature") == "feature-new-feature"
+    assert (
+        util.generate_branch_short_name("Feature/New-Feature") == "feature-new-feature"
+    )
 
     # Test with a branch name containing special characters
-    assert util.generate_branch_short_name("feature/new@feature!") == "feature-new-feature"
+    assert (
+        util.generate_branch_short_name("feature/new@feature!") == "feature-new-feature"
+    )
 
     # Test with a branch name that is exactly 20 characters long, but if the last character is a hyphen, it's stripped
-    assert util.generate_branch_short_name("feature/new-feature-1234") == "feature-new-feature"
+    assert (
+        util.generate_branch_short_name("feature/new-feature-1234")
+        == "feature-new-feature"
+    )
 
     # Test with a branch name that is longer than 20 characters
-    assert util.generate_branch_short_name("feature/new-feature-1234567890") == "feature-new-feature"
+    assert (
+        util.generate_branch_short_name("feature/new-feature-1234567890")
+        == "feature-new-feature"
+    )
 
     # Test with a branch name containing trailing hyphens
-    assert util.generate_branch_short_name("feature/new-feature-") == "feature-new-feature"
+    assert (
+        util.generate_branch_short_name("feature/new-feature-") == "feature-new-feature"
+    )
 
     # Test with a branch name containing only special characters
     assert util.generate_branch_short_name("@@@@") == ""
@@ -365,12 +381,16 @@ def test_get_packages_path():
     path = util.get_packages_path(task_payload.deployment_details)
 
     # standard path separator is colon
-    assert path == os.path.sep.join(["packages", "example_portfolio", "example_app", "main-branch", "build-123"])
+    assert path == os.path.sep.join(
+        ["packages", "example_portfolio", "example_app", "main-branch", "build-123"]
+    )
 
     path = util.get_packages_path(task_payload.deployment_details, s3=True)
 
     # S3 paths are slashes not semi-colons
-    assert path == "/".join(["packages", "example_portfolio", "example_app", "main-branch", "build-123"])
+    assert path == "/".join(
+        ["packages", "example_portfolio", "example_app", "main-branch", "build-123"]
+    )
 
     path = util.get_packages_path(task_payload.deployment_details, "bubbles", s3=False)
 
@@ -419,12 +439,16 @@ def test_get_files_path():
     path = util.get_files_path(task_payload.deployment_details)
 
     # standard path separator is semi-colon
-    assert path == os.path.sep.join(["files", "example_portfolio", "example_app", "main-branch", "build-123"])
+    assert path == os.path.sep.join(
+        ["files", "example_portfolio", "example_app", "main-branch", "build-123"]
+    )
 
     path = util.get_files_path(task_payload.deployment_details, s3=True)
 
     # S3 paths are slashes not semi-colons
-    assert path == "/".join(["files", "example_portfolio", "example_app", "main-branch", "build-123"])
+    assert path == "/".join(
+        ["files", "example_portfolio", "example_app", "main-branch", "build-123"]
+    )
 
     path = util.get_files_path(task_payload.deployment_details, "bubbles", s3=False)
 
@@ -568,15 +592,21 @@ def test_generate_deployment_details_from_stack():
 
 def test_get_prn_and_alt():
 
-    result = util.get_prn("portfolio", "app", "branch", "build", "component", SCOPE_BUILD)
+    result = util.get_prn(
+        "portfolio", "app", "branch", "build", "component", SCOPE_BUILD
+    )
 
     assert result == "portfolio:app:branch:build"
 
-    result = util.get_prn("portfolio", "app", "branch", "build", "component", SCOPE_COMPONENT)
+    result = util.get_prn(
+        "portfolio", "app", "branch", "build", "component", SCOPE_COMPONENT
+    )
 
     assert result == "portfolio:app:branch:build:component"
 
-    result = util.get_prn_alt("portfolio", "app", "branch", "build", "component", SCOPE_BUILD)
+    result = util.get_prn_alt(
+        "portfolio", "app", "branch", "build", "component", SCOPE_BUILD
+    )
 
     assert result == "portfolio-app-branch-build"
 
@@ -703,13 +733,17 @@ def test_split_portfolio():
         util.split_portfolio("")
         assert False, "Should raise ValueError for empty portfolio string"
     except ValueError as e:
-        assert str(e) == "Portfolio name must be specified.", "Should raise ValueError for empty portfolio string"
+        assert (
+            str(e) == "Portfolio name must be specified."
+        ), "Should raise ValueError for empty portfolio string"
 
     try:
         util.split_portfolio(None)
         assert False, "Should raise ValueError for None portfolio string"
     except ValueError as e:
-        assert str(e) == "Portfolio name must be specified.", "Should raise ValueError for None portfolio string"
+        assert (
+            str(e) == "Portfolio name must be specified."
+        ), "Should raise ValueError for None portfolio string"
 
 
 def test_split_branch():
@@ -728,9 +762,13 @@ def test_split_branch():
 
 def test_get_prn():
 
-    prn = util.get_prn("portfolio", "app", "branch", "build", "component", SCOPE_PORTFOLIO)
+    prn = util.get_prn(
+        "portfolio", "app", "branch", "build", "component", SCOPE_PORTFOLIO
+    )
 
-    assert prn == "portfolio", "PRN should match the expected format for SCOPE_PORTFOLIO"
+    assert (
+        prn == "portfolio"
+    ), "PRN should match the expected format for SCOPE_PORTFOLIO"
 
     prn = util.get_prn("portfolio", "app", "branch", "build", "component", SCOPE_APP)
 
@@ -738,7 +776,9 @@ def test_get_prn():
 
     prn = util.get_prn("portfolio", "app", "branch", "build", "component", SCOPE_BRANCH)
 
-    assert prn == "portfolio:app:branch", "PRN should match the expected format for SCOPE_BRANCH"
+    assert (
+        prn == "portfolio:app:branch"
+    ), "PRN should match the expected format for SCOPE_BRANCH"
 
     prn = util.get_prn(
         portfolio="portfolio",
@@ -761,7 +801,9 @@ def test_get_prn():
         scope=SCOPE_COMPONENT,
     )
 
-    assert prn == "portfolio:app:branch:build:component", "PRN should match the expected format"
+    assert (
+        prn == "portfolio:app:branch:build:component"
+    ), "PRN should match the expected format"
 
     prn = util.get_prn(portfolio="portfolio", app="app", branch="branch", build="build")
 
@@ -788,7 +830,9 @@ def test_generate_bucket_name():
 
     # Test that the bucket name is generated correctly with all parameters.
 
-    bucket_name = util.generate_bucket_name(client="example_client", scope_prefix="scope-", region="example_region")
+    bucket_name = util.generate_bucket_name(
+        client="example_client", scope_prefix="scope-", region="example_region"
+    )
 
     assert (
         bucket_name == f"scope-example_client-{V_CORE_AUTOMATION}-example_region"
@@ -852,14 +896,17 @@ def test_get_document_bucket_name():
 
     bucket_name = util.get_document_bucket_name()
 
-    assert bucket_name == "core-document-bucket-us-east-1", "1 - Document bucket name should match the expected format"
+    assert (
+        bucket_name == "core-document-bucket-us-east-1"
+    ), "1 - Document bucket name should match the expected format"
 
     os.environ[ENV_DOCUMENT_BUCKET_NAME] = ""
 
     bucket_name = util.get_document_bucket_name()
 
     assert (
-        bucket_name == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
+        bucket_name
+        == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
     ), "2 - Document bucket name should match the expected format with scope and region from env variables"
 
 
@@ -872,14 +919,17 @@ def test_get_ui_bucket_name():
 
     bucket_name = util.get_ui_bucket_name()
 
-    assert bucket_name == "core-ui-bucket-us-east-1", "1 - UI bucket name should match the expected format"
+    assert (
+        bucket_name == "core-ui-bucket-us-east-1"
+    ), "1 - UI bucket name should match the expected format"
 
     os.environ[ENV_UI_BUCKET_NAME] = ""
 
     bucket_name = util.get_ui_bucket_name()
 
     assert (
-        bucket_name == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
+        bucket_name
+        == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
     ), "2 - UI bucket name should match the expected format with scope and region from env variables"
 
 
@@ -891,14 +941,17 @@ def test_get_artefact_bucket_name():
 
     bucket_name = util.get_artefact_bucket_name()
 
-    assert bucket_name == "core-artefact-bucket-us-east-1", "1 - Artefact bucket name should match the expected format"
+    assert (
+        bucket_name == "core-artefact-bucket-us-east-1"
+    ), "1 - Artefact bucket name should match the expected format"
 
     os.environ[ENV_ARTEFACT_BUCKET_NAME] = ""
 
     bucket_name = util.get_artefact_bucket_name()
 
     assert (
-        bucket_name == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
+        bucket_name
+        == f"example_scope-example_client-{V_CORE_AUTOMATION}-example_region"
     ), "2 - Artefact bucket name should match the expected format with scope and region from env variables"
 
 
@@ -907,7 +960,9 @@ def test_get_artefact_bucket_region():
     os.environ[ENV_BUCKET_REGION] = "ap-southeast-1"
 
     region = util.get_artefact_bucket_region()
-    assert region == "ap-southeast-1", "1 - Artefact bucket region should match the expected format"
+    assert (
+        region == "ap-southeast-1"
+    ), "1 - Artefact bucket region should match the expected format"
 
 
 def test_get_prn_alt():
@@ -921,7 +976,9 @@ def test_get_prn_alt():
         scope=SCOPE_BUILD,
     )
 
-    assert prn == "portfolio-app-branch-build", "PRN Alt should match the expected format for SCOPE_BUILD"
+    assert (
+        prn == "portfolio-app-branch-build"
+    ), "PRN Alt should match the expected format for SCOPE_BUILD"
 
     prn = util.get_prn_alt(
         portfolio="portfolio",
@@ -932,7 +989,9 @@ def test_get_prn_alt():
         scope=SCOPE_COMPONENT,
     )
 
-    assert prn == "portfolio-app-branch-build-component", "PRN Alt should match the expected format for SCOPE_COMPONENT"
+    assert (
+        prn == "portfolio-app-branch-build-component"
+    ), "PRN Alt should match the expected format for SCOPE_COMPONENT"
 
 
 def test_get_automation_scope():
@@ -940,7 +999,9 @@ def test_get_automation_scope():
     os.environ[ENV_SCOPE] = "test_scope-"
 
     scope = util.get_automation_scope()
-    assert scope == "test_scope-", "1 - Automation scope should match the expected format with scope from env variables"
+    assert (
+        scope == "test_scope-"
+    ), "1 - Automation scope should match the expected format with scope from env variables"
 
     del os.environ[ENV_SCOPE]
 
@@ -953,12 +1014,16 @@ def test_get_automation_type():
     os.environ[ENV_AUTOMATION_TYPE] = V_DEPLOYSPEC
 
     automation_type = util.get_automation_type()
-    assert automation_type == V_DEPLOYSPEC, "1 - Automation type should match the expected format with default deployspec"
+    assert (
+        automation_type == V_DEPLOYSPEC
+    ), "1 - Automation type should match the expected format with default deployspec"
 
     del os.environ[ENV_AUTOMATION_TYPE]
 
     automation_type = util.get_automation_type()
-    assert automation_type == V_PIPELINE, "2 - Automation type should be pipeline if ENV_AUTOMATION_TYPE is not set"
+    assert (
+        automation_type == V_PIPELINE
+    ), "2 - Automation type should be pipeline if ENV_AUTOMATION_TYPE is not set"
 
 
 def test_get_portfolio():
@@ -967,12 +1032,16 @@ def test_get_portfolio():
 
     portfolio = util.get_portfolio()
 
-    assert portfolio == "default_portfolio", "1 - Portfolio should match the expected format with default portfolio"
+    assert (
+        portfolio == "default_portfolio"
+    ), "1 - Portfolio should match the expected format with default portfolio"
 
     del os.environ[ENV_PORTFOLIO]
 
     portfolio = util.get_app()
-    assert portfolio is None, "2 - Portfolio should be empty if ENV_PORTFOLIO is not set"
+    assert (
+        portfolio is None
+    ), "2 - Portfolio should be empty if ENV_PORTFOLIO is not set"
 
 
 def test_get_app():
@@ -981,7 +1050,9 @@ def test_get_app():
 
     app = util.get_app()
 
-    assert app == "default_app", "1 - App should match the expected format with default portfolio"
+    assert (
+        app == "default_app"
+    ), "1 - App should match the expected format with default portfolio"
 
     del os.environ[ENV_APP]
 
@@ -996,7 +1067,9 @@ def test_get_branch():
 
     branch = util.get_branch()
 
-    assert branch == "default_branch", "1 - Branch should match the expected format with default portfolio"
+    assert (
+        branch == "default_branch"
+    ), "1 - Branch should match the expected format with default portfolio"
 
     # Per requirements, make sure None is returned if ENV_BRANCH is not set
 
@@ -1013,7 +1086,9 @@ def test_get_build():
 
     build = util.get_build()
 
-    assert build == "default_build", "1 - Build should match the expected format with default portfolio"
+    assert (
+        build == "default_build"
+    ), "1 - Build should match the expected format with default portfolio"
 
     # Per requirements, make sure None is returned if ENV_BUILD is not set
 
@@ -1056,7 +1131,9 @@ def test_get_automation_api_role_arn():
     ), "Automation API write role ARN should match the expected format"
     del os.environ[ENV_AUTOMATION_ACCOUNT]
     role_arn = util.get_automation_api_role_arn()
-    assert role_arn is None, "Automation API role ARN should be None if ENV_AUTOMATION_ACCOUNT is not set"
+    assert (
+        role_arn is None
+    ), "Automation API role ARN should be None if ENV_AUTOMATION_ACCOUNT is not set"
 
 
 def test_get_organization_id():
@@ -1064,11 +1141,15 @@ def test_get_organization_id():
     os.environ[ENV_ORGANIZATION_ID] = "o-1234567890"
 
     org_id = util.get_organization_id()
-    assert org_id == "o-1234567890", "Organization ID should match the expected format with default organization ID"
+    assert (
+        org_id == "o-1234567890"
+    ), "Organization ID should match the expected format with default organization ID"
 
     del os.environ[ENV_ORGANIZATION_ID]
     org_id = util.get_organization_id()
-    assert org_id is None, "Organization ID should be empty if ENV_ORGANIZATION_ID is not set"
+    assert (
+        org_id is None
+    ), "Organization ID should be empty if ENV_ORGANIZATION_ID is not set"
 
 
 def test_get_organization_name():
@@ -1076,7 +1157,9 @@ def test_get_organization_name():
     os.environ[ENV_ORGANIZATION_NAME] = "default_organization"
 
     org_name = util.get_organization_name()
-    assert org_name == "default_organization", "Organization name should match the expected format with default organization name"
+    assert (
+        org_name == "default_organization"
+    ), "Organization name should match the expected format with default organization name"
 
     # Per requirements, make sure None is returned if ENV_ORGANIZATION_NAME is not set
 
@@ -1084,18 +1167,24 @@ def test_get_organization_name():
 
     org_name = util.get_organization_name()
 
-    assert org_name is None, "Organization name should be empty if ENV_ORGANIZATION_NAME is not set"
+    assert (
+        org_name is None
+    ), "Organization name should be empty if ENV_ORGANIZATION_NAME is not set"
 
 
 def test_get_organization_account():
 
     os.environ[ENV_ORGANIZATION_ACCOUNT] = "123456789012"
     org_account = util.get_organization_account()
-    assert org_account == "123456789012", "Organization account should match the expected format with default organization account"
+    assert (
+        org_account == "123456789012"
+    ), "Organization account should match the expected format with default organization account"
     # Per requirements, make sure None is returned if ENV_ORGANIZATION_ACCOUNT is not set
     del os.environ[ENV_ORGANIZATION_ACCOUNT]
     org_account = util.get_organization_account()
-    assert org_account is None, "Organization account should be empty if ENV_ORGANIZATION_ACCOUNT is not set"
+    assert (
+        org_account is None
+    ), "Organization account should be empty if ENV_ORGANIZATION_ACCOUNT is not set"
 
 
 def test_get_organization_email():
@@ -1108,7 +1197,9 @@ def test_get_organization_email():
     del os.environ[ENV_ORGANIZATION_EMAIL]
 
     email = util.get_organization_email()
-    assert email is None, "Organization email should be None if ENV_ORGANIZATION_EMAIL is not set"
+    assert (
+        email is None
+    ), "Organization email should be None if ENV_ORGANIZATION_EMAIL is not set"
 
 
 def test_get_iam_account():
@@ -1120,7 +1211,9 @@ def test_get_iam_account():
 
     del os.environ[ENV_IAM_ACCOUNT]
     iam_account = util.get_iam_account()
-    assert iam_account is None, "IAM account should be None if ENV_IAM_ACCOUNT is not set"
+    assert (
+        iam_account is None
+    ), "IAM account should be None if ENV_IAM_ACCOUNT is not set"
 
 
 def test_get_audit_account():
@@ -1132,7 +1225,9 @@ def test_get_audit_account():
 
     del os.environ[ENV_AUDIT_ACCOUNT]
     audit_account = util.get_audit_account()
-    assert audit_account is None, "Audit account should be None if ENV_AUDIT_ACCOUNT is not set"
+    assert (
+        audit_account is None
+    ), "Audit account should be None if ENV_AUDIT_ACCOUNT is not set"
 
 
 def test_get_security_account():
@@ -1140,11 +1235,15 @@ def test_get_security_account():
     os.environ[ENV_SECURITY_ACCOUNT] = "123456789012"
 
     security_account = util.get_security_account()
-    assert security_account == "123456789012", "Security account should be None if not set"
+    assert (
+        security_account == "123456789012"
+    ), "Security account should be None if not set"
 
     del os.environ[ENV_SECURITY_ACCOUNT]
     security_account = util.get_security_account()
-    assert security_account is None, "Security account should be None if ENV_SECURITY_ACCOUNT is not set"
+    assert (
+        security_account is None
+    ), "Security account should be None if ENV_SECURITY_ACCOUNT is not set"
 
 
 def test_get_domain():
@@ -1152,7 +1251,9 @@ def test_get_domain():
     os.environ[ENV_DOMAIN] = "example.com"
 
     domain = util.get_domain()
-    assert domain == "example.com", "Domain should match the expected format with default domain"
+    assert (
+        domain == "example.com"
+    ), "Domain should match the expected format with default domain"
 
     del os.environ[ENV_DOMAIN]
     domain = util.get_domain()
@@ -1164,11 +1265,15 @@ def test_get_network_account():
     os.environ[ENV_NETWORK_ACCOUNT] = "123456789012"
 
     network_account = util.get_network_account()
-    assert network_account == "123456789012", "Network account should match the expected format with default network account"
+    assert (
+        network_account == "123456789012"
+    ), "Network account should match the expected format with default network account"
 
     del os.environ[ENV_NETWORK_ACCOUNT]
     network_account = util.get_network_account()
-    assert network_account is None, "Network account should be None if ENV_NETWORK_ACCOUNT is not set"
+    assert (
+        network_account is None
+    ), "Network account should be None if ENV_NETWORK_ACCOUNT is not set"
 
 
 def test_get_cdk_default_account():
@@ -1176,11 +1281,15 @@ def test_get_cdk_default_account():
     os.environ[ENV_CDK_DEFAULT_ACCOUNT] = "123456789012"
 
     account = util.get_cdk_default_account()
-    assert account == "123456789012", "CDK default account should match the expected format with default account"
+    assert (
+        account == "123456789012"
+    ), "CDK default account should match the expected format with default account"
 
     del os.environ[ENV_CDK_DEFAULT_ACCOUNT]
     account = util.get_cdk_default_account()
-    assert account is None, "CDK default account should be None if ENV_CDK_DEFAULT_ACCOUNT is not set"
+    assert (
+        account is None
+    ), "CDK default account should be None if ENV_CDK_DEFAULT_ACCOUNT is not set"
 
 
 def test_get_cdk_default_region():
@@ -1188,22 +1297,30 @@ def test_get_cdk_default_region():
     os.environ[ENV_CDK_DEFAULT_REGION] = "us-east-1"
 
     region = util.get_cdk_default_region()
-    assert region == "us-east-1", "CDK default region should match the expected format with default region"
+    assert (
+        region == "us-east-1"
+    ), "CDK default region should match the expected format with default region"
 
     del os.environ[ENV_CDK_DEFAULT_REGION]
     region = util.get_cdk_default_region()
-    assert region is None, "CDK default region should be None if ENV_CDK_DEFAULT_REGION is not set"
+    assert (
+        region is None
+    ), "CDK default region should be None if ENV_CDK_DEFAULT_REGION is not set"
 
 
 def test_get_console_mode():
     os.environ[ENV_CONSOLE] = V_INTERACTIVE
 
     console_mode = util.get_console_mode()
-    assert console_mode == V_INTERACTIVE, "Console mode allowed value is V_INTERACTIVE or None"
+    assert (
+        console_mode == V_INTERACTIVE
+    ), "Console mode allowed value is V_INTERACTIVE or None"
 
     del os.environ[ENV_CONSOLE]
     console_mode = util.get_console_mode()
-    assert console_mode is None, "Console mode should be None if ENV_CONSOLE_MODE is not set"
+    assert (
+        console_mode is None
+    ), "Console mode should be None if ENV_CONSOLE_MODE is not set"
 
 
 def test_is_use_s3():
@@ -1212,17 +1329,23 @@ def test_is_use_s3():
     os.environ[ENV_USE_S3] = "true"
 
     use_s3 = util.is_use_s3()
-    assert use_s3 is True, "Use S3 should be True if ENV_USE_S3 is set to 'true' and LOCAL_MODE is true"
+    assert (
+        use_s3 is True
+    ), "Use S3 should be True if ENV_USE_S3 is set to 'true' and LOCAL_MODE is true"
 
     os.environ[ENV_USE_S3] = "false"
     use_s3 = util.is_use_s3()
-    assert use_s3 is False, "Use S3 should be False if ENV_USE_S3 is set to 'false' and LOCAL_MODE is true"
+    assert (
+        use_s3 is False
+    ), "Use S3 should be False if ENV_USE_S3 is set to 'false' and LOCAL_MODE is true"
 
     del os.environ[ENV_USE_S3]
     del os.environ[ENV_LOCAL_MODE]
 
     use_s3 = util.is_use_s3()
-    assert use_s3 is True, "Use S3 should be True if ENV_USE_S3 is not set and LOCAL_MODE is not set"
+    assert (
+        use_s3 is True
+    ), "Use S3 should be True if ENV_USE_S3 is not set and LOCAL_MODE is not set"
 
     # if LOCAL_MODE is set to true, use_s3 is forced to True
     os.environ[ENV_USE_S3] = "false"
@@ -1237,7 +1360,9 @@ def test_is_json_log():
 
     os.environ[ENV_LOG_AS_JSON] = "true"
     use_json_log = util.is_json_log()
-    assert use_json_log is True, "JSON log should be True if ENV_JSON_LOG is set to 'true'"
+    assert (
+        use_json_log is True
+    ), "JSON log should be True if ENV_JSON_LOG is set to 'true'"
 
     del os.environ[ENV_LOG_AS_JSON]
     use_json_log = util.is_json_log()
@@ -1248,18 +1373,24 @@ def test_is_console_log():
 
     os.environ[ENV_CONSOLE_LOG] = "true"
     console_log = util.is_console_log()
-    assert console_log is True, "Console log should be True if ENV_CONSOLE_LOG is set to 'true'"
+    assert (
+        console_log is True
+    ), "Console log should be True if ENV_CONSOLE_LOG is set to 'true'"
 
     del os.environ[ENV_CONSOLE_LOG]
     console_log = util.is_console_log()
-    assert console_log is False, "Console log should be False if ENV_CONSOLE_LOG is not set"
+    assert (
+        console_log is False
+    ), "Console log should be False if ENV_CONSOLE_LOG is not set"
 
 
 def test_get_log_level():
 
     os.environ[ENV_LOG_LEVEL] = "DEBUG"
     log_level = util.get_log_level()
-    assert log_level == "DEBUG", "Log level should match the expected format with default log level"
+    assert (
+        log_level == "DEBUG"
+    ), "Log level should match the expected format with default log level"
 
     del os.environ[ENV_LOG_LEVEL]
     log_level = util.get_log_level()
@@ -1270,11 +1401,15 @@ def test_is_local_mode():
 
     os.environ[ENV_LOCAL_MODE] = "true"
     local_mode = util.is_local_mode()
-    assert local_mode is True, "Local mode should be True if ENV_LOCAL_MODE is set to 'true'"
+    assert (
+        local_mode is True
+    ), "Local mode should be True if ENV_LOCAL_MODE is set to 'true'"
 
     del os.environ[ENV_LOCAL_MODE]
     local_mode = util.is_local_mode()
-    assert local_mode is False, "Local mode should be False if ENV_LOCAL_MODE is not set"
+    assert (
+        local_mode is False
+    ), "Local mode should be False if ENV_LOCAL_MODE is not set"
 
 
 def test_get_storage_volume():
@@ -1285,7 +1420,9 @@ def test_get_storage_volume():
     os.environ[ENV_VOLUME] = expected_volume
 
     volume = util.get_storage_volume()
-    assert volume == expected_volume, "Storage volume should match the expected format with default volume"
+    assert (
+        volume == expected_volume
+    ), "Storage volume should match the expected format with default volume"
 
     # If local mode is true, and the ENV_VOLUME is not set, it should return the current working directory appended with 'local'
     current_dir = os.getcwd()
@@ -1293,7 +1430,9 @@ def test_get_storage_volume():
 
     del os.environ[ENV_VOLUME]
     volume = util.get_storage_volume()
-    assert volume == expected_volume, f"Storage volume should be {expected_volume} if ENV_VOLUME is not set"
+    assert (
+        volume == expected_volume
+    ), f"Storage volume should be {expected_volume} if ENV_VOLUME is not set"
 
     # if local mode is false, the volume should be the URL to the S3 regional service where we will PUT the data
     region = util.get_bucket_region()
@@ -1301,7 +1440,9 @@ def test_get_storage_volume():
 
     os.environ[ENV_LOCAL_MODE] = "false"
     volume = util.get_storage_volume()
-    assert volume == expected_volume, "Storage volume should be None if ENV_LOCAL_MODE is not set or is set to false"
+    assert (
+        volume == expected_volume
+    ), "Storage volume should be None if ENV_LOCAL_MODE is not set or is set to false"
 
 
 def test_get_temp_dir():
@@ -1313,20 +1454,26 @@ def test_get_temp_dir():
     expected_temp_dir = os.path.join(folder, path)
 
     temp_dir = util.get_temp_dir(path)
-    assert temp_dir == expected_temp_dir, f"1 - Expected {expected_temp_dir}, but got {temp_dir}"
+    assert (
+        temp_dir == expected_temp_dir
+    ), f"1 - Expected {expected_temp_dir}, but got {temp_dir}"
 
     del os.environ["TEMP_DIR"]
     os.environ["TEMP"] = folder
 
     temp_dir = util.get_temp_dir(path)
-    assert temp_dir == expected_temp_dir, f"2 - Expected {expected_temp_dir}, but got {temp_dir}"
+    assert (
+        temp_dir == expected_temp_dir
+    ), f"2 - Expected {expected_temp_dir}, but got {temp_dir}"
 
     folder = tempfile.gettempdir()
     del os.environ["TEMP"]
     expected_temp_dir = os.path.join(folder, path)
 
     temp_dir = util.get_temp_dir(path)
-    assert temp_dir == expected_temp_dir, f"3 - Expected {expected_temp_dir}, but got {temp_dir}"
+    assert (
+        temp_dir == expected_temp_dir
+    ), f"3 - Expected {expected_temp_dir}, but got {temp_dir}"
 
 
 def test_get_mode():
@@ -1346,11 +1493,15 @@ def test_is_enforce_validation():
     os.environ[ENV_ENFORCE_VALIDATION] = "false"
 
     enforce_validation = util.is_enforce_validation()
-    assert enforce_validation is False, "Enforce validation should be False if ENV_ENFORCE_VALIDATION is set to 'false'"
+    assert (
+        enforce_validation is False
+    ), "Enforce validation should be False if ENV_ENFORCE_VALIDATION is set to 'false'"
 
     del os.environ[ENV_ENFORCE_VALIDATION]
     enforce_validation = util.is_enforce_validation()
-    assert enforce_validation is True, "Enforce validation should be True if ENV_ENFORCE_VALIDATION is not set"
+    assert (
+        enforce_validation is True
+    ), "Enforce validation should be True if ENV_ENFORCE_VALIDATION is not set"
 
 
 def test_get_client():
@@ -1359,27 +1510,37 @@ def test_get_client():
     os.environ[ENV_AWS_PROFILE] = "default_profile"
 
     client = util.get_client()
-    assert client == "example_client", "Client should match the expected format with default client"
+    assert (
+        client == "example_client"
+    ), "Client should match the expected format with default client"
 
     del os.environ[ENV_CLIENT]
     client = util.get_client()
-    assert client == "default_profile", "Client should be 'default_profile' if ENV_CLIENT is not set and an AWS profile is set"
+    assert (
+        client == "default_profile"
+    ), "Client should be 'default_profile' if ENV_CLIENT is not set and an AWS profile is set"
 
     del os.environ[ENV_AWS_PROFILE]
     client = util.get_client()
-    assert client is None, "Client should be None if ENV_CLIENT and ENV_AWS_PROFILE are not set"
+    assert (
+        client is None
+    ), "Client should be None if ENV_CLIENT and ENV_AWS_PROFILE are not set"
 
 
 def test_get_client_name():
 
     os.environ[ENV_CLIENT_NAME] = "example_client_name"
     client_name = util.get_client_name()
-    assert client_name == "example_client_name", "Client name should match the expected format with default client name"
+    assert (
+        client_name == "example_client_name"
+    ), "Client name should match the expected format with default client name"
 
     del os.environ[ENV_CLIENT_NAME]
 
     client_name = util.get_client_name()
-    assert client_name is None, "Client name should be None if ENV_CLIENT_NAME is not set"
+    assert (
+        client_name is None
+    ), "Client name should be None if ENV_CLIENT_NAME is not set"
 
 
 def test_get_log_dir():
@@ -1387,13 +1548,17 @@ def test_get_log_dir():
     os.environ[ENV_LOG_DIR] = "example_log_dir"
 
     log_dir = util.get_log_dir()
-    assert log_dir == "example_log_dir", "Log directory should match the expected format with default log directory"
+    assert (
+        log_dir == "example_log_dir"
+    ), "Log directory should match the expected format with default log directory"
 
     del os.environ[ENV_LOG_DIR]
 
     expected_log_dir = os.path.join(os.getcwd(), "local", "logs")
     log_dir = util.get_log_dir()
-    assert log_dir == expected_log_dir, "Log directory should be None if ENV_LOG_DIR is not set"
+    assert (
+        log_dir == expected_log_dir
+    ), "Log directory should be None if ENV_LOG_DIR is not set"
 
 
 def test_get_delivered_by():
@@ -1401,26 +1566,38 @@ def test_get_delivered_by():
     os.environ[ENV_DELIVERED_BY] = "example_delivered_by"
 
     delivered_by = util.get_delivered_by()
-    assert delivered_by == "example_delivered_by", "Delivered by should match the expected format with default delivered by"
+    assert (
+        delivered_by == "example_delivered_by"
+    ), "Delivered by should match the expected format with default delivered by"
 
     del os.environ[ENV_DELIVERED_BY]
 
     delivered_by = util.get_delivered_by()
-    assert delivered_by == "automation", "Delivered by should be None if ENV_DELIVERED_BY is not set"
+    assert (
+        delivered_by == "automation"
+    ), "Delivered by should be None if ENV_DELIVERED_BY is not set"
 
 
 def test_get_aws_profile():
 
-    os.environ[ENV_CLIENT] = "client"  ## this profile is not in the AWS credentials file
-    os.environ[ENV_AWS_PROFILE] = "example_aws_profile"  ## this profile is not in the AWS credentials file
+    os.environ[ENV_CLIENT] = (
+        "client"  ## this profile is not in the AWS credentials file
+    )
+    os.environ[ENV_AWS_PROFILE] = (
+        "example_aws_profile"  ## this profile is not in the AWS credentials file
+    )
 
     aws_profile = util.get_aws_profile()
-    assert aws_profile == "default", "1 - AWS profile should match the expected format with default AWS profile"
+    assert (
+        aws_profile == "default"
+    ), "1 - AWS profile should match the expected format with default AWS profile"
 
     del os.environ[ENV_AWS_PROFILE]
 
     aws_profile = util.get_aws_profile()
-    assert aws_profile == "default", "2 - AWS profile should be None if ENV_AWS_PROFILE is not set"
+    assert (
+        aws_profile == "default"
+    ), "2 - AWS profile should be None if ENV_AWS_PROFILE is not set"
 
 
 def test_get_aws_region():
@@ -1428,7 +1605,9 @@ def test_get_aws_region():
     os.environ[ENV_AWS_REGION] = "us-west-2"
 
     aws_region = util.get_aws_region()
-    assert aws_region == "us-west-2", "1 - AWS region should match the expected format with default AWS region"
+    assert (
+        aws_region == "us-west-2"
+    ), "1 - AWS region should match the expected format with default AWS region"
 
     del os.environ[ENV_AWS_REGION]
 
@@ -1456,7 +1635,9 @@ def test_get_client_region():
     os.environ[ENV_CLIENT_REGION] = "us-west-2"
 
     client_region = util.get_client_region()
-    assert client_region == "us-west-2", "1 - Client region should match the expected format with default client region"
+    assert (
+        client_region == "us-west-2"
+    ), "1 - Client region should match the expected format with default client region"
 
     del os.environ[ENV_CLIENT_REGION]
 
@@ -1472,7 +1653,9 @@ def test_get_master_region():
     os.environ[ENV_MASTER_REGION] = "us-west-2"
 
     master_region = util.get_master_region()
-    assert master_region == "us-west-2", "1 - Master region should match the expected format with default master region"
+    assert (
+        master_region == "us-west-2"
+    ), "1 - Master region should match the expected format with default master region"
 
     del os.environ[ENV_MASTER_REGION]
 
@@ -1487,11 +1670,15 @@ def test_get_region():
 
     os.environ[ENV_AWS_REGION] = "us-west-2"
     region = util.get_region()
-    assert region == "us-west-2", "1 -Region should match the expected format with default region"
+    assert (
+        region == "us-west-2"
+    ), "1 -Region should match the expected format with default region"
 
     del os.environ[ENV_AWS_REGION]
     region = util.get_region()
-    assert region is not None, "2 - Region should not be None if ENV_REGION is not set as it comes from the AWS profile"
+    assert (
+        region is not None
+    ), "2 - Region should not be None if ENV_REGION is not set as it comes from the AWS profile"
 
 
 def test_get_automation_region():
@@ -1499,7 +1686,9 @@ def test_get_automation_region():
     os.environ[ENV_AUTOMATION_REGION] = "us-west-2"
 
     automation_region = util.get_automation_region()
-    assert automation_region == "us-west-2", "1 - Automation region should match the expected format with default automation region"
+    assert (
+        automation_region == "us-west-2"
+    ), "1 - Automation region should match the expected format with default automation region"
 
     del os.environ[ENV_AUTOMATION_REGION]
 
@@ -1515,7 +1704,9 @@ def test_get_bucket_region():
     os.environ[ENV_BUCKET_REGION] = "us-west-2"
 
     bucket_region = util.get_bucket_region()
-    assert bucket_region == "us-west-2", "1 - Bucket region should match the expected format with default bucket region"
+    assert (
+        bucket_region == "us-west-2"
+    ), "1 - Bucket region should match the expected format with default bucket region"
 
     del os.environ[ENV_BUCKET_REGION]
 
@@ -1531,7 +1722,9 @@ def test_get_dynamodb_region():
     os.environ[ENV_DYNAMODB_REGION] = "us-west-2"
 
     dynamodb_region = util.get_dynamodb_region()
-    assert dynamodb_region == "us-west-2", "1 - DynamoDB region should match the expected format with default DynamoDB region"
+    assert (
+        dynamodb_region == "us-west-2"
+    ), "1 - DynamoDB region should match the expected format with default DynamoDB region"
 
     del os.environ[ENV_DYNAMODB_REGION]
 
@@ -1573,7 +1766,9 @@ def test_get_automation_account():
 
     # if not specified, it will be the default account from the AWS profile
     automation_account = util.get_automation_account()
-    assert automation_account is None, "2 - Automation account should be None if ENV_AUTOMATION_ACCOUNT is not set"
+    assert (
+        automation_account is None
+    ), "2 - Automation account should be None if ENV_AUTOMATION_ACCOUNT is not set"
 
 
 def test_get_dynamodb_host():
@@ -1605,7 +1800,8 @@ def test_get_step_function_arn():
     arn = util.get_step_function_arn()
 
     assert (
-        arn == f"arn:aws:states:{region}:local:execution:stateMachineName:CoreAutomationRunner"
+        arn
+        == f"arn:aws:states:{region}:local:execution:stateMachineName:CoreAutomationRunner"
     ), "1 - Step Function ARN should match the expected format with default Step Function ARN"
 
     # default value for LOCAL_MODE is false
@@ -1652,16 +1848,20 @@ def test_get_api_lambda_arn():
 
     os.environ[ENV_AUTOMATION_ACCOUNT] = "123456789012"  ## Must be set to get the ARN
 
-    os.environ[ENV_API_LAMBDA_ARN] = "arn:aws:lambda:us-west-2:123456789012:function:example_api_lambda"
+    os.environ[ENV_API_LAMBDA_ARN] = (
+        "arn:aws:lambda:us-west-2:123456789012:function:example_api_lambda"
+    )
     api_lambda_arn = util.get_api_lambda_arn()
     assert (
-        api_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_api_lambda"
+        api_lambda_arn
+        == "arn:aws:lambda:us-west-2:123456789012:function:example_api_lambda"
     ), "1 - API Lambda ARN should match the expected format with default API lambda ARN"
 
     del os.environ[ENV_API_LAMBDA_ARN]
     api_lambda_arn = util.get_api_lambda_arn("core")
     assert (
-        api_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-api"
+        api_lambda_arn
+        == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-api"
     ), "2 - API Lambda ARN should be None if ENV_API_LAMBDA_ARN is not set"
 
 
@@ -1669,27 +1869,35 @@ def test_get_api_host_url():
 
     os.environ[ENV_API_HOST_URL] = "https://api.example.com"
     api_host_url = util.get_api_host_url()
-    assert api_host_url == "https://api.example.com", "1 - API host URL should match the expected format with default API host URL"
+    assert (
+        api_host_url == "https://api.example.com"
+    ), "1 - API host URL should match the expected format with default API host URL"
 
     del os.environ[ENV_API_HOST_URL]
     api_host_url = util.get_api_host_url()
-    assert api_host_url is None, "2 - API host URL should be None if ENV_API_HOST_URL is not set"
+    assert (
+        api_host_url is None
+    ), "2 - API host URL should be None if ENV_API_HOST_URL is not set"
 
 
 def test_get_invoker_lambda_arn():
 
     os.environ[ENV_AUTOMATION_ACCOUNT] = "123456789012"  # Must be set to get the ARN
 
-    os.environ[ENV_INVOKER_LAMBDA_ARN] = "arn:aws:lambda:us-west-2:123456789012:function:example_invoker_lambda"
+    os.environ[ENV_INVOKER_LAMBDA_ARN] = (
+        "arn:aws:lambda:us-west-2:123456789012:function:example_invoker_lambda"
+    )
     invoker_lambda_arn = util.get_invoker_lambda_arn()
     assert (
-        invoker_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_invoker_lambda"
+        invoker_lambda_arn
+        == "arn:aws:lambda:us-west-2:123456789012:function:example_invoker_lambda"
     ), "1 - Invoker Lambda ARN should match the expected format with default invoker lambda ARN"
 
     del os.environ[ENV_INVOKER_LAMBDA_ARN]
     invoker_lambda_arn = util.get_invoker_lambda_arn("core")
     assert (
-        invoker_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-invoker"
+        invoker_lambda_arn
+        == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-invoker"
     ), "2 - Invoker Lambda ARN should be None if ENV_INVOKER_LAMBDA_ARN is not set"
 
 
@@ -1697,15 +1905,19 @@ def test_get_execute_lambda_arn():
 
     os.environ[ENV_AUTOMATION_ACCOUNT] = "123456789012"  # Must be set to get the ARN
 
-    os.environ[ENV_EXECUTE_LAMBDA_ARN] = "arn:aws:lambda:us-west-2:123456789012:function:example_execute_lambda"
+    os.environ[ENV_EXECUTE_LAMBDA_ARN] = (
+        "arn:aws:lambda:us-west-2:123456789012:function:example_execute_lambda"
+    )
     execute_lambda_arn = util.get_execute_lambda_arn()
     assert (
-        execute_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_execute_lambda"
+        execute_lambda_arn
+        == "arn:aws:lambda:us-west-2:123456789012:function:example_execute_lambda"
     ), "1 - Execute Lambda ARN should match the expected format with default execute lambda ARN"
     del os.environ[ENV_EXECUTE_LAMBDA_ARN]
     execute_lambda_arn = util.get_execute_lambda_arn("core")
     assert (
-        execute_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-execute"
+        execute_lambda_arn
+        == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-execute"
     ), "2 - Execute Lambda ARN should be None if ENV_EXECUTE_LAMBDA_ARN is not set"
 
 
@@ -1713,15 +1925,19 @@ def test_get_start_runner_lambda_arn():
 
     os.environ[ENV_AUTOMATION_ACCOUNT] = "123456789012"  # Must be set to get the ARN
 
-    os.environ[ENV_START_RUNNER_LAMBDA_ARN] = "arn:aws:lambda:us-west-2:123456789012:function:example_start_runner_lambda"
+    os.environ[ENV_START_RUNNER_LAMBDA_ARN] = (
+        "arn:aws:lambda:us-west-2:123456789012:function:example_start_runner_lambda"
+    )
     start_runner_lambda_arn = util.get_start_runner_lambda_arn()
     assert (
-        start_runner_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_start_runner_lambda"
+        start_runner_lambda_arn
+        == "arn:aws:lambda:us-west-2:123456789012:function:example_start_runner_lambda"
     ), "1 - Start Runner Lambda ARN should match the expected format with default start runner lambda ARN"
     del os.environ[ENV_START_RUNNER_LAMBDA_ARN]
     start_runner_lambda_arn = util.get_start_runner_lambda_arn("core")
     assert (
-        start_runner_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-runner"
+        start_runner_lambda_arn
+        == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-runner"
     ), "2 - Start Runner Lambda ARN should be None if ENV_START_RUNNER_LAMBDA_ARN is not set"
 
 
@@ -1730,7 +1946,9 @@ def test_get_project():
     os.environ[ENV_PROJECT] = "example_project"
 
     project = util.get_project()
-    assert project == "example_project", "1 - Project should match the expected format with default project"
+    assert (
+        project == "example_project"
+    ), "1 - Project should match the expected format with default project"
 
     del os.environ[ENV_PROJECT]
 
@@ -1743,7 +1961,9 @@ def test_get_bizapp():
     os.environ[ENV_BIZAPP] = "example_bizapp"
 
     bizapp = util.get_bizapp()
-    assert bizapp == "example_bizapp", "1 - BizApp should match the expected format with default BizApp"
+    assert (
+        bizapp == "example_bizapp"
+    ), "1 - BizApp should match the expected format with default BizApp"
 
     del os.environ[ENV_BIZAPP]
 
@@ -1760,13 +1980,15 @@ def test_get_deployspec_compiler_lambda_arn():
     )
     deployspec_compiler_lambda_arn = util.get_deployspec_compiler_lambda_arn()
     assert (
-        deployspec_compiler_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_deployspec_compiler_lambda"
+        deployspec_compiler_lambda_arn
+        == "arn:aws:lambda:us-west-2:123456789012:function:example_deployspec_compiler_lambda"
     ), "1 - DeploySpec Compiler Lambda ARN should match the expected format with default deployspec compiler lambda ARN"
 
     del os.environ[ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN]
     deployspec_compiler_lambda_arn = util.get_deployspec_compiler_lambda_arn("core")
     assert (
-        deployspec_compiler_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-deployspec-compiler"
+        deployspec_compiler_lambda_arn
+        == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-deployspec-compiler"
     ), "2 - DeploySpec Compiler Lambda ARN should be None if ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN is not set"
 
 
@@ -1779,13 +2001,15 @@ def test_get_component_compiler_lambda_arn():
     )
     component_compiler_lambda_arn = util.get_component_compiler_lambda_arn()
     assert (
-        component_compiler_lambda_arn == "arn:aws:lambda:us-west-2:123456789012:function:example_component_compiler_lambda"
+        component_compiler_lambda_arn
+        == "arn:aws:lambda:us-west-2:123456789012:function:example_component_compiler_lambda"
     ), "1 - Component Compiler Lambda ARN should match the expected format with default component compiler lambda ARN"
 
     del os.environ[ENV_COMPONENT_COMPILER_LAMBDA_ARN]
     component_compiler_lambda_arn = util.get_component_compiler_lambda_arn("core")
     assert (
-        component_compiler_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-component-compiler"
+        component_compiler_lambda_arn
+        == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-component-compiler"
     ), "2 - Component Compiler Lambda ARN should be None if ENV_COMPONENT_COMPILER_LAMBDA_ARN is not set"
 
 
@@ -1811,12 +2035,16 @@ def test_get_environment():
     os.environ[ENV_ENVIRONMENT] = "example_environment"
 
     environment = util.get_environment()
-    assert environment == "example_environment", "1 - Environment should match the expected format with default environment"
+    assert (
+        environment == "example_environment"
+    ), "1 - Environment should match the expected format with default environment"
 
     del os.environ[ENV_ENVIRONMENT]
 
     environment = util.get_environment()
-    assert environment == "prod", "2 - Environment should default to 'prod' if ENV_ENVIRONMENT is not set"
+    assert (
+        environment == "prod"
+    ), "2 - Environment should default to 'prod' if ENV_ENVIRONMENT is not set"
 
 
 def test_to_json():
@@ -1835,18 +2063,26 @@ def test_to_json():
 
     assert isinstance(json_data, str), "JSON data should be a string"
     assert '"name": "Test"' in json_data, "JSON data should contain the name field"
-    assert '"date": "2023-10-01"' in json_data, "JSON data should contain the date field"
-    assert '"datetime": "2023-10-01T12:00:00"' in json_data, "JSON data should contain the datetime field"
+    assert (
+        '"date": "2023-10-01"' in json_data
+    ), "JSON data should contain the date field"
+    assert (
+        '"datetime": "2023-10-01T12:00:00"' in json_data
+    ), "JSON data should contain the datetime field"
     assert '"time": "12:00:00"' in json_data, "JSON data should contain the time field"
     assert '"decimal": 41.5' in json_data, "JSON data should contain the decimal field"
     assert '"value": 42.1' in json_data, "JSON data should contain the value field"
-    assert '"quoted_number": "00000432.1"' in json_data, "JSON data should contain the quoted number field"
+    assert (
+        '"quoted_number": "00000432.1"' in json_data
+    ), "JSON data should contain the quoted number field"
 
     try:
         util.to_json({"uknown_type": set([1, 2, 3])})
         assert False, "to_json should raise TypeError for unsupported types"
     except Exception as e:
-        assert isinstance(e, TypeError), "to_json should raise TypeError for unsupported types"
+        assert isinstance(
+            e, TypeError
+        ), "to_json should raise TypeError for unsupported types"
 
     result = util.to_json(None)
     assert result == V_EMPTY, "to_json should return None if data is None"
@@ -1859,7 +2095,9 @@ def test_write_json():
     json_data = stream.getvalue()
     assert isinstance(json_data, str), "JSON data should be a string"
     assert '"name": "Test"' in json_data, "JSON data should contain the name field"
-    assert '"date": "2023-10-01T12:00:00"' in json_data, "JSON data should contain the date field"
+    assert (
+        '"date": "2023-10-01T12:00:00"' in json_data
+    ), "JSON data should contain the date field"
     assert '"value": 42.1' in json_data, "JSON data should contain the value field"
 
 
@@ -1873,7 +2111,9 @@ def test_from_json():
     data = util.from_json(json_str)
     assert isinstance(data, dict), "Parsed data should be a dictionary"
     assert data["name"] == "Test", "Parsed data should contain the correct name"
-    assert data["date"] == datetime(2023, 10, 1, 12, 0), "Parsed data should contain the correct date"
+    assert data["date"] == datetime(
+        2023, 10, 1, 12, 0
+    ), "Parsed data should contain the correct date"
     assert data["value"] == 42.1, "Parsed data should contain the correct value"
     assert data["datelist"] == [
         datetime(2023, 10, 1, 12, 0),
@@ -1891,7 +2131,9 @@ def test_read_json():
     data = util.read_json(stream)
     assert isinstance(data, dict), "Parsed data should be a dictionary"
     assert data["name"] == "Test", "Parsed data should contain the correct name"
-    assert data["date"] == datetime(2023, 10, 1, 12, 0), "Parsed data should contain the correct date"
+    assert data["date"] == datetime(
+        2023, 10, 1, 12, 0
+    ), "Parsed data should contain the correct date"
     assert data["value"] == 42.1, "Parsed data should contain the correct value"
 
 
@@ -1919,13 +2161,18 @@ def test_to_yaml():
     assert "date: '2023-10-01'" in yaml_data, "YAML data should contain the date field"
 
     # Datetime must be in ISO 8601 format surrounded by single quotes
-    assert "datetime: '2023-10-01T12:00:00'" in yaml_data, "YAML data should contain the date field"
+    assert (
+        "datetime: '2023-10-01T12:00:00'" in yaml_data
+    ), "YAML data should contain the date field"
     assert "time: 12:00:00" in yaml_data, "YAML data should contain the time field"
     assert "value: 42.1" in yaml_data, "YAML data should contain the value field"
     assert (
-        "datalist:\n  - name: string1\n    value: value1\n  - name: string2\n    value: value2\nvalue: 42.1" in yaml_data
+        "datalist:\n  - name: string1\n    value: value1\n  - name: string2\n    value: value2\nvalue: 42.1"
+        in yaml_data
     ), "YAML data should contain the datalist field quoted strings"
-    assert "quoted_number: '00000432.1'" in yaml_data, "YAML data should contain the quoted number field"
+    assert (
+        "quoted_number: '00000432.1'" in yaml_data
+    ), "YAML data should contain the quoted number field"
     assert "decimal: 41.5" in yaml_data, "YAML data should contain the decimal field"
 
 
@@ -1945,11 +2192,21 @@ def test_to_yaml_with_top_level_array():
 
     yaml_data = util.to_yaml(data)
     assert isinstance(yaml_data, str), "YAML data should be a string"
-    assert "- name: Test1" in yaml_data, "YAML data should contain the first item name field"
-    assert "- name: Test2" in yaml_data, "YAML data should contain the second item name field"
-    assert "date: '2023-10-01T12:00:00'" in yaml_data, "YAML data should contain the first item date field"
-    assert "date: '2023-10-02T12:00:00'" in yaml_data, "YAML data should contain the second item date field"
-    assert test_result == yaml_data, "YAML data should contain the first item value field"
+    assert (
+        "- name: Test1" in yaml_data
+    ), "YAML data should contain the first item name field"
+    assert (
+        "- name: Test2" in yaml_data
+    ), "YAML data should contain the second item name field"
+    assert (
+        "date: '2023-10-01T12:00:00'" in yaml_data
+    ), "YAML data should contain the first item date field"
+    assert (
+        "date: '2023-10-02T12:00:00'" in yaml_data
+    ), "YAML data should contain the second item date field"
+    assert (
+        test_result == yaml_data
+    ), "YAML data should contain the first item value field"
 
 
 def test_write_yaml():
@@ -1962,7 +2219,9 @@ def test_write_yaml():
     assert "name: Test" in yaml_data, "YAML data should contain the name field"
 
     # Date must be in ISO 8601 format surrounded by single quotes
-    assert "date: '2023-10-01T12:00:00'" in yaml_data, "YAML data should contain the date field"
+    assert (
+        "date: '2023-10-01T12:00:00'" in yaml_data
+    ), "YAML data should contain the date field"
     assert "value: 42.1" in yaml_data, "YAML data should contain the value field"
 
 
@@ -2017,28 +2276,62 @@ def test_valid_mimetypes():
         assert isinstance(mimetype, str), "Each mimetype should be a string"
         assert mimetype, "Mimetype should not be an empty string"
 
-    assert util.is_zip_mimetype("application/zip") is True, "application/zip should be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("application/zip") is True
+    ), "application/zip should be a valid zip mimetype"
     assert (
         util.is_zip_mimetype("application/x-zip-compressed") is True
     ), "application/x-zip-compressed should be a valid zip mimetype"
-    assert util.is_zip_mimetype("application/x-zip") is True, "application/x-zip should be a valid zip mimetype"
-    assert util.is_zip_mimetype("application/gzip") is False, "application/gzip should not be a valid zip mimetype"
-    assert util.is_zip_mimetype("text/plain") is False, "text/plain should not be a valid zip mimetype"
-    assert util.is_zip_mimetype("") is False, "Empty string should not be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("application/x-zip") is True
+    ), "application/x-zip should be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("application/gzip") is False
+    ), "application/gzip should not be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("text/plain") is False
+    ), "text/plain should not be a valid zip mimetype"
+    assert (
+        util.is_zip_mimetype("") is False
+    ), "Empty string should not be a valid zip mimetype"
 
-    assert util.is_yaml_mimetype("application/x-yaml") is True, "application/x-yaml should be a valid YAML mimetype"
-    assert util.is_yaml_mimetype("text/yaml") is True, "text/yaml should be a valid YAML mimetype"
-    assert util.is_yaml_mimetype("application/yaml") is True, "application/yaml should be a valid YAML mimetype"
-    assert util.is_yaml_mimetype("application/json") is False, "application/json should not be a valid YAML mimetype"
-    assert util.is_yaml_mimetype("text/plain") is False, "text/plain should not be a valid YAML mimetype"
-    assert util.is_yaml_mimetype("") is False, "Empty string should not be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("application/x-yaml") is True
+    ), "application/x-yaml should be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("text/yaml") is True
+    ), "text/yaml should be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("application/yaml") is True
+    ), "application/yaml should be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("application/json") is False
+    ), "application/json should not be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("text/plain") is False
+    ), "text/plain should not be a valid YAML mimetype"
+    assert (
+        util.is_yaml_mimetype("") is False
+    ), "Empty string should not be a valid YAML mimetype"
 
-    assert util.is_json_mimetype("application/json") is True, "application/json should be a valid JSON mimetype"
-    assert util.is_json_mimetype("application/x-json") is True, "application/x-json should be a valid JSON mimetype"
-    assert util.is_json_mimetype("text/json") is True, "text/json should be a valid JSON mimetype"
-    assert util.is_json_mimetype("application/x-yaml") is False, "application/x-yaml should not be a valid JSON mimetype"
-    assert util.is_json_mimetype("text/plain") is False, "text/plain should not be a valid JSON mimetype"
-    assert util.is_json_mimetype("") is False, "Empty string should not be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("application/json") is True
+    ), "application/json should be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("application/x-json") is True
+    ), "application/x-json should be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("text/json") is True
+    ), "text/json should be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("application/x-yaml") is False
+    ), "application/x-yaml should not be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("text/plain") is False
+    ), "text/plain should not be a valid JSON mimetype"
+    assert (
+        util.is_json_mimetype("") is False
+    ), "Empty string should not be a valid JSON mimetype"
 
 
 def test_get_timestamp_str():
@@ -2046,4 +2339,6 @@ def test_get_timestamp_str():
     with patch("core_framework.common.datetime.datetime") as mock_datetime:
         mock_datetime.now.return_value = datetime(2023, 10, 1, 12, 0, 0)
         timestamp_str = util.get_current_timestamp()
-        assert timestamp_str == "2023-10-01T12:00:00", "Timestamp string should match the expected format"
+        assert (
+            timestamp_str == "2023-10-01T12:00:00"
+        ), "Timestamp string should match the expected format"
