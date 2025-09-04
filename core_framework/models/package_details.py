@@ -28,7 +28,7 @@ from pydantic import Field, field_validator, model_validator
 import core_framework as util
 
 from .deployment_details import DeploymentDetails
-from .deploy_spec import DeploySpec
+from .action_resource import ActionResource
 from .file_details import FileDetails
 
 from core_framework.constants import (
@@ -102,8 +102,8 @@ class PackageDetails(FileDetails):
 
         >>> # With deployment specification
         >>> from core_framework.models.deploy_spec import DeploySpec
-        >>> from core_framework.models.action_spec import ActionSpec
-        >>> action = ActionSpec(label="deploy", type="create_stack", params={"stack_name": "web"})
+        >>> from core_framework.models.action_resource import ActionResource
+        >>> action = ActionResource(label="deploy", type="create_stack", params={"stack_name": "web"})
         >>> deploy_spec = DeploySpec(actions=[action])
         >>> package = PackageDetails(
         ...     client="my-client",
@@ -134,10 +134,10 @@ class PackageDetails(FileDetails):
         default=V_FULL,
     )
 
-    deployspec: DeploySpec | None = Field(
-        alias="DeploySpec",
+    actions: list[ActionResource] | None = Field(
+        None,
+        alias="Actions",
         description="Deployment specification containing action definitions and metadata",
-        default=None,
     )
 
     @field_validator("compile_mode")
@@ -163,9 +163,7 @@ class PackageDetails(FileDetails):
             ValueError: Compile mode must be 'full' or 'incremental', got 'invalid'
         """
         if value not in [V_FULL, V_INCREMENTAL, V_EMPTY]:
-            raise ValueError(
-                f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'"
-            )
+            raise ValueError(f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'")
         return value
 
     @model_validator(mode="before")
@@ -189,9 +187,7 @@ class PackageDetails(FileDetails):
             'application/zip'
         """
         if isinstance(values, dict):
-            content_type = values.pop("content_type", None) or values.pop(
-                "ContentType", None
-            )
+            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
             if not content_type:
                 content_type = "application/zip"
             values["content_type"] = content_type
@@ -349,9 +345,7 @@ class PackageDetails(FileDetails):
             - **None**: Creates empty DeploySpec with no actions
         """
 
-        def _get(
-            key1: str, key2: str, default: str | None, can_be_empty: bool = False
-        ) -> str:
+        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
 

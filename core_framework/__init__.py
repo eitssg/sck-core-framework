@@ -52,7 +52,7 @@ Common Usage Patterns:
 
     >>> # Generate deployment artifacts
     >>> task_payload = cf.generate_task_payload(
-    ...     action_spec=action,
+    ...     action_resource=action,
     ...     deployment_id="deploy-123"
     ... )
     >>>
@@ -100,7 +100,7 @@ Module Categories:
 Integration with Core Automation:
     This module integrates with all Core Automation components:
 
-    - **core-execute**: Action execution with TaskPayload and ActionSpec
+    - **core-execute**: Action execution with TaskPayload and ActionResource
     - **core-runner**: Deployment orchestration with DeploySpec processing
     - **core-api**: REST API operations with model serialization
     - **core-db**: Database operations with model persistence
@@ -126,7 +126,7 @@ Examples:
     >>> branch_prn = cf.generate_branch_prn(portfolio, app, branch)
     >>>
     >>> # 3. Create deployment specification
-    >>> action = ActionSpec(
+    >>> action = ActionResource(
     ...     name="deploy-infrastructure",
     ...     kind="AWS::CreateStack",
     ...     params={
@@ -138,7 +138,7 @@ Examples:
     >>>
     >>> # 4. Generate task payload for execution
     >>> payload = cf.generate_task_payload(
-    ...     action_spec=action,
+    ...     action_resource=action,
     ...     deployment_id=f"deploy-{cf.get_current_timestamp_short()}"
     ... )
     >>>
@@ -222,7 +222,7 @@ from .common import (
     get_provisioning_role_arn,
     get_automation_api_role_arn,
     get_environment,
-    get_correlation_id,
+    generate_forensic_correlation_id,
     get_mode,
     get_automation_type,
     get_portfolio,
@@ -371,7 +371,7 @@ __all__ = [
     "get_provisioning_role_arn",
     # Deployment Context
     "get_environment",
-    "get_correlation_id",
+    "generate_forensic_correlation_id",
     "get_mode",
     "get_automation_type",
     "get_portfolio",
@@ -471,7 +471,7 @@ CONFIGURATION_FUNCTIONS = [
     "get_aws_profile",
     "get_domain",
     "get_organization_id",
-    "get_correlation_id",
+    "generate_forensic_correlation_id",
     "get_mode",
 ]
 

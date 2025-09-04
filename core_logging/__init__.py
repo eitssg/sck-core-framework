@@ -129,6 +129,9 @@ from .log_interface import (
     get_identity,
     set_identity,
     reset_identity,
+    set_correlation_id,
+    get_correlation_id,
+    clear_correlation_id,
     msg,
     status,
     trace,
@@ -209,6 +212,10 @@ __all__ = [
     "get_identity",
     "set_identity",
     "reset_identity",
+    # Correlation ID management
+    "set_correlation_id",
+    "get_correlation_id",
+    "clear_correlation_id",
     # Logging functions
     "msg",
     "status",
@@ -403,12 +410,7 @@ def get_package_info() -> dict[str, any]:
         "total_exports": len(__all__),
         "classes": len(LOGGING_CLASSES),
         "functions": len(LOGGING_FUNCTIONS + LOGGER_MANAGEMENT + IDENTITY_MANAGEMENT),
-        "constants": len(
-            CUSTOM_LOG_LEVELS
-            + STANDARD_LOG_LEVELS
-            + JSON_FIELD_NAMES
-            + EXTRA_PARAMETER_KEYS
-        ),
+        "constants": len(CUSTOM_LOG_LEVELS + STANDARD_LOG_LEVELS + JSON_FIELD_NAMES + EXTRA_PARAMETER_KEYS),
         "thread_safety": "Full thread safety with threading.local()",
         "cloud_integration": [
             "AWS Lambda optimized",

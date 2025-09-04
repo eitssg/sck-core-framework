@@ -95,6 +95,9 @@ class InMemoryCache:
         self._purge_thread.daemon = True
         self._purge_thread.start()
 
+        # ✅ ADD: Thread-local storage for user context
+        self._thread_local = threading.local()
+
     def store(self, key: str, data: Any, ttl: int = DEFAULT_TTL) -> None:
         """Store or update an item in the cache with specified TTL.
 
@@ -220,9 +223,7 @@ class InMemoryCache:
         self._stop_event.set()
         self._purge_thread.join()
 
-    def store_session(
-        self, key: str, session: boto3.Session, ttl: int = DEFAULT_TTL
-    ) -> str:
+    def store_session(self, key: str, session: boto3.Session, ttl: int = DEFAULT_TTL) -> str:
         """Store a Boto3 Session object in the cache with type safety.
 
         Provides a type-safe wrapper around the generic store() method specifically
@@ -353,3 +354,97 @@ class InMemoryCache:
         with self._lock:
             if key in self._storage:
                 del self._storage[key]
+
+    # ✅ ADD: User context management (minimal additions)
+    def set_user_context(self, user_id: str, credentials: Dict[str, Any]) -> None:
+        """Set the user context for the current thread."""
+        if not hasattr(self._thread_local, "user_context"):
+            self._thread_local.user_context = {}
+
+        self._thread_local.user_context = {"user_id": user_id, "credentials": credentials}
+
+    def get_user_context(self) -> Dict[str, Any] | None:
+        """Get the user context for the current thread."""
+        if hasattr(self._thread_local, "user_context"):
+            return self._thread_local.user_context
+        return None
+
+    def clear_user_context(self) -> None:
+        """Clear the user context for the current thread."""
+        if hasattr(self._thread_local, "user_context"):
+            self._thread_local.user_context = None
+
+    def _generate_user_key(self, base_key: str, user_id: str = None) -> str:
+        """Generate a user-specific cache key."""
+        if not user_id:
+            context = self.get_user_context()
+            if not context:
+                # Fall back to non-user-specific key for backward compatibility
+                return base_key
+            user_id = context["user_id"]
+
+        return f"user-{user_id}-{base_key}"
+
+    def store_user_session(self, session: boto3.Session, role_arn: str = None, ttl: int = DEFAULT_TTL) -> str:
+        """Store a Boto3 session for the current user using existing TTL logic."""
+        context = self.get_user_context()
+        if not context:
+            # Fall back to regular session storage
+            return self.store_session("session", session, ttl)
+
+        if role_arn:
+            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
+            key = self._generate_user_key(f"role-{role_name}")
+        else:
+            key = self._generate_user_key("session")
+
+        # Use existing store method (preserves TTL and purge logic)
+        return self.store_session(key, session, ttl)
+
+    def retrieve_user_session(self, role_arn: str = None) -> boto3.Session | None:
+        """Retrieve a Boto3 session for the current user using existing TTL logic."""
+        context = self.get_user_context()
+        if not context:
+            # Fall back to regular session retrieval
+            return self.retrieve_session("session")
+
+        if role_arn:
+            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
+            key = self._generate_user_key(f"role-{role_name}")
+        else:
+            key = self._generate_user_key("session")
+
+        # Use existing retrieve method (preserves sliding TTL)
+        return self.retrieve_session(key)
+
+    def store_user_credentials(self, credentials: Dict[str, Any], role_arn: str = None, ttl: int = DEFAULT_TTL) -> str:
+        """Store AWS credentials for the current user using existing TTL logic."""
+        context = self.get_user_context()
+        if not context:
+            # Fall back to regular credential storage
+            return self.store_data("credentials", credentials, ttl)
+
+        if role_arn:
+            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
+            key = self._generate_user_key(f"creds-{role_name}")
+        else:
+            key = self._generate_user_key("creds")
+
+        # Use existing store_data method (preserves TTL and purge logic)
+        return self.store_data(key, credentials, ttl)
+
+    def retrieve_user_credentials(self, role_arn: str = None) -> Dict[str, Any] | None:
+        """Retrieve AWS credentials for the current user using existing TTL logic."""
+        context = self.get_user_context()
+        if not context:
+            # Fall back to regular credential retrieval
+            return self.retrieve_data("credentials")
+
+        if role_arn:
+            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
+            key = self._generate_user_key(f"creds-{role_name}")
+        else:
+            key = self._generate_user_key("creds")
+
+        # Use existing retrieve_data method (preserves sliding TTL)
+        return self.retrieve_data(key)

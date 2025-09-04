@@ -13,7 +13,7 @@ Key Components:
 Architecture Overview:
     The models are designed to support the complete Core Automation workflow:
 
-    1. **Planning Phase**: DeploySpec and ActionSpec define what to deploy
+    1. **Planning Phase**: DeploySpec and ActionResource define what to deploy
     2. **Execution Phase**: TaskPayload carries execution context
     3. **Tracking Phase**: DeploymentDetails and ActionDetails track progress
     4. **State Phase**: StateDetails manages persistent state
@@ -30,8 +30,8 @@ Model Categories:
 
 **Specification Models:**
     - DeploySpec: Collection of actions defining a complete deployment
-    - ActionSpec: Individual action definition with dependencies and parameters
-    - ActionParams: Base parameter model for action configuration
+    - ActionResource: Individual action definition with dependencies and parameters
+    - ActionSpec: Base parameter model for action configuration
 
 **Utility Functions:**
     - Path resolution for artifacts, packages, and files
@@ -41,10 +41,10 @@ Model Categories:
 Examples:
     Basic model usage:
 
-    >>> from core_framework.models import ActionSpec, DeploySpec
+    >>> from core_framework.models import ActionResource, DeploySpec
     >>>
     >>> # Create an action specification
-    >>> action = ActionSpec(
+    >>> action = ActionResource(
     ...     name="deploy-app",
     ...     kind="AWS::CreateStack",
     ...     params={
@@ -64,7 +64,7 @@ Examples:
     >>>
     >>> # Generate complete task payload
     >>> payload = generate_task_payload(
-    ...     action_spec=action,
+    ...     action_resource=action,
     ...     deployment_id="deploy-123",
     ...     account="123456789012",
     ...     region="us-east-1"
@@ -83,7 +83,7 @@ Examples:
 Integration Points:
     These models integrate with all Core Automation components:
 
-    - **core-execute**: Uses TaskPayload and ActionSpec for execution
+    - **core-execute**: Uses TaskPayload and ActionResource for execution
     - **core-runner**: Processes DeploySpec and tracks deployment progress
     - **core-api**: Serializes/deserializes all models for API operations
     - **core-db**: Persists DeploymentDetails, ActionDetails, and StateDetails
@@ -105,7 +105,7 @@ Imports:
     ...     ActionDetails, StateDetails,
     ...
     ...     # Specification Models
-    ...     DeploySpec, ActionSpec, ActionParams,
+    ...     DeploySpec, ActionResource, ActionSpec,
     ...
     ...     # Utility Functions
     ...     get_artefacts_path, generate_task_payload
@@ -113,12 +113,13 @@ Imports:
 """
 
 from .task_payload import TaskPayload
+from .file_details import FileDetails
 from .deployment_details import DeploymentDetails
 from .package_details import PackageDetails
 from .action_details import ActionDetails
 from .state_details import StateDetails
 from .deploy_spec import DeploySpec
-from .action_spec import ActionSpec, ActionMetadata, ActionParams
+from .action_resource import ActionResource, ActionMetadata, ActionSpec
 
 from .models import (
     get_artefacts_path,
@@ -136,13 +137,14 @@ __all__ = [
     # Core Data Models
     "TaskPayload",
     "DeploymentDetails",
+    "FileDetails",
     "PackageDetails",
     "ActionDetails",
     "StateDetails",
     # Specification Models
     "DeploySpec",
+    "ActionResource",
     "ActionSpec",
-    "ActionParams",
     # Path Utilities
     "get_artefacts_path",
     "get_packages_path",
@@ -170,8 +172,8 @@ CORE_MODELS = [
 #: Specification models for defining deployments and actions
 SPECIFICATION_MODELS = [
     "DeploySpec",
+    "ActionResource",
     "ActionSpec",
-    "ActionParams",
     "ActionMetadata",
 ]
 
@@ -227,7 +229,7 @@ def get_all_models() -> list[str]:
         >>> models = get_all_models()
         >>> print(len(models))
         8
-        >>> print("ActionSpec" in models)
+        >>> print("ActionResource" in models)
         True
     """
     return CORE_MODELS + SPECIFICATION_MODELS

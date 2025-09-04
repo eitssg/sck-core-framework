@@ -90,6 +90,7 @@ logging.setLoggerClass(CoreLogger)
 _thread_local = local()
 _thread_local.default_identity = None
 _thread_local.identity = None
+_thread_local.correlation_id = None
 
 
 def getLevelName(level: int) -> str:
@@ -298,6 +299,36 @@ def reset_identity():
     _thread_local.identity = get_default_identity()
 
 
+def set_correlation_id(correlation_id: str) -> None:
+    """Set the correlation ID for the current thread/HTTP transaction.
+
+    This makes all subsequent log calls in this thread automatically include
+    the correlation ID, enabling complete request tracing.
+
+    Args:
+        correlation_id: The correlation ID for the current HTTP request/transaction
+    """
+    _thread_local.correlation_id = correlation_id
+
+
+def get_correlation_id() -> str | None:
+    """Get the current correlation ID for the thread.
+
+    Returns:
+        The correlation ID for the current HTTP transaction, or None if not set
+    """
+    return getattr(_thread_local, "correlation_id", None)
+
+
+def clear_correlation_id() -> None:
+    """Clear the correlation ID for the current thread.
+
+    Called at the end of request processing to clean up thread state.
+    """
+    if hasattr(_thread_local, "correlation_id"):
+        _thread_local.correlation_id = None
+
+
 def get_logger_identity(**kwargs: dict) -> str:
     """Extract or determine the logger identity from various sources.
 
@@ -471,250 +502,124 @@ def __get_caller_info():
     return module_name, function_name, filename, lineno
 
 
-def log(level: int, message: str | dict, *args, **kwargs):
-    """Log a message at the specified numeric level with automatic identity resolution.
+def __enhance_kwargs_with_context(**kwargs):
+    """Automatically enhance log kwargs with thread-local context.
 
-    Provides direct access to numeric log levels while handling automatic
-    logger creation and identity management.
+    Adds correlation ID and other thread-local context to log calls
+    without requiring developers to manually pass them.
 
     Args:
-        level: The numeric logging level (TRACE=5, DEBUG=10, INFO=20, etc.).
-        message: The message to log, either as a string or dict for structured logging.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 exc_info: Include exception information.
-                 details: Additional structured data.
+        **kwargs: Original kwargs from log call
 
-    Notes:
-        Automatically determines caller information and creates appropriate
-        logger instances. The identity is resolved from kwargs, thread-local
-        storage, or generated from caller information.
+    Returns:
+        Enhanced kwargs with correlation ID and context
     """
+    # Auto-inject correlation ID if available and not already provided
+    # Get correlation ID and add it as a record attribute
+    correlation_id = get_correlation_id()
+    if correlation_id:
+        kwargs["extra"] = kwargs.get("extra", {})
+        kwargs["extra"]["correlation_id"] = correlation_id
+
+    return kwargs
+
+
+def log(level: int, message: str | dict, *args, **kwargs):
+    """Log a message at the specified numeric level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
+
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.log(level, message, *args, **kwargs)
 
 
 def msg(message: str | dict, *args, **kwargs):
-    """Log a message at the MSG level (70) for high-priority output.
+    """Log a message at the MSG level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
 
-    Outputs messages at the highest custom level for important notifications
-    that should always be visible regardless of typical log level settings.
-
-    Args:
-        message: The message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 scope: Context scope for the message.
-                 details: Additional structured data.
-    """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.msg(message, *args, **kwargs)
 
 
 def trace(message: str | dict, *args, **kwargs):
-    """Log a message at the TRACE level (5) for detailed debugging.
+    """Log a message at the TRACE level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
 
-    Outputs detailed trace information at the lowest custom level for
-    fine-grained debugging and development diagnostics.
-
-    Args:
-        message: The trace message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 scope: Context scope for the message.
-                 details: Additional structured data.
-    """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.trace(message, *args, **kwargs)
 
 
 def debug(message: str | dict, *args, **kwargs):
-    """Log a message at the DEBUG level (10) for development information.
+    """Log a message at the DEBUG level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
 
-    Standard debug logging with enhanced metadata support for development
-    and troubleshooting scenarios.
-
-    Args:
-        message: The debug message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 exc_info: Include exception information for error debugging.
-                 details: Additional structured data.
-    """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.debug(message, *args, **kwargs)
 
 
-def critical(message: str | dict, *args, **kwargs):
-    """Log a message at the CRITICAL level (50) for severe errors.
+def info(message: str | dict, *args, **kwargs):
+    """Log a message at the INFO level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
 
-    Standard critical logging with enhanced metadata support for severe
-    error conditions that may cause system failure.
-
-    Args:
-        message: The critical message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 exc_info: Include exception information for error analysis.
-                 details: Additional structured data about the critical condition.
-    """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger.info(message, *args, **kwargs)
+
+
+def warning(message: str | dict, *args, **kwargs):
+    """Log a message at the WARNING level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
+
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger.warning(message, *args, **kwargs)
+
+
+def warn(message: str | dict, *args, **kwargs):
+    """Log a message at the WARNING level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
+
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger.warning(message, *args, **kwargs)
+
+
+def error(message: str | dict, *args, **kwargs):
+    """Log a message at the ERROR level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
+
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
+    logger.error(message, *args, **kwargs)
+
+
+def critical(message: str | dict, *args, **kwargs):
+    """Log a message at the CRITICAL level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
+
+    module_name, function_name, _, _ = __get_caller_info()
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.critical(message, *args, **kwargs)
 
 
 def fatal(message: str | dict, *args, **kwargs):
-    """Log a message at the FATAL level for fatal system errors.
+    """Log a message at the FATAL level with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
 
-    Alias for critical level logging, providing semantic clarity for
-    fatal error conditions that prevent continued operation.
-
-    Args:
-        message: The fatal error message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 exc_info: Include exception information for error analysis.
-                 details: Additional structured data about the fatal condition.
-    """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
     logger.fatal(message, *args, **kwargs)
 
 
-def error(message: str | dict, *args, **kwargs):
-    """Log a message at the ERROR level (40) for error conditions.
-
-    Standard error logging with enhanced metadata support for error
-    conditions that may affect operation but don't stop execution.
-
-    Args:
-        message: The error message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 exc_info: Include exception information for error analysis.
-                 details: Additional structured data about the error.
-    """
-    module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
-    logger.error(message, *args, **kwargs)
-
-
-def info(message: str | dict, *args, **kwargs):
-    """Log a message at the INFO level (20) for general information.
-
-    Standard informational logging with enhanced metadata support for
-    general operational information and status updates.
-
-    Args:
-        message: The information message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 scope: Context scope for the message.
-                 details: Additional structured data.
-    """
-    module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
-    logger.info(message, *args, **kwargs)
-
-
-def warn(message: str | dict, *args, **kwargs):
-    """Log a message at the WARNING level (30) for warning conditions.
-
-    Standard warning logging with enhanced metadata support for situations
-    that warrant attention but don't stop operation. Alias for warning().
-
-    Args:
-        message: The warning message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 scope: Context scope for the warning.
-                 details: Additional structured data about the warning condition.
-    """
-    module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
-    logger.warning(message, *args, **kwargs)
-
-
-def warning(message: str | dict, *args, **kwargs):
-    """Log a message at the WARNING level (30) for warning conditions.
-
-    Standard warning logging with enhanced metadata support for situations
-    that warrant attention but don't stop operation.
-
-    Args:
-        message: The warning message to output, string or dict for structured content.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 scope: Context scope for the warning.
-                 details: Additional structured data about the warning condition.
-    """
-    module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
-    logger.warning(message, *args, **kwargs)
-
-
 def status(code: str | int, reason: str, *args, **kwargs):
-    """Log a structured status message at the STATUS level (60).
+    """Log a structured status message with automatic correlation ID injection."""
+    kwargs = __enhance_kwargs_with_context(**kwargs)
 
-    Outputs structured status messages that combine a status code with
-    a descriptive reason. Designed for operational status reporting and
-    monitoring integration.
-
-    Args:
-        code: The status code (string or integer). None defaults to 200.
-        reason: Descriptive reason text for the status. None becomes empty string.
-        *args: Positional arguments for message template replacement.
-        **kwargs: Keyword arguments for metadata enrichment including:
-                 identity: Override logger identity for this call.
-                 details: Additional structured data that may override code/reason.
-                 scope: Context scope for the status.
-
-    Message Format:
-        The final message follows the pattern: "{code} {reason}"
-
-    Notes:
-        Both code and reason are added as separate metadata fields for
-        structured logging systems. The details dict can override these
-        values if it contains 'Status' and 'Reason' keys.
-    """
     module_name, function_name, _, _ = __get_caller_info()
-    logger = getLogger(
-        get_logger_identity(module=module_name, function=function_name, **kwargs)
-    )
+    logger = getLogger(get_logger_identity(module=module_name, function=function_name, **kwargs))
 
     reason = "" if reason is None else reason
 

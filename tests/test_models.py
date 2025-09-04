@@ -6,11 +6,11 @@ import core_framework as util
 from core_framework.constants import ENV_LOCAL_MODE, V_CORE_AUTOMATION
 
 from core_framework.models import (
-    ActionSpec,
+    ActionResource,
     TaskPayload,
     DeploymentDetails,
     DeploySpec,
-    ActionSpec,
+    ActionResource,
     PackageDetails,
 )
 
@@ -50,9 +50,7 @@ def deployspec_sample():
     data_path = os.path.dirname(os.path.realpath(__file__))
     file_path = os.path.join(data_path, "deployspec_yaml", "deployspec.yaml")
 
-    deployspec = util.load_yaml_file(
-        file_path
-    )  # Load the YAML file to ensure it exists
+    deployspec = util.load_yaml_file(file_path)  # Load the YAML file to ensure it exists
 
     return deployspec
 
@@ -70,7 +68,7 @@ def test_action_model():
         "Scope": "build",
     }
 
-    action = ActionSpec(**sample_action)
+    action = ActionResource(**sample_action)
 
     assert action is not None
 
@@ -88,28 +86,17 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload.identity == "prn:my-portfolio:my-app:my-branch:my-build"
 
-        assert (
-            task_payload.actions.bucket_name
-            == f"my-client-{V_CORE_AUTOMATION}-specified_region"
-        )
+        assert task_payload.actions.bucket_name == f"my-client-{V_CORE_AUTOMATION}-specified_region"
 
         assert task_payload.actions.bucket_region == "specified_region"
 
-        assert (
-            task_payload.actions.key
-            == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.actions"
-        )
+        assert task_payload.actions.key == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.actions"
 
-        assert (
-            task_payload.package.bucket_name == "my-client-automation-specified_region"
-        )
+        assert task_payload.package.bucket_name == "my-client-automation-specified_region"
 
         assert task_payload.package.bucket_region == "specified_region"
 
-        assert (
-            task_payload.package.key
-            == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
-        )
+        assert task_payload.package.key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
 
         assert task_payload.deployment_details.client == "my-client"
 
@@ -123,10 +110,7 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload.state.bucket_region == "specified_region"
 
-        assert (
-            task_payload.state.key
-            == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.state"
-        )
+        assert task_payload.state.key == f"artefacts{os.path.sep}my-portfolio{os.path.sep}deploy.state"
 
         assert task_payload.flow_control is None
 
@@ -163,19 +147,13 @@ def test_package_details_model(runtime_arguments):
 
         assert package_details is not None
 
-        assert (
-            package_details.bucket_name
-            == f"my-client-{V_CORE_AUTOMATION}-specified_region"
-        )
+        assert package_details.bucket_name == f"my-client-{V_CORE_AUTOMATION}-specified_region"
 
         assert package_details.bucket_region == "specified_region"
 
         # The scope is "portfolio"
 
-        assert (
-            package_details.key
-            == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
-        )
+        assert package_details.key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
 
     except ValidationError as e:
         print(e.erros())
@@ -187,23 +165,23 @@ def test_package_details_model(runtime_arguments):
 
 def test_deploy_spec_model(deployspec_sample):
 
-    action_spec = ActionSpec(**deployspec_sample[0])
+    action_resource = ActionResource(**deployspec_sample[0])
 
-    assert action_spec is not None
+    assert action_resource is not None
 
-    assert action_spec.label == "test1-create-user"
+    assert action_resource.label == "test1-create-user"
 
-    assert action_spec.type == "create_user"
+    assert action_resource.type == "create_user"
 
     deploy_spec = DeploySpec(actions=deployspec_sample)
 
     assert deploy_spec is not None
 
-    assert isinstance(deploy_spec.action_specs, list)
+    assert isinstance(deploy_spec.actions, list)
 
-    assert len(deploy_spec.action_specs) == 6
+    assert len(deploy_spec.actions) == 6
 
-    assert deploy_spec.action_specs[5].label == "test1-delete-change-set"
+    assert deploy_spec.actions[5].label == "test1-delete-change-set"
 
     data = deploy_spec.model_dump(by_alias=True)
 
@@ -215,11 +193,11 @@ def test_deploy_spec_model(deployspec_sample):
     assert "Name" in data["Actions"][0], "Expected 'Name' to be present in action"
 
 
-def test_action_spec_model_dump(deployspec_sample):
+def test_action_resource_model_dump(deployspec_sample):
 
-    action_spec = ActionSpec(**deployspec_sample[0])
+    action_resource = ActionResource(**deployspec_sample[0])
 
-    data = action_spec.model_dump(by_alias=True)
+    data = action_resource.model_dump(by_alias=True)
 
     assert "Name" in data, "Expected 'Name' to be present in model_dump"
     assert "Kind" in data, "Expected 'Kind' to be present in model_dump"
@@ -230,7 +208,7 @@ def test_action_spec_model_dump(deployspec_sample):
 
     assert "Action" not in data, "Expected 'action' to be excluded from model_dump"
 
-    data = action_spec.model_dump(by_alias=False)
+    data = action_resource.model_dump(by_alias=False)
 
     assert "name" in data, "Expected 'name' to be present in model_dump"
     assert "kind" in data, "Expected 'kind' to be present in model_dump"
@@ -240,10 +218,10 @@ def test_action_spec_model_dump(deployspec_sample):
     assert data["name"] == "test1-create-user"
 
 
-def test_action_spec_validation():
+def test_action_resource_validation():
     try:
 
-        action_spec = ActionSpec(
+        action_resource = ActionResource(
             **{
                 "Label": "test-action",
                 "Type": "AWS::CreateUser",
@@ -258,14 +236,12 @@ def test_action_spec_validation():
         assert False, "Expected validation error for DependsOn field"
 
     except ValidationError as e:
-        assert (
-            e.errors() is not None
-        ), "Expected validation error for non-existent action"
+        assert e.errors() is not None, "Expected validation error for non-existent action"
 
 
-def test_action_spec_validation_invalid_scope():
+def test_action_resource_validation_invalid_scope():
     try:
-        action_spec = ActionSpec(
+        action_resource = ActionResource(
             **{
                 "Label": "test-action",
                 "Type": "AWS::CreateUser",
@@ -278,17 +254,15 @@ def test_action_spec_validation_invalid_scope():
         # Should have a validation error on Scope since it is not a valid value
         assert False, "Expected validation error for invalid scope"
     except ValidationError as e:
-        assert (
-            e.errors() is not None
-        ), "Expected validation error for invalid scope value"
+        assert e.errors() is not None, "Expected validation error for invalid scope value"
 
 
-def test_action_spec_model(deployspec_sample):
+def test_action_resource_model(deployspec_sample):
 
-    sample_action_spec = deployspec_sample[0]
+    sample_action_resource = deployspec_sample[0]
 
-    action_spec = ActionSpec(**sample_action_spec)
+    action_resource = ActionResource(**sample_action_resource)
 
-    assert action_spec is not None
+    assert action_resource is not None
 
     # TODO: Add more tests for the DeploySpec model

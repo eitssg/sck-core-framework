@@ -119,6 +119,11 @@ class TaskPayload(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
+    correlation_id: str = Field(
+        None,
+        alias="CorrelationId",
+        description="Unique identifier for tracking the request",
+    )
     client: str = Field(
         alias="Client",
         description="Client identifier for multi-tenant operations",
@@ -212,9 +217,7 @@ class TaskPayload(BaseModel):
         """
         valid_tasks = get_valid_tasks()
         if value not in valid_tasks:
-            raise ValueError(
-                f"Task must be one of {', '.join(valid_tasks)}, got '{value}'"
-            )
+            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{value}'")
         return value
 
     @model_validator(mode="before")
@@ -240,11 +243,17 @@ class TaskPayload(BaseModel):
             >>> # Client is propagated to nested objects
         """
         if isinstance(values, dict):
+
+            # Pass the correlation id from the logger to all upstream services
+            correlation_id = values.pop("correlation_id", None) or values.pop("CorrelationId", None)
+            if not correlation_id:
+                values["correlation_id"] = util.generate_forensic_correlation_id()
+            else:
+                values["correlation_id"] = correlation_id
+
             client = values.get("Client") or values.get("client") or util.get_client()
 
-            dd = values.get("DeploymentDetails", None) or values.get(
-                "deployment_details", None
-            )
+            dd = values.get("DeploymentDetails", None) or values.get("deployment_details", None)
 
             if isinstance(dd, dict):
                 dd = DeploymentDetails(**dd)
@@ -264,15 +273,11 @@ class TaskPayload(BaseModel):
 
             fc = values.get("FlowControl", values.get("flow_control"))
             if fc and fc not in FLOW_CONTROLS:
-                raise ValueError(
-                    f"FlowControl must be one of {', '.join(FLOW_CONTROLS)}, got '{fc}'"
-                )
+                raise ValueError(f"FlowControl must be one of {', '.join(FLOW_CONTROLS)}, got '{fc}'")
 
             typ = values.get("Type", values.get("type", V_PIPELINE))
             if typ and typ not in [V_PIPELINE, V_DEPLOYSPEC]:
-                raise ValueError(
-                    f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'"
-                )
+                raise ValueError(f"Type must be one of {V_PIPELINE}, {V_DEPLOYSPEC}, got '{typ}'")
 
         return values
 
@@ -425,9 +430,7 @@ class TaskPayload(BaseModel):
         # Validate task value early
         valid_tasks = get_valid_tasks()
         if task not in valid_tasks:
-            raise ValueError(
-                f"Task must be one of {', '.join(valid_tasks)}, got '{task}'"
-            )
+            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{task}'")
 
         # Handle deployment details
         dd = _get("deployment_details", "DeploymentDetails", None)
@@ -458,9 +461,7 @@ class TaskPayload(BaseModel):
         elif not isinstance(st, StateDetails):
             st = StateDetails.from_arguments(**kwargs)
 
-        typ = _get(
-            "type", "Type", _get("automation_type", "AutomationType", V_PIPELINE)
-        )
+        typ = _get("type", "Type", _get("automation_type", "AutomationType", V_PIPELINE))
 
         force = _get("force", "Force", False)
 
@@ -507,8 +508,6 @@ class TaskPayload(BaseModel):
             >>> print("FlowControl" in data)
             False  # Because flow_control is None
         """
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
-        if "by_alias" not in kwargs:
-            kwargs["by_alias"] = True
+        kwargs.setdefault("exclude_none", True)
+        kwargs.setdefault("by_alias", True)
         return super().model_dump(**kwargs)
