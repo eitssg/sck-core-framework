@@ -120,6 +120,7 @@ from .action_details import ActionDetails
 from .state_details import StateDetails
 from .deploy_spec import DeploySpec
 from .action_resource import ActionResource, ActionMetadata, ActionSpec
+from .action_hook import HookResourceParameters, HookResource
 
 from .models import (
     get_artefacts_path,
@@ -146,6 +147,8 @@ __all__ = [
     "DeploySpec",
     "ActionResource",
     "ActionSpec",
+    "HookResourceParameters",
+    "HookResource",
     # Path Utilities
     "get_artefacts_path",
     "get_packages_path",

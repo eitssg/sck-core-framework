@@ -22,6 +22,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from .action_hook import HookResource
 
 
 class ActionMetadata(BaseModel):
@@ -29,7 +30,7 @@ class ActionMetadata(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True, extra="allow")
 
-    name: str = Field(description="Action name", alias="Name")
+    name: str = Field(None, description="Action name", alias="Name")
 
     namespace: Optional[str] = Field(None, description="Action namespace", alias="Namespace")
     labels: Optional[Dict[str, str]] = Field(None, description="Key-value labels", alias="Labels")
@@ -96,10 +97,9 @@ class ActionSpec(BaseModel):
 
     def model_dump(self, **kwargs) -> dict[str, Any]:
         """Serialize model with optimized defaults."""
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
-        if "by_alias" not in kwargs:
-            kwargs["by_alias"] = True
+        kwargs.setdefault("exclude_unset", True)
+        kwargs.setdefault("exclude_none", True)
+        kwargs.setdefault("by_alias", True)
         return super().model_dump(**kwargs)
 
 
@@ -200,10 +200,10 @@ class ActionResource(BaseModel):
         description="Save action outputs to state system for other actions",
     )
 
-    lifecycle_hooks: list["ActionResource"] | None = Field(
+    lifecycle_hooks: list[HookResource] | None = Field(
         None,
         alias="LifecycleHooks",
-        description="Additional actions to execute at lifecycle points",
+        description="Additional hooks actions to execute at lifecycle points",
     )
 
     @property
@@ -214,20 +214,40 @@ class ActionResource(BaseModel):
         return self.name.split("/")[-1] if self.name else ""
 
     @property
+    def action_key(self) -> str:
+        """Get the full action key including namespace if present."""
+        if self.metadata and self.metadata.name:
+            if self.metadata.namespace:
+                return f"{self.metadata.namespace}/{self.metadata.name}"
+            return self.metadata.name
+        return self.name if self.name else ""
+
+    @property
     def output_namespace(self) -> str | None:
         """Calculate output namespace for organizing action results."""
         if self.save_outputs is False or not self.name:
             return None
 
-        if self.metadata and self.metadata.namespace:
-            return f"{self.metadata.namespace}:output"
+        if self.metadata:
+            if self.metadata.namespace:
+                return f"{self.metadata.namespace}:output"
+            else:
+                return f"{self.action_name}:output"
 
+        # Get the namespace for the action, defaults to name
         namespace_part = self.action_name.split("/")[0]
         return namespace_part.replace(":action", ":output")
 
     @property
     def state_namespace(self) -> str | None:
         """Get state namespace for variable storage."""
+
+        if self.metadata:
+            if self.metadata.namespace:
+                return f"{self.metadata.namespace}:var/{self.metadata.name}"
+            elif self.metadata.name:
+                return f"var/{self.metadata.name}"
+
         if not self.name:
             return None
         return self.name.replace(":action/", ":var/")
@@ -261,22 +281,37 @@ class ActionResource(BaseModel):
             elif type_value and kind_value and type_value != kind_value:
                 raise ValueError(f"Conflicting type='{type_value}' and kind='{kind_value}'")
 
-        # Handle metadata creation
-        metadata = values.pop("Metadata", None) or values.pop("metadata", None)
-        if metadata and isinstance(metadata, dict):
-            # Add name to metadata if not present
-            if name_value and "name" not in metadata and "Name" not in metadata:
-                metadata["name"] = name_value
-            metadata = ActionMetadata(**metadata)
-        elif metadata is None:
-            if not name_value:
-                raise ValueError("Action must have a name in metadata.name or name field")
-            metadata = ActionMetadata(name=name_value)
+        if name_value:
+            parts = name_value.split("/")
+            if len(parts) > 1:
+                namespace = parts[0]
+                name = "/".join(parts[1:])
+            else:
+                namespace = None
+                name = parts[0]
         else:
-            raise ValueError(f"Invalid metadata type: {type(metadata)}")
+            namespace = None
+            name = None
+
+        # Handle metadata creation
+        metadata = values.pop("metadata", None) or values.pop("Metadata", None)
+        if not metadata:
+            if name:
+                metadata = ActionMetadata(name=name, namespace=namespace)
+            else:
+                raise ValueError("Action must have a name via metadata.name or the deprecated name field")
+
+        if isinstance(metadata, dict):
+            metadata = ActionMetadata(**metadata)
+
+        if isinstance(metadata, ActionMetadata):
+            if name and not metadata.name:
+                metadata.name = name
+            if namespace and not metadata.namespace:
+                metadata.namespace = namespace
 
         values["metadata"] = metadata
-        values["name"] = name_value  # Keep for backward compatibility
+        values["name"] = name_value  # Keep for backward compatibility (for how long?)
         values["kind"] = kind_value
         return values
 
