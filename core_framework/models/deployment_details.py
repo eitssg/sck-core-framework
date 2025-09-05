@@ -76,6 +76,7 @@ from core_framework.constants import (
     SCOPE_BUILD,
     SCOPE_BRANCH,
     SCOPE_APP,
+    SCOPE_COMPONENT,
     SCOPE_PORTFOLIO,
     OBJ_ARTEFACTS,
     OBJ_FILES,
@@ -254,6 +255,24 @@ class DeploymentDetails(BaseModel):
         description="Person or system responsible for the deployment",
         default=None,
     )
+
+    def get_prn(self) -> str:
+        if self.scope == SCOPE_PORTFOLIO:
+            return self.get_portfolio_prn()
+
+        if self.scope == SCOPE_APP:
+            return self.get_app_prn()
+
+        if self.scope == SCOPE_BRANCH:
+            return self.get_branch_prn()
+
+        if self.scope == SCOPE_BUILD:
+            return self.get_build_prn()
+
+        if self.scope == SCOPE_COMPONENT:
+            return self.get_component_prn()
+
+        return V_EMPTY
 
     def get_portfolio_prn(self) -> str:
         """Get the Portfolio Resource Name (PRN) for the deployment.

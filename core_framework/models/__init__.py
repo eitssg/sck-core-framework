@@ -138,6 +138,7 @@ __all__ = [
     "TaskPayload",
     "DeploymentDetails",
     "FileDetails",
+    "ActionMetadata",
     "PackageDetails",
     "ActionDetails",
     "StateDetails",
