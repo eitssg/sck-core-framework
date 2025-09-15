@@ -223,6 +223,16 @@ class InMemoryCache:
         self._stop_event.set()
         self._purge_thread.join()
 
+    def size(self) -> int:
+        """Return the number of items currently stored (not counting expired ones already purged)."""
+        with self._lock:
+            return len(self._storage)
+
+    def keys(self) -> list[str]:
+        """Return a snapshot list of current keys in the cache."""
+        with self._lock:
+            return list(self._storage.keys())
+
     def store_session(self, key: str, session: boto3.Session, ttl: int = DEFAULT_TTL) -> str:
         """Store a Boto3 Session object in the cache with type safety.
 
