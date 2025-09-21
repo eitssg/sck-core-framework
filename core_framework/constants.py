@@ -682,9 +682,6 @@ ENV_LOG_DIR = "LOG_DIR"
 ENV_USE_S3 = "USE_S3"
 """Use S3 environment variable."""
 
-ENV_CORRELATION_ID = "CORRELATION_ID"
-"""Correlation ID environment variable."""
-
 ENV_IAM_ACCOUNT = "IAM_ACCOUNT"
 """IAM account environment variable."""
 

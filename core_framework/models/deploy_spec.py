@@ -580,32 +580,6 @@ class DeploySpec(BaseModel):
         """
         return len(self.actions) == 0
 
-    @property
-    def actions(self) -> list[ActionResource]:
-        """DEPRECATED: Use 'actions' instead. Returns actions list for backward compatibility.
-
-        Returns:
-            List of actions.
-
-        Warnings:
-            Issues DeprecationWarning when this property is accessed.
-
-        Examples:
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> specs = deploy_spec.actions  # Triggers deprecation warning
-            >>> print(len(specs))
-            2
-
-        Migration:
-            Replace `deploy_spec.actions` with `deploy_spec.actions`
-        """
-        warnings.warn(
-            "The 'actions' property is deprecated. Use 'actions' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.actions
-
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override to exclude None values and use aliases by default.
 
@@ -628,10 +602,8 @@ class DeploySpec(BaseModel):
             - **exclude_none=True**: Removes None values for cleaner output
             - **by_alias=True**: Uses field aliases (e.g., "Actions" instead of "actions")
         """
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
-        if "by_alias" not in kwargs:
-            kwargs["by_alias"] = True
+        kwargs.setdefault("exclude_none", True)
+        kwargs.setdefault("by_alias", True)
         return super().model_dump(**kwargs)
 
     def __len__(self) -> int:

@@ -123,7 +123,7 @@ def getLevelFromName(level: str) -> int:
     return logging._nameToLevel.get(level, 0)
 
 
-def setRootLevel(level: int):
+def setRootLevel(level: int) -> None:
     """Set the logging level for the root logger.
 
     Updates the root logger's level, affecting all loggers that inherit
@@ -156,7 +156,7 @@ def getLevel() -> int:
     return _log_level
 
 
-def setLevel(level: int | str):
+def setLevel(level: int | str) -> None:
     """Set the default logging level for the log module.
 
     Updates the module-level default log level that will be applied
@@ -173,7 +173,7 @@ def setLevel(level: int | str):
     _log_level = level
 
 
-def setLevelForLogger(name: str, level: int | str):
+def setLevelForLogger(name: str, level: int | str) -> None:
     """Set the log level for a specific named logger.
 
     Allows fine-grained control over logging levels for individual
@@ -214,7 +214,7 @@ def setup(identity: str):
     _thread_local.default_identity = _thread_local.identity = identity
 
 
-def set_identity(identity: str):
+def set_identity(identity: str) -> None:
     """Set the current logging identity for the thread.
 
     Updates the current thread's logging identity without changing the
@@ -282,7 +282,7 @@ def clear_identity():
         del _thread_local.default_identity
 
 
-def reset_identity():
+def reset_identity() -> None:
     """Reset the current identity to the default identity.
 
     Restores the current thread identity to the default identity that

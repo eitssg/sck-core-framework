@@ -77,22 +77,6 @@ def __transform_keyvalues_to_array(keyvalues: dict[str, str] | None, key_key: st
     return [{key_key: key, value_key: value} for key, value in keyvalues.items()]
 
 
-def transform_stack_parameter_dict(keyvalues: dict[str, str]) -> dict[str, str]:
-    """Create a copy of the input dictionary.
-
-    Args:
-        keyvalues: A dictionary of key-value pairs.
-
-    Returns:
-        A shallow copy of the input dictionary.
-    """
-    rv = {}
-    if len(keyvalues):
-        for key, value in keyvalues.items():
-            rv[key] = value
-    return rv
-
-
 def transform_stack_parameter_hash(keyvalues: dict[str, str]) -> list[dict[str, str]]:
     """Translate a dictionary into CloudFormation stack parameter format.
 
@@ -198,7 +182,7 @@ def clear_user_context() -> None:
     log.debug("Cleared user context")
 
 
-def get_session(**kwargs) -> Session:
+def get_session(*, role_arn: str | None = None, **kwargs) -> Session:
     """Retrieve a cached Boto3 session or create a new one.
 
     Now automatically uses user context from JWT credentials when available.
@@ -208,7 +192,8 @@ def get_session(**kwargs) -> Session:
     user_context = get_user_context()
 
     # Check for role assumption request
-    role_arn = kwargs.get("role_arn") or kwargs.get("role") or kwargs.get("Role") or kwargs.get("RoleArn")
+    if not role_arn:
+        role_arn = kwargs.get("RoleArn")
 
     if user_context:
         # Try to get cached user session first
@@ -216,7 +201,10 @@ def get_session(**kwargs) -> Session:
         if cached_session:
             log.debug(
                 "Retrieved cached user session",
-                details={"user_id": user_context["user_id"], "role": role_arn or "base"},
+                details={
+                    "user_id": user_context["user_id"],
+                    "role": role_arn or "base",
+                },
             )
             return cached_session
 
@@ -230,6 +218,12 @@ def get_session(**kwargs) -> Session:
                     "aws_session_token": user_creds.get("SessionToken"),
                 }
             )
+
+    key = _get_session_key(**kwargs)
+    session = store.retrieve_session(key)
+    if session:
+        log.debug("Retrieved cached session", details={"key": key})
+        return session
 
     aws_access_key_id = kwargs.get("aws_access_key_id", None)
     aws_secret_access_key = kwargs.get("aws_secret_access_key", None)
@@ -256,20 +250,42 @@ def get_session(**kwargs) -> Session:
             details={"user_id": user_context["user_id"], "role": role_arn or "base"},
         )
     else:
-        # Fall back to old caching method for non-user contexts
-        key_parts = [
-            "sck-session",
-            profile_name,
-            region_name,
-            aws_access_key_id or "x",
-            (aws_secret_access_key[:8] if aws_secret_access_key else "x"),
-            (aws_session_token[:16] if aws_session_token else "x"),
-            aws_account_id or "x",
-        ]
-        key = "-".join(key_parts)
         store.store_session(key, session)
+        log.debug("Cached new session", details={"key": key})
 
     return session
+
+
+def _get_session_key(**kwargs) -> str:
+    """Generate a unique cache key for a Boto3 session.
+
+    Creates a cache key based on the session's profile and region for
+    use in the session caching system.  These are 'user known and defined'
+    values that are passed in via kwargs to generate the key.
+
+    Args:
+        session: The Boto3 session to generate a key for.
+
+    Returns:
+        A string cache key combining automation scope, profile, and region.
+    """
+    aws_access_key_id = kwargs.get("aws_access_key_id", None)
+    aws_secret_access_key = kwargs.get("aws_secret_access_key", None)
+    aws_session_token = kwargs.get("aws_session_token", None)
+    region_name = kwargs.get("region", util.get_region())
+    profile_name = kwargs.get("aws_profile", util.get_aws_profile())
+    aws_account_id = kwargs.get("aws_account_id", None)
+    key_parts = [
+        "sck-session",
+        profile_name,
+        region_name,
+        aws_access_key_id or "x",
+        (aws_secret_access_key[:8] if aws_secret_access_key else "x"),
+        (aws_session_token[:16] if aws_session_token else "x"),
+        aws_account_id or "x",
+    ]
+    key = "-".join(key_parts)
+    return key
 
 
 def get_session_credentials(**kwargs) -> dict | None:
@@ -822,7 +838,7 @@ def __get_client_config() -> Config:
 def assume_role(*, role_arn: str = None, **kwargs) -> dict[str, str] | None:
     """Assume an IAM role and return temporary credentials."""
     if not role_arn:
-        role_arn = kwargs.get("role", kwargs.get("Role", kwargs.get("RoleArn")))
+        role_arn = kwargs.get("RoleArn")
     if not role_arn:
         return get_session_credentials(**kwargs)
 
@@ -831,32 +847,59 @@ def assume_role(*, role_arn: str = None, **kwargs) -> dict[str, str] | None:
     if user_context:
         cached_credentials = store.retrieve_user_credentials(role_arn)
         if cached_credentials:
-            log.debug("Retrieved cached user role credentials", details={"user_id": user_context["user_id"], "role": role_arn})
+            log.debug(
+                "Retrieved cached user role credentials",
+                details={"user_id": user_context["user_id"], "role": role_arn},
+            )
             return cached_credentials
 
+    # Check if the session is stored by the ARN
+    credentials = store.retrieve_data(role_arn)
+    if credentials:
+        log.debug(
+            "Retrieved cached role credentials",
+            details={
+                "role": role_arn,
+                "access_key": credentials.get("AccessKeyId", "")[:10] + "...",
+            },
+        )
+        return credentials
+
     try:
-        session = get_session(**kwargs)
+        session = get_session(role_arn=role_arn, **kwargs)
         session_name = f"{CORE_AUTOMATION_SESSION_ID_PREFIX}-{util.get_current_timestamp()}"
 
-        log.debug("Assuming role for user", details={"role": role_arn, "session_name": session_name})
+        log.debug(
+            "Assuming role for user",
+            details={"role": role_arn, "session_name": session_name},
+        )
 
         client = session.client("sts", config=__get_client_config())
         response = client.assume_role(RoleArn=role_arn, RoleSessionName=session_name)
 
         credentials = response.get("Credentials")
         if credentials:
-            # Cache credentials for this user and role
             if user_context:
                 store.store_user_credentials(credentials, role_arn)
-                log.debug("Cached new user role credentials", details={"user_id": user_context["user_id"], "role": role_arn})
             else:
-                # Fall back to old caching method
                 store.store_data(role_arn, credentials)
+
+            log.debug(
+                "Credentials cached for role",
+                details={
+                    "role": role_arn,
+                    "access_key": credentials.get("AccessKeyId", "")[:10] + "...",
+                },
+            )
 
             return credentials
 
     except ClientError as e:
-        log.error("Failed to assume role {}: {}. Falling back to base credentials.", role_arn, e)
+        log.error(
+            "Failed to assume role {}: {}. Falling back to base credentials.",
+            role_arn,
+            e,
+        )
 
     # Fallback to base credentials if assumption fails
     return get_session_credentials(**kwargs)
@@ -878,19 +921,11 @@ def get_identity(role: str | None = None, **kwargs) -> dict[str, Any] | None:
         and the corresponding credentials, or None on failure.
     """
     try:
-        credentials = assume_role(role_arn=role, **kwargs)
 
-        if not credentials:
-            log.error("Could not retrieve credentials for get_identity.")
-            return None
-
-        client = sts_client(
-            aws_access_key_id=credentials.get("AccessKeyId"),
-            aws_secret_access_key=credentials.get("SecretAccessKey"),
-            aws_session_token=credentials.get("SessionToken"),
-            config=__get_client_config(),
-        )
+        client = sts_client(role_arn=role)
         identity = client.get_caller_identity()
+
+        credentials = get_session_credentials()
 
         # Build a new response dictionary, preserving the original API contract.
         # This combines identity information with the retrieved credentials.
@@ -958,7 +993,7 @@ def get_session_token(**kwargs) -> dict | None:
         return None
 
 
-def get_client(service_name: str, **kwargs) -> Any:
+def get_client(service_name: str, *, role_arn: str | None = None, **kwargs) -> Any:
     """Create a Boto3 client, using assumed role credentials if a role is provided.
 
     Creates AWS service clients with automatic credential management, using
@@ -984,9 +1019,12 @@ def get_client(service_name: str, **kwargs) -> Any:
     session = get_session(**kwargs)
 
     # The user needs to assume a role!
-    role_arn = kwargs.pop("role_arn", kwargs.pop("role", kwargs.pop("Role", kwargs.pop("RoleArn", None))))
+    if not role_arn:
+        role_arn = kwargs.pop("Role", kwargs.pop("RoleArn", None))
     if role_arn:
         credentials = assume_role(role_arn=role_arn, **kwargs)
+    else:
+        credentials = session.get_credentials()
 
     if not credentials:
         return session.client(service_name, config=__get_client_config())
@@ -1283,7 +1321,9 @@ def invoke_lambda(arn: str, request_payload: dict[str, Any], **kwargs) -> dict[s
         - {'status': 'error', 'response': '...'} for failed invocations
     """
     kwargs["region"] = kwargs.get("region") or arn.split(":")[3]
+
     client = get_client("lambda", **kwargs)
+
     log.trace("Invoking Lambda", details={"FunctionName": arn, "Payload": request_payload})
     try:
         response = client.invoke(FunctionName=arn, Payload=util.to_json(request_payload))

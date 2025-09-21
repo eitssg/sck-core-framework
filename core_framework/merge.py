@@ -48,7 +48,7 @@ def deep_copy(obj: Any) -> Any:
     return copy.deepcopy(obj)
 
 
-def __default_should_merge(key: str) -> bool:
+def __default_should_merge(key: str, dest: Any | None, source: Any | None) -> bool:
     """Default predicate function that always returns True.
 
     Used by merge functions to indicate that all keys should be merged by default.
@@ -56,7 +56,9 @@ def __default_should_merge(key: str) -> bool:
     is provided.
 
     Args:
-        key: The key to inspect (unused in this default implementation).
+        key: The key to inspect (unused).
+        dest: The existing value in the destination dictionary (unused).
+        source: The new value from the source dictionary (unused).
 
     Returns:
         Always returns True to allow merging of all keys.
@@ -67,7 +69,7 @@ def __default_should_merge(key: str) -> bool:
 def deep_merge_in_place(
     *dicts: dict[str, Any],
     merge_lists: bool = False,
-    should_merge: Callable[[str], bool] = __default_should_merge,
+    should_merge: Callable[[str, Any | None, Any | None], bool] = __default_should_merge,
 ) -> dict[str, Any]:
     """Merge multiple dictionaries into the first dictionary in-place.
 
@@ -125,7 +127,7 @@ def deep_merge_in_place(
 def deep_merge(
     *dicts: dict[str, Any],
     merge_lists: bool = False,
-    should_merge: Callable[[str], bool] = __default_should_merge,
+    should_merge: Callable[[str, Any | None, Any | None], bool] = __default_should_merge,
 ) -> dict[str, Any]:
     """Merge multiple dictionaries into a new dictionary without mutation.
 
@@ -168,16 +170,14 @@ def deep_merge(
     if not dicts:
         return {}
     first_dict = deep_copy(dicts[0])
-    return deep_merge_in_place(
-        first_dict, *dicts[1:], merge_lists=merge_lists, should_merge=should_merge
-    )
+    return deep_merge_in_place(first_dict, *dicts[1:], merge_lists=merge_lists, should_merge=should_merge)
 
 
 def __deep_merge(
     dict1: dict[str, Any],
     dict2: dict[str, Any],
     merge_lists: bool = False,
-    should_merge: Callable[[str], bool] = __default_should_merge,
+    should_merge: Callable[[str, Any | None, Any | None], bool] = __default_should_merge,
 ) -> None:
     """Recursively merge dict2 into dict1 in-place.
 
@@ -210,17 +210,13 @@ def __deep_merge(
                     merge_lists=merge_lists,
                     should_merge=should_merge,
                 )
-            elif (
-                merge_lists
-                and isinstance(dict1[key], list)
-                and isinstance(dict2[key], list)
-            ):
+            elif merge_lists and isinstance(dict1[key], list) and isinstance(dict2[key], list):
                 dict1[key].extend(dict2[key])
 
             elif dict1[key] == dict2[key]:
                 pass  # Do nothing if values are the same
 
-            elif should_merge(key):
+            elif should_merge(key, dict1[key], dict2[key]):
                 dict1[key] = dict2[key]
         else:
             dict1[key] = dict2[key]

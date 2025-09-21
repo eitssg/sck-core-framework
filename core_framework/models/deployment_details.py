@@ -889,7 +889,7 @@ class DeploymentDetails(BaseModel):
 
         Path Separators:
             - S3 mode: Always uses forward slashes (/)
-            - Local mode: Uses OS-appropriate separators (\ on Windows, / on Unix)
+            - Local mode: Uses OS-appropriate separators (\\ on Windows, / on Unix)
         """
         portfolio = self.portfolio or V_EMPTY
         portfolio = portfolio.lower()
