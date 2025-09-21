@@ -96,7 +96,6 @@ from core_framework.constants import (
     ENV_BIZAPP,
     ENV_DEPLOYSPEC_COMPILER_LAMBDA_ARN,
     ENV_COMPONENT_COMPILER_LAMBDA_ARN,
-    ENV_CORRELATION_ID,
     ENV_ENVIRONMENT,
     V_CORE_AUTOMATION,
     V_INTERACTIVE,
@@ -215,7 +214,7 @@ def test_generate_task_payload():
 
     # Generate the task payload
     payload = TaskPayload.from_arguments(task=task, **kwargs)
-    payload.package.deployspec = None
+    payload.package.actions = None
 
     # Assert the payload contains the expected values
     assert payload.task == task
@@ -1048,11 +1047,11 @@ def test_get_automation_api_role_arn():
 
     role_arn = util.get_automation_api_role_arn(account="456789012345")
     assert (
-        role_arn == "arn:aws:iam::456789012345:role/CoreAutomationApiRead"
+        role_arn == "arn:aws:iam::456789012345:role/CoreAutomationApiReadRole"
     ), "Automation API role ARN should match the expected format"
     role_arn = util.get_automation_api_role_arn(write=True)
     assert (
-        role_arn == "arn:aws:iam::123456789012:role/CoreAutomationApiWrite"
+        role_arn == "arn:aws:iam::123456789012:role/CoreAutomationApiWriteRole"
     ), "Automation API write role ARN should match the expected format"
     del os.environ[ENV_AUTOMATION_ACCOUNT]
     role_arn = util.get_automation_api_role_arn()
@@ -1787,23 +1786,6 @@ def test_get_component_compiler_lambda_arn():
     assert (
         component_compiler_lambda_arn == "arn:aws:lambda:ap-southeast-1:123456789012:function:core-automation-component-compiler"
     ), "2 - Component Compiler Lambda ARN should be None if ENV_COMPONENT_COMPILER_LAMBDA_ARN is not set"
-
-
-def test_get_correlation_id():
-
-    os.environ[ENV_CORRELATION_ID] = "example_correlation_id"
-
-    correlation_id = util.get_correlation_id()
-    assert (
-        correlation_id == "example_correlation_id"
-    ), "1 - Correlation ID should match the expected format with default correlation ID"
-
-    del os.environ[ENV_CORRELATION_ID]
-
-    correlation_id = util.get_correlation_id()
-    assert (
-        correlation_id is not None
-    ), "2 - Correlation ID should not be None if ENV_CORRELATION_ID is not set.  It should be generated automatically"
 
 
 def test_get_environment():

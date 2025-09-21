@@ -58,9 +58,7 @@ def mock_session_credentials(mock_credentials):
     mock_frozen_credentials.token = mock_credentials["SessionToken"]
 
     mock_session_credentials = MagicMock()
-    mock_session_credentials.get_frozen_credentials.return_value = (
-        mock_frozen_credentials
-    )
+    mock_session_credentials.get_frozen_credentials.return_value = mock_frozen_credentials
 
     return mock_session_credentials
 
@@ -93,6 +91,11 @@ def prn():
 
 def test_get_identity(mock_session):
 
+    return_value = {
+        "Arn": "arn:aws:iam::123456789012:user/jbarwick",
+        "UserId": "AIDAJDPLRKLG7UEXAMPLE",
+        "Account": "123456789012",
+    }
     identity = aws.get_identity()
 
     assert identity is not None
@@ -125,17 +128,9 @@ def test_get_session(mock_session):
     assert session is not None
     assert mock_session.called
 
-    assert (
-        session.get_credentials().get_frozen_credentials().access_key
-        == "mock_access_key"
-    )
-    assert (
-        session.get_credentials().get_frozen_credentials().secret_key
-        == "mock_secret_key"
-    )
-    assert (
-        session.get_credentials().get_frozen_credentials().token == "mock_session_token"
-    )
+    assert session.get_credentials().get_frozen_credentials().access_key == "mock_access_key"
+    assert session.get_credentials().get_frozen_credentials().secret_key == "mock_secret_key"
+    assert session.get_credentials().get_frozen_credentials().token == "mock_session_token"
 
 
 def get_invoke_response():
@@ -204,9 +199,10 @@ def test_get_session_credentials_client_error(mock_session):
 def test_assume_role(mock_session):
 
     role = "arn:aws:iam::123456789012:role/mock-role"
-    credentials = aws.assume_role(role=role)
+    credentials = aws.assume_role(role_arn=role)
 
     assert credentials is not None, "Credentials are None"
+    assert credentials["AccessKeyId"] == "mock_access_key"
 
     mock_response = {
         "Credentials": {
@@ -227,7 +223,7 @@ def test_assume_role(mock_session):
 
     # Replicate the call so that we can determine if a new role credentials
     # are returned or if they are pulled from the cache
-    creds2 = aws.assume_role(role=role)
+    creds2 = aws.assume_role(role_arn=role)
 
     assert creds2 is not None, "Credentials are None.  Should have come from store"
 
@@ -298,51 +294,6 @@ def test_get_client__config():
     assert config.retries == RETRY_CONFIG
 
 
-@pytest.mark.skip(reason="Not implemented yet")
-def test_login_to_aws(mock_session, mock_credentials):
-
-    login_credentials = {
-        "username": "username",
-        "password": "password",
-        "mfa_code": None,
-        "session": None,
-    }
-
-    role_arn = "arn:aws:iam::123456789012:role/mock-role"
-
-    result = aws.login_to_aws(login_credentials, role=role_arn)
-
-    assert result is not None
-
-    assert "AccessKeyId" in result and result["AccessKeyId"] == "role_mock_access_key"
-    assert (
-        "SecretAccessKey" in result
-        and result["SecretAccessKey"] == "role_mock_secret_key"
-    )
-    assert (
-        "SessionToken" in result and result["SessionToken"] == "role_mock_session_token"
-    )
-
-
-@pytest.mark.skip(reason="Not implemented yet")
-def test_login_to_aws_client_error(mock_session, mock_client):
-
-    session = aws.get_session()
-    mock_client.assume_role.side_effect = ClientError(
-        error_response={"Error": {"Code": "Test", "Message": "fail"}},
-        operation_name="AssumeRole",
-    )
-    session.return_value.client.return_value = mock_client
-
-    auth = {
-        "AccessKeyId": "mock_access_key",
-        "SecretAccessKey": "mock_secret_key",
-        "SessionToken": "mock_session_token",
-    }
-    result = aws.login_to_aws(auth, role="abc")
-    assert result is None
-
-
 def test_get_client(mock_session):
 
     client = aws.get_client("s3", region="us-west-2")
@@ -366,13 +317,3 @@ def test_transform_tag_hash():
     result = aws.transform_tag_hash(keyvalues)
     expected = [{"Key": "Key1", "Value": "Value1"}, {"Key": "Key2", "Value": "Value2"}]
     assert result == expected
-
-
-def test_transform_stack_parameter_dict():
-
-    assert aws.transform_stack_parameter_dict({}) == {}
-    assert aws.transform_stack_parameter_dict({"A": "B"}) == {"A": "B"}
-
-
-if __name__ == "__main__":
-    pytest.main()

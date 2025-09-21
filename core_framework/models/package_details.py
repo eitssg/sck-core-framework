@@ -111,7 +111,7 @@ class PackageDetails(FileDetails):
         ...     key="packages/ecommerce/web/main/1.0.0/package.zip",
         ...     deployspec=deploy_spec
         ... )
-        >>> print(len(package.deployspec.actions))
+        >>> print(len(package.actions))
         1
 
     Storage Patterns:
@@ -300,7 +300,7 @@ class PackageDetails(FileDetails):
             ...     build="1.0.0",
             ...     deployspec=actions
             ... )
-            >>> print(len(package.deployspec.actions))
+            >>> print(len(package.actions))
             1
 
             >>> # Command line integration

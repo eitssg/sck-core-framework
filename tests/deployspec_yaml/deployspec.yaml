@@ -1,20 +1,20 @@
 - label: test1-create-user
-  type: aws.create_user
-  params:
+  kind: aws.create_user
+  spec:
     user_name: bob
     account: 123456789012
     region: us-east-1
   depends_on:
 - label: test1-delete-user
-  type: aws.delete_user
-  params:
+  kind: aws.delete_user
+  spec:
     user_name: bob
     account: 123456789012
     region: us-east-1
   depends_on: test1-create-user
 - label: test1-create-stack
-  type: create_stack
-  params:
+  kind: create_stack
+  spec:
     stack_name: my-first-stack
     template: my-frist-stack.yaml
     parameters:
@@ -25,8 +25,8 @@
       - us-east-1
   depends_on:
 - label: test1-delete-stack
-  type: delete_stack
-  params:
+  kind: delete_stack
+  spec:
     stack_name: my-first-stack
     template: my-frist-stack.yaml
     parameters:
@@ -37,8 +37,8 @@
       - us-east-1
   depends_on: test1-create-stack
 - label: test1-create-change-set
-  type: create_change_set
-  params:
+  kind: create_change_set
+  spec:
     stack_name: my-first-stack
     template: my-frist-stack.yaml
     parameters:
@@ -49,8 +49,8 @@
       - us-east-1
   depends_on:
 - label: test1-delete-change-set
-  type: delete_change_set
-  params:
+  kind: delete_change_set
+  spec:
     template: my-frist-stack.yaml
     stack_name: my-first-stack
     parameters:

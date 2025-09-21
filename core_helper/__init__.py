@@ -115,10 +115,7 @@ from .aws import (
     get_identity,
     get_role_credentials,
     clear_role_credentials,
-    # Authentication functions
-    login_to_aws,
     # Data transformation utilities
-    transform_stack_parameter_dict,
     transform_stack_parameter_hash,
     transform_tag_hash,
     # Client factory functions
@@ -178,10 +175,7 @@ __all__ = [
     "get_identity",
     "get_role_credentials",
     "clear_role_credentials",
-    # Authentication
-    "login_to_aws",
     # Data Transformation
-    "transform_stack_parameter_dict",
     "transform_stack_parameter_hash",
     "transform_tag_hash",
     # Client and Resource Factories
@@ -239,14 +233,8 @@ AWS_SESSION_FUNCTIONS = [
     "clear_role_credentials",
 ]
 
-#: Authentication and login functions
-AUTHENTICATION_FUNCTIONS = [
-    "login_to_aws",
-]
-
 #: Data transformation and formatting utilities
 DATA_TRANSFORMATION_FUNCTIONS = [
-    "transform_stack_parameter_dict",
     "transform_stack_parameter_hash",
     "transform_tag_hash",
 ]
@@ -316,7 +304,6 @@ def get_helper_categories() -> dict[str, list[str]]:
     """
     return {
         "aws_sessions": AWS_SESSION_FUNCTIONS,
-        "authentication": AUTHENTICATION_FUNCTIONS,
         "data_transformation": DATA_TRANSFORMATION_FUNCTIONS,
         "client_factories": CLIENT_FACTORY_FUNCTIONS,
         "service_operations": SERVICE_OPERATION_FUNCTIONS,
@@ -357,7 +344,6 @@ def get_helper_info() -> dict[str, any]:
                 ],
                 "function_count": len(
                     AWS_SESSION_FUNCTIONS
-                    + AUTHENTICATION_FUNCTIONS
                     + DATA_TRANSFORMATION_FUNCTIONS
                     + CLIENT_FACTORY_FUNCTIONS
                     + SERVICE_OPERATION_FUNCTIONS

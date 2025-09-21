@@ -183,14 +183,14 @@ def test_deploy_spec_model(deployspec_sample):
 
     assert deploy_spec.actions[5].label == "test1-delete-change-set"
 
-    data = deploy_spec.model_dump(by_alias=True)
+    data = deploy_spec.model_dump()
 
     assert "Actions" in data, "Expected 'actions' to be present in model_dump"
     assert isinstance(data["Actions"], list), "Expected 'Actions' to be a list"
     assert len(data["Actions"]) == 6, "Expected 6 actions in the model_dump"
 
     # Ensure pascal case in the cascaded dump
-    assert "Name" in data["Actions"][0], "Expected 'Name' to be present in action"
+    assert "ApiVersion" in data["Actions"][0], "Expected 'Name' to be present in action"
 
 
 def test_action_resource_model_dump(deployspec_sample):
@@ -199,23 +199,23 @@ def test_action_resource_model_dump(deployspec_sample):
 
     data = action_resource.model_dump(by_alias=True)
 
-    assert "Name" in data, "Expected 'Name' to be present in model_dump"
+    assert "Metadata" in data, "Expected 'Name' to be present in model_dump"
     assert "Kind" in data, "Expected 'Kind' to be present in model_dump"
     assert "Spec" in data, "Expected 'Spec' to be present in model_dump"
     assert "Scope" in data, "Expected 'Scope' to be present in model_dump"
 
-    assert data["Name"] == "test1-create-user"
+    assert data["Metadata"]["Name"] == "test1-create-user"
 
     assert "Action" not in data, "Expected 'action' to be excluded from model_dump"
 
     data = action_resource.model_dump(by_alias=False)
 
-    assert "name" in data, "Expected 'name' to be present in model_dump"
+    assert "metadata" in data, "Expected 'name' to be present in model_dump"
     assert "kind" in data, "Expected 'kind' to be present in model_dump"
-    assert "params" in data, "Expected 'params' to be present in model_dump"
+    assert "spec" in data, "Expected 'params' to be present in model_dump"
     assert "scope" in data, "Expected 'scope' to be present in model_dump"
 
-    assert data["name"] == "test1-create-user"
+    assert data["metadata"]["name"] == "test1-create-user"
 
 
 def test_action_resource_validation():

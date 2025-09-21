@@ -60,7 +60,7 @@ import core_framework as util
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 """:const DEFAULT_DATE_FORMAT: The default format for dates in log messages."""
 
-DEFAULT_LOG_FORMAT = "[%(asctime)s] [%(correlation_id)s] [%(name)s] [%(levelname)s] %(message)s"
+DEFAULT_LOG_FORMAT = "%(asctime)s [%(correlation_id)s] [%(name)s] [%(levelname)s] %(message)s"
 """:const DEFAULT_LOG_FORMAT: The default format for log messages."""
 
 # Custom log levels not supported by the logging module
