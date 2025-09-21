@@ -90,9 +90,7 @@ def test_action_details_repr_and_eq():
 
     os.environ["TEMP"] = "/tmp"
 
-    assert (
-        data_path == "https://s3-us-east-1.amazonaws.com"
-    ), f"Expected 'https://s3-us-east-1.amazonaws.com', got {data_path}"
+    assert data_path == "https://s3-us-east-1.amazonaws.com", f"Expected 'https://s3-us-east-1.amazonaws.com', got {data_path}"
 
     temp_dir = ad2.temp_dir
 

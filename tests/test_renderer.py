@@ -55,9 +55,7 @@ def contexts():
 def filter_template():
     try:
         # Get the filters template file and return its content
-        fn = os.path.join(
-            os.path.dirname(__file__), "templates", "test_filters.yaml.j2"
-        )
+        fn = os.path.join(os.path.dirname(__file__), "templates", "test_filters.yaml.j2")
         with open(fn, "r") as f:
             return f.read()
     except FileNotFoundError:

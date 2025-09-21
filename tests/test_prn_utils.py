@@ -8,10 +8,7 @@ def test_get_prn_scope():
     assert prn.get_prn_scope("prn:portfolio:app") == prn.SCOPE_APP
     assert prn.get_prn_scope("prn:portfolio:app:branch") == prn.SCOPE_BRANCH
     assert prn.get_prn_scope("prn:portfolio:app:branch:build") == prn.SCOPE_BUILD
-    assert (
-        prn.get_prn_scope("prn:portfolio:app:branch:build:component")
-        == prn.SCOPE_COMPONENT
-    )
+    assert prn.get_prn_scope("prn:portfolio:app:branch:build:component") == prn.SCOPE_COMPONENT
     assert prn.get_prn_scope("prn:portfolio:app:branch:build:component:extra") is None
 
 
@@ -99,13 +96,8 @@ def test_generate_prn():
     assert prn.generate_prn(prn.SCOPE_PORTFOLIO, request) == "prn:portfolio"
     assert prn.generate_prn(prn.SCOPE_APP, request) == "prn:portfolio:app"
     assert prn.generate_prn(prn.SCOPE_BRANCH, request) == "prn:portfolio:app:branch"
-    assert (
-        prn.generate_prn(prn.SCOPE_BUILD, request) == "prn:portfolio:app:branch:build"
-    )
-    assert (
-        prn.generate_prn(prn.SCOPE_COMPONENT, request)
-        == "prn:portfolio:app:branch:build:component"
-    )
+    assert prn.generate_prn(prn.SCOPE_BUILD, request) == "prn:portfolio:app:branch:build"
+    assert prn.generate_prn(prn.SCOPE_COMPONENT, request) == "prn:portfolio:app:branch:build:component"
     assert prn.generate_prn("invalid", request) is None
 
 
@@ -181,19 +173,11 @@ def test_generate_build_prn():
 
 def test_generate_component_prn():
     request = {"prn": "prn:portfolio:app:branch:build:component"}
-    assert (
-        prn.generate_component_prn(request)
-        == "prn:portfolio:app:branch:build:component"
-    )
+    assert prn.generate_component_prn(request) == "prn:portfolio:app:branch:build:component"
     request = {"component_prn": "prn:portfolio:app:branch:build:component"}
-    assert (
-        prn.generate_component_prn(request)
-        == "prn:portfolio:app:branch:build:component"
-    )
+    assert prn.generate_component_prn(request) == "prn:portfolio:app:branch:build:component"
     request = {"build_prn": "prn:portfolio:app:branch:build", "name": "component"}
-    assert prn.generate_component_prn(request).startswith(
-        "prn:portfolio:app:branch:build:"
-    )
+    assert prn.generate_component_prn(request).startswith("prn:portfolio:app:branch:build:")
 
 
 def test_validate_item_prn():
@@ -222,9 +206,7 @@ def test_validate_build_prn():
 
 
 def test_validate_component_prn():
-    assert (
-        prn.validate_component_prn("prn:portfolio:app:branch:build:component") is True
-    )
+    assert prn.validate_component_prn("prn:portfolio:app:branch:build:component") is True
     assert prn.validate_component_prn("invalid") is False
 
 
@@ -234,10 +216,7 @@ def test_get_prn_scope_valid():
     assert prn.get_prn_scope("prn:portfolio:app") == prn.SCOPE_APP
     assert prn.get_prn_scope("prn:portfolio:app:branch") == prn.SCOPE_BRANCH
     assert prn.get_prn_scope("prn:portfolio:app:branch:build") == prn.SCOPE_BUILD
-    assert (
-        prn.get_prn_scope("prn:portfolio:app:branch:build:component")
-        == prn.SCOPE_COMPONENT
-    )
+    assert prn.get_prn_scope("prn:portfolio:app:branch:build:component") == prn.SCOPE_COMPONENT
 
 
 def test_get_prn_scope_invalid():

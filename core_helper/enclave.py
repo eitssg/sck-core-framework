@@ -76,9 +76,7 @@ class SecureEnclave:
             if key in self.storage:
                 del self.storage[key]
 
-    def store_session(
-        self, key: str, session: boto3.Session, ttl: int = MAX_SESSION_TIME
-    ) -> str:
+    def store_session(self, key: str, session: boto3.Session, ttl: int = MAX_SESSION_TIME) -> str:
         """Store the boto3 session in the storage with the key provided
 
         This dies not seialize the entire object.  It does serialize the region_name, profile_name, access_key, secret_key, and token
@@ -162,9 +160,7 @@ class SecureEnclave:
         """
         session_data = self.retrieve(key)
 
-        return (
-            self.__create_session(pickle.loads(session_data)) if session_data else None
-        )
+        return self.__create_session(pickle.loads(session_data)) if session_data else None
 
     def store_data(self, key: str, data: dict, ttl: int = MAX_SESSION_TIME) -> str:
         """

@@ -284,9 +284,7 @@ def __represent_none(dumper, data):
         This representation choice makes YAML output cleaner and more readable
         while maintaining round-trip compatibility.
     """
-    return dumper.represent_scalar(
-        "tag:yaml.org,2002:null", ""
-    )  # Empty instead of 'null'
+    return dumper.represent_scalar("tag:yaml.org,2002:null", "")  # Empty instead of 'null'
 
 
 class CfnYamlConstructor(RoundTripConstructor):
@@ -411,9 +409,7 @@ class CfnYamlConstructor(RoundTripConstructor):
             load_yaml_file) to enable proper relative path resolution.
         """
         if not self.root_path:
-            raise ConstructorError(
-                f"Cannot use !Include without a valid base path. File: {node.value}"
-            )
+            raise ConstructorError(f"Cannot use !Include without a valid base path. File: {node.value}")
 
         # Resolve the path relative to the file being parsed
         file_path = self.root_path / self.construct_scalar(node)
