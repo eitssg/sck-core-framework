@@ -19,31 +19,32 @@ Common Use Cases:
     - Template composition using !Include directives
     - Safe YAML serialization with type preservation
 
-Examples:
-    Basic YAML operations:
+Examples::
 
-    >>> # Load a CloudFormation template
-    >>> template = load_yaml_file("template.yaml")
-    >>> print(template["Resources"]["MyBucket"]["Type"])
-    'AWS::S3::Bucket'
+    # Returns: Basic YAML operations:
 
-    >>> # Parse YAML with AWS tags
-    >>> yaml_content = '''
-    ... BucketName: !Ref MyBucketName
-    ... Region: !GetAtt MyBucket.Region
-    ... '''
-    >>> data = from_yaml(yaml_content)
-    >>> print(data["BucketName"])
-    {'Ref': 'MyBucketName'}
+    # Load a CloudFormation template
+    template = load_yaml_file("template.yaml")
+    print(template["Resources"]["MyBucket"]["Type"])
+    # Returns: 'AWS::S3::Bucket'
 
-    Template composition with !Include:
+    # Parse YAML with AWS tags
+    yaml_content = '''
+    BucketName: !Ref MyBucketName
+    Region: !GetAtt MyBucket.Region
+    '''
+    data = from_yaml(yaml_content)
+    print(data["BucketName"])
+    # Returns: {'Ref': 'MyBucketName'}
 
-    >>> # main.yaml
-    >>> yaml_content = '''
-    ... Resources: !Include resources.yaml
-    ... Parameters: !Include parameters.yaml
-    ... '''
-    >>> template = from_yaml(yaml_content)  # Automatically resolves includes
+    # Returns: Template composition with !Include:
+
+    # main.yaml
+    yaml_content = '''
+    Resources: !Include resources.yaml
+    Parameters: !Include parameters.yaml
+    '''
+    template = from_yaml(yaml_content)  # Automatically resolves includes
 
 Functions:
     create_yaml_parser: Create a pre-configured YAML parser instance
@@ -113,12 +114,13 @@ def __iso8601_constructor(loader, node):
         datetime object if the string can be parsed as ISO 8601, otherwise
         the original string value.
 
-    Examples:
-        >>> # In YAML: date_field: "2023-12-25T10:30:00"
-        >>> # Parsed as: datetime(2023, 12, 25, 10, 30, 0)
+    Examples::
 
-        >>> # In YAML: text_field: "not a date"
-        >>> # Parsed as: "not a date" (unchanged)
+        # In YAML: date_field: "2023-12-25T10:30:00"
+        # Parsed as: datetime(2023, 12, 25, 10, 30, 0)
+
+        # In YAML: text_field: "not a date"
+        # Parsed as: "not a date" (unchanged)
 
     Notes:
         This constructor is automatically applied to all string values during
@@ -146,12 +148,13 @@ def __iso8601_representer(dumper, data):
     Returns:
         YAML scalar node containing the ISO 8601 formatted string.
 
-    Examples:
-        >>> # Python: datetime(2023, 12, 25, 10, 30, 0)
-        >>> # YAML: "2023-12-25T10:30:00"
+    Examples::
 
-        >>> # Python: date(2023, 12, 25)
-        >>> # YAML: "2023-12-25"
+        # Python: datetime(2023, 12, 25, 10, 30, 0)
+        # YAML: "2023-12-25T10:30:00"
+
+        # Python: date(2023, 12, 25)
+        # YAML: "2023-12-25"
 
     Notes:
         Ensures consistent date formatting across all YAML output and
@@ -174,15 +177,16 @@ def __represent_decimal(dumper, data):
         YAML scalar node with 'int' tag if the decimal is a whole number,
         'float' tag otherwise.
 
-    Examples:
-        >>> # Python: Decimal('42')
-        >>> # YAML: 42 (as int, no quotes)
+    Examples::
 
-        >>> # Python: Decimal('3.14159')
-        >>> # YAML: 3.14159 (as float, no quotes)
+        # Python: Decimal('42')
+        # YAML: 42 (as int, no quotes)
 
-        >>> # Python: Decimal('1000.00')
-        >>> # YAML: 1000 (as int, trailing zeros removed)
+        # Python: Decimal('3.14159')
+        # YAML: 3.14159 (as float, no quotes)
+
+        # Python: Decimal('1000.00')
+        # YAML: 1000 (as int, trailing zeros removed)
 
     Notes:
         Prevents loss of precision that could occur with float conversion
@@ -209,26 +213,27 @@ def __represent_smart_str(dumper, data):
     Returns:
         YAML scalar node with appropriate style (plain, quoted, or literal block).
 
-    Examples:
-        >>> # Multiline strings use literal block style
-        >>> multiline = "Line 1\\nLine 2\\nLine 3"
-        >>> # YAML output:
-        >>> # |
-        >>> #   Line 1
-        >>> #   Line 2
-        >>> #   Line 3
+    Examples::
 
-        >>> # Ambiguous strings get quoted
-        >>> bool_like = "true"
-        >>> # YAML: 'true' (quoted to prevent boolean interpretation)
+        # Multiline strings use literal block style
+        multiline = "Line 1\\nLine 2\\nLine 3"
+        # YAML output:
+        # |
+        #   Line 1
+        #   Line 2
+        #   Line 3
 
-        >>> # Numeric strings get quoted
-        >>> number_like = "123"
-        >>> # YAML: '123' (quoted to prevent numeric interpretation)
+        # Ambiguous strings get quoted
+        bool_like = "true"
+        # YAML: 'true' (quoted to prevent boolean interpretation)
 
-        >>> # Plain strings remain unquoted
-        >>> simple = "hello world"
-        >>> # YAML: hello world (no quotes needed)
+        # Numeric strings get quoted
+        number_like = "123"
+        # YAML: '123' (quoted to prevent numeric interpretation)
+
+        # Plain strings remain unquoted
+        simple = "hello world"
+        # YAML: hello world (no quotes needed)
 
     Ambiguous Strings:
         The following strings are automatically quoted to prevent misinterpretation:
@@ -276,9 +281,10 @@ def __represent_none(dumper, data):
     Returns:
         YAML scalar node with empty string value.
 
-    Examples:
-        >>> # Python: {"key": None}
-        >>> # YAML: key: (empty, not 'null')
+    Examples::
+
+        # Python: {"key": None}
+        # YAML: key: (empty, not 'null')
 
     Notes:
         This representation choice makes YAML output cleaner and more readable
@@ -297,19 +303,20 @@ class CfnYamlConstructor(RoundTripConstructor):
     Attributes:
         root_path: Base path for resolving relative !Include file paths.
 
-    Examples:
-        CloudFormation tag construction:
+    Examples::
 
-        >>> # YAML: !Ref MyParameter
-        >>> # Constructed as: {"Ref": "MyParameter"}
+        # Returns: CloudFormation tag construction:
 
-        >>> # YAML: !GetAtt MyResource.Attribute
-        >>> # Constructed as: {"Fn::GetAtt": "MyResource.Attribute"}
+        # YAML: !Ref MyParameter
+        # Constructed as: {"Ref": "MyParameter"}
 
-        File inclusion:
+        # YAML: !GetAtt MyResource.Attribute
+        # Constructed as: {"Fn::GetAtt": "MyResource.Attribute"}
 
-        >>> # YAML: Resources: !Include resources.yaml
-        >>> # Loads and inserts contents of resources.yaml file
+        # Returns: File inclusion:
+
+        # YAML: Resources: !Include resources.yaml
+        # Loads and inserts contents of resources.yaml file
 
     Supported AWS Tags:
         All standard CloudFormation intrinsic functions are supported:
@@ -351,10 +358,11 @@ class CfnYamlConstructor(RoundTripConstructor):
         Returns:
             Dictionary with CloudFormation function syntax.
 
-        Examples:
-            >>> # !Ref MyParameter -> {"Ref": "MyParameter"}
-            >>> # !GetAtt MyResource.Property -> {"Fn::GetAtt": "MyResource.Property"}
-            >>> # !Join [",", ["a", "b"]] -> {"Fn::Join": [",", ["a", "b"]]}
+        Examples::
+
+            # !Ref MyParameter -> {"Ref": "MyParameter"}
+            # !GetAtt MyResource.Property -> {"Fn::GetAtt": "MyResource.Property"}
+            # !Join [",", ["a", "b"]] -> {"Fn::Join": [",", ["a", "b"]]}
 
         Notes:
             - "Ref" is treated specially and doesn't get the "Fn::" prefix
@@ -390,13 +398,14 @@ class CfnYamlConstructor(RoundTripConstructor):
             ConstructorError: If no root path is set, file doesn't exist,
                             or file cannot be parsed.
 
-        Examples:
-            >>> # In main.yaml:
-            >>> # Resources: !Include resources.yaml
-            >>> # Parameters: !Include config/parameters.yaml
+        Examples::
 
-            >>> # Loads resources.yaml and parameters.yaml, inserting their
-            >>> # contents into the main template structure
+            # In main.yaml:
+            # Resources: !Include resources.yaml
+            # Parameters: !Include config/parameters.yaml
+
+            # Loads resources.yaml and parameters.yaml, inserting their
+            # contents into the main template structure
 
         File Resolution:
             - Paths are resolved relative to the including file's directory
@@ -442,14 +451,15 @@ def create_yaml_parser() -> YAML:
         - **Unicode support**: Full UTF-8 encoding with unicode characters
         - **Clean formatting**: Consistent indentation and block-style output
 
-    Examples:
-        >>> parser = create_yaml_parser()
-        >>>
-        >>> # Parse CloudFormation template
-        >>> template = parser.load(open("template.yaml"))
-        >>>
-        >>> # Generate clean YAML output
-        >>> output = parser.dump(data, stream)
+    Examples::
+
+        parser = create_yaml_parser()
+        # Returns: >>>
+        # Parse CloudFormation template
+        template = parser.load(open("template.yaml"))
+        # Returns: >>>
+        # Generate clean YAML output
+        output = parser.dump(data, stream)
 
     Parser Settings:
         - **Type**: Round-trip ('rt') for comment/formatting preservation
@@ -528,20 +538,21 @@ def load_yaml_file(file_path: str, yaml_parser: YAML = None) -> Any:
         ConstructorError: If included files are not found or cannot be parsed.
         ValueError: If the YAML content is invalid.
 
-    Examples:
-        >>> # Load a CloudFormation template with includes
-        >>> template = load_yaml_file("infrastructure/main.yaml")
-        >>>
-        >>> # Load with custom parser
-        >>> parser = create_yaml_parser()
-        >>> config = load_yaml_file("config.yaml", parser)
+    Examples::
 
-        >>> # Template composition example
-        >>> # main.yaml contains:
-        >>> # Resources: !Include resources/ec2.yaml
-        >>> # Parameters: !Include config/parameters.yaml
-        >>> template = load_yaml_file("main.yaml")
-        >>> # All includes are automatically resolved
+        # Load a CloudFormation template with includes
+        template = load_yaml_file("infrastructure/main.yaml")
+        # Returns: >>>
+        # Load with custom parser
+        parser = create_yaml_parser()
+        config = load_yaml_file("config.yaml", parser)
+
+        # Template composition example
+        # main.yaml contains:
+        # Resources: !Include resources/ec2.yaml
+        # Parameters: !Include config/parameters.yaml
+        template = load_yaml_file("main.yaml")
+        # All includes are automatically resolved
 
     File Resolution:
         - Converts file_path to pathlib.Path for robust path handling
@@ -589,21 +600,22 @@ def read_yaml(stream: IO, yaml_parser: YAML = None) -> Any:
         ValueError: If the YAML content is invalid or cannot be parsed.
         ConstructorError: If custom tags cannot be constructed properly.
 
-    Examples:
-        >>> # Read from file handle
-        >>> with open("config.yaml", "r") as f:
-        ...     config = read_yaml(f)
+    Examples::
 
-        >>> # Read from StringIO
-        >>> import io
-        >>> yaml_content = "key: value\\nlist: [1, 2, 3]"
-        >>> stream = io.StringIO(yaml_content)
-        >>> data = read_yaml(stream)
+        # Read from file handle
+        with open("config.yaml", "r") as f:
+        config = read_yaml(f)
 
-        >>> # Read with custom parser
-        >>> parser = create_yaml_parser()
-        >>> with open("template.yaml", "r") as f:
-        ...     template = read_yaml(f, parser)
+        # Read from StringIO
+        import io
+        yaml_content = "key: value\\nlist: [1, 2, 3]"
+        stream = io.StringIO(yaml_content)
+        data = read_yaml(stream)
+
+        # Read with custom parser
+        parser = create_yaml_parser()
+        with open("template.yaml", "r") as f:
+        template = read_yaml(f, parser)
 
     Stream Requirements:
         - Must be readable text stream (not binary)
@@ -643,32 +655,33 @@ def from_yaml(yaml_data: str, yaml_parser: YAML = None) -> Any:
         ValueError: If the YAML string is invalid or cannot be parsed.
         ConstructorError: If custom tags cannot be constructed properly.
 
-    Examples:
-        >>> # Simple YAML parsing
-        >>> yaml_str = '''
-        ... name: MyApplication
-        ... version: 1.0.0
-        ... enabled: true
-        ... '''
-        >>> config = from_yaml(yaml_str)
-        >>> print(config["name"])
-        'MyApplication'
+    Examples::
 
-        >>> # CloudFormation with intrinsic functions
-        >>> cf_yaml = '''
-        ... Resources:
-        ...   MyBucket:
-        ...     Type: AWS::S3::Bucket
-        ...     Properties:
-        ...       BucketName: !Ref BucketNameParameter
-        ... '''
-        >>> template = from_yaml(cf_yaml)
-        >>> print(template["Resources"]["MyBucket"]["Properties"]["BucketName"])
-        {'Ref': 'BucketNameParameter'}
+        # Simple YAML parsing
+        yaml_str = '''
+        name: MyApplication
+        version: 1.0.0
+        enabled: true
+        '''
+        config = from_yaml(yaml_str)
+        print(config["name"])
+        # Returns: 'MyApplication'
 
-        >>> # With custom parser configuration
-        >>> parser = create_yaml_parser()
-        >>> data = from_yaml(yaml_str, parser)
+        # CloudFormation with intrinsic functions
+        cf_yaml = '''
+        Resources:
+        MyBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+        BucketName: !Ref BucketNameParameter
+        '''
+        template = from_yaml(cf_yaml)
+        print(template["Resources"]["MyBucket"]["Properties"]["BucketName"])
+        # Returns: {'Ref': 'BucketNameParameter'}
+
+        # With custom parser configuration
+        parser = create_yaml_parser()
+        data = from_yaml(yaml_str, parser)
 
     Supported Features:
         - CloudFormation intrinsic functions (!Ref, !GetAtt, etc.)
@@ -709,22 +722,23 @@ def write_yaml(data: Any, stream: IO, yaml_parser: YAML = None) -> None:
         ValueError: If the data cannot be serialized to YAML.
         IOError: If writing to the stream fails.
 
-    Examples:
-        >>> # Write to file
-        >>> data = {"name": "app", "config": {"debug": True}}
-        >>> with open("output.yaml", "w") as f:
-        ...     write_yaml(data, f)
+    Examples::
 
-        >>> # Write to StringIO
-        >>> import io
-        >>> stream = io.StringIO()
-        >>> write_yaml(data, stream)
-        >>> yaml_content = stream.getvalue()
+        # Write to file
+        data = {"name": "app", "config": {"debug": True}}
+        with open("output.yaml", "w") as f:
+        write_yaml(data, f)
 
-        >>> # Write list with root indent stripping
-        >>> items = [{"name": "item1"}, {"name": "item2"}]
-        >>> with open("list.yaml", "w") as f:
-        ...     write_yaml(items, f)
+        # Write to StringIO
+        import io
+        stream = io.StringIO()
+        write_yaml(data, stream)
+        yaml_content = stream.getvalue()
+
+        # Write list with root indent stripping
+        items = [{"name": "item1"}, {"name": "item2"}]
+        with open("list.yaml", "w") as f:
+        write_yaml(items, f)
 
     List Formatting:
         When data is a list, applies root indent stripping to produce cleaner
@@ -773,28 +787,29 @@ def strip_root_indent(stream: str, indent_size: int = 2) -> str:
     Returns:
         Processed YAML string with root indentation removed.
 
-    Examples:
-        >>> # Input with root indentation
-        >>> indented = '''  - name: item1
-        ...   value: test1
-        ... - name: item2
-        ...   value: test2'''
-        >>>
-        >>> # Remove 2-space root indent
-        >>> clean = strip_root_indent(indented, 2)
-        >>> print(clean)
-        - name: item1
-          value: test1
-        - name: item2
-          value: test2
+    Examples::
 
-        >>> # Custom indent size
-        >>> four_space = "    key: value\\n    list:\\n      - item"
-        >>> clean = strip_root_indent(four_space, 4)
-        >>> print(clean)
-        key: value
-        list:
-          - item
+        # Input with root indentation
+        indented = '''  - name: item1
+        value: test1
+        - name: item2
+        value: test2'''
+        # Returns: >>>
+        # Remove 2-space root indent
+        clean = strip_root_indent(indented, 2)
+        print(clean)
+        # Returns: - name: item1
+        # Returns: value: test1
+        # Returns: - name: item2
+        # Returns: value: test2
+
+        # Custom indent size
+        four_space = "    key: value\\n    list:\\n      - item"
+        clean = strip_root_indent(four_space, 4)
+        print(clean)
+        # Returns: key: value
+        # Returns: list:
+        # Returns: - item
 
     Processing Logic:
         - Splits input into individual lines preserving line endings
@@ -839,49 +854,50 @@ def to_yaml(data: Any, yaml_parser: YAML = None) -> str:
     Raises:
         ValueError: If the data cannot be serialized to YAML.
 
-    Examples:
-        >>> # Convert dictionary to YAML
-        >>> data = {
-        ...     "name": "MyApp",
-        ...     "version": "1.0.0",
-        ...     "config": {
-        ...         "debug": True,
-        ...         "timeout": 30
-        ...     }
-        ... }
-        >>> yaml_str = to_yaml(data)
-        >>> print(yaml_str)
-        name: MyApp
-        version: 1.0.0
-        config:
-          debug: true
-          timeout: 30
+    Examples::
 
-        >>> # Convert list with clean formatting
-        >>> items = [
-        ...     {"name": "item1", "value": 100},
-        ...     {"name": "item2", "value": 200}
-        ... ]
-        >>> yaml_str = to_yaml(items)
-        >>> print(yaml_str)
-        - name: item1
-          value: 100
-        - name: item2
-          value: 200
+        # Convert dictionary to YAML
+        data = {
+        "name": "MyApp",
+        "version": "1.0.0",
+        "config": {
+        "debug": True,
+        "timeout": 30
+        }
+        }
+        yaml_str = to_yaml(data)
+        print(yaml_str)
+        # Returns: name: MyApp
+        # Returns: version: 1.0.0
+        # Returns: config:
+        # Returns: debug: true
+        # Returns: timeout: 30
 
-        >>> # CloudFormation template generation
-        >>> template = {
-        ...     "Resources": {
-        ...         "MyBucket": {
-        ...             "Type": "AWS::S3::Bucket",
-        ...             "Properties": {
-        ...                 "BucketName": {"Ref": "BucketName"}
-        ...             }
-        ...         }
-        ...     }
-        ... }
-        >>> yaml_str = to_yaml(template)
-        >>> # Produces clean CloudFormation YAML
+        # Convert list with clean formatting
+        items = [
+        {"name": "item1", "value": 100},
+        {"name": "item2", "value": 200}
+        ]
+        yaml_str = to_yaml(items)
+        print(yaml_str)
+        # Returns: - name: item1
+        # Returns: value: 100
+        # Returns: - name: item2
+        # Returns: value: 200
+
+        # CloudFormation template generation
+        template = {
+        "Resources": {
+        "MyBucket": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+        "BucketName": {"Ref": "BucketName"}
+        }
+        }
+        }
+        }
+        yaml_str = to_yaml(template)
+        # Produces clean CloudFormation YAML
 
     Output Features:
         - Clean, readable formatting with proper indentation

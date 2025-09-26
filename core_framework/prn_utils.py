@@ -84,13 +84,14 @@ def get_prn_scope(prn: str) -> str | None:
     Returns:
         The scope of the PRN or None if the PRN is invalid.
 
-    Examples:
-        >>> get_prn_scope("prn:ecommerce")
-        'portfolio'
-        >>> get_prn_scope("prn:ecommerce:web:main")
-        'branch'
-        >>> get_prn_scope("invalid")
-        'client'
+    Examples::
+
+        get_prn_scope("prn:ecommerce")
+        # Returns: 'portfolio'
+        get_prn_scope("prn:ecommerce:web:main")
+        # Returns: 'branch'
+        get_prn_scope("invalid")
+        # Returns: 'client'
     """
     # Define the mapping of colon counts to scopes
     scope_mapping = {
@@ -123,13 +124,14 @@ def extract_prn(obj: Any) -> str:
     Returns:
         The extracted PRN string, or empty string if not found.
 
-    Examples:
-        >>> extract_prn({"prn": "prn:ecommerce:web"})
-        'prn:ecommerce:web'
-        >>> extract_prn("prn:ecommerce:web")
-        'prn:ecommerce:web'
-        >>> extract_prn({})
-        ''
+    Examples::
+
+        extract_prn({"prn": "prn:ecommerce:web"})
+        # Returns: 'prn:ecommerce:web'
+        extract_prn("prn:ecommerce:web")
+        # Returns: 'prn:ecommerce:web'
+        extract_prn({})
+        # Returns: ''
     """
     if isinstance(obj, dict):
         return obj.get(PRN, "")
@@ -149,11 +151,12 @@ def extract_portfolio(obj: Any) -> str | None:
     Returns:
         The portfolio name, or None if not found.
 
-    Examples:
-        >>> extract_portfolio("prn:ecommerce:web")
-        'ecommerce'
-        >>> extract_portfolio("prn")
-        None
+    Examples::
+
+        extract_portfolio("prn:ecommerce:web")
+        # Returns: 'ecommerce'
+        extract_portfolio("prn")
+        # Returns: None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[1] if len(prn_sections) > 1 else None
@@ -168,11 +171,12 @@ def extract_app(obj: Any) -> str | None:
     Returns:
         The app name, or None if not found.
 
-    Examples:
-        >>> extract_app("prn:ecommerce:web:main")
-        'web'
-        >>> extract_app("prn:ecommerce")
-        None
+    Examples::
+
+        extract_app("prn:ecommerce:web:main")
+        # Returns: 'web'
+        extract_app("prn:ecommerce")
+        # Returns: None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[2] if len(prn_sections) > 2 else None
@@ -187,11 +191,12 @@ def extract_branch(obj: Any) -> str | None:
     Returns:
         The branch name, or None if not found.
 
-    Examples:
-        >>> extract_branch("prn:ecommerce:web:main:1.0.0")
-        'main'
-        >>> extract_branch("prn:ecommerce:web")
-        None
+    Examples::
+
+        extract_branch("prn:ecommerce:web:main:1.0.0")
+        # Returns: 'main'
+        extract_branch("prn:ecommerce:web")
+        # Returns: None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[3] if len(prn_sections) > 3 else None
@@ -206,11 +211,12 @@ def extract_build(obj: Any) -> str | None:
     Returns:
         The build name, or None if not found.
 
-    Examples:
-        >>> extract_build("prn:ecommerce:web:main:1.0.0:frontend")
-        '1.0.0'
-        >>> extract_build("prn:ecommerce:web:main")
-        None
+    Examples::
+
+        extract_build("prn:ecommerce:web:main:1.0.0:frontend")
+        # Returns: '1.0.0'
+        extract_build("prn:ecommerce:web:main")
+        # Returns: None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[4] if len(prn_sections) > 4 else None
@@ -225,11 +231,12 @@ def extract_component(obj: Any) -> str | None:
     Returns:
         The component name, or None if not found.
 
-    Examples:
-        >>> extract_component("prn:ecommerce:web:main:1.0.0:frontend")
-        'frontend'
-        >>> extract_component("prn:ecommerce:web:main:1.0.0")
-        None
+    Examples::
+
+        extract_component("prn:ecommerce:web:main:1.0.0:frontend")
+        # Returns: 'frontend'
+        extract_component("prn:ecommerce:web:main:1.0.0")
+        # Returns: None
     """
     prn_sections = extract_prn(obj).split(DELIMITER)
     return prn_sections[5] if len(prn_sections) > 5 else None
@@ -244,11 +251,12 @@ def extract_portfolio_prn(obj: Any) -> str:
     Returns:
         The portfolio PRN (e.g., "prn:portfolio") or empty string.
 
-    Examples:
-        >>> extract_portfolio_prn("prn:ecommerce:web:main:1.0.0")
-        'prn:ecommerce'
-        >>> extract_portfolio_prn("invalid")
-        ''
+    Examples::
+
+        extract_portfolio_prn("prn:ecommerce:web:main:1.0.0")
+        # Returns: 'prn:ecommerce'
+        extract_portfolio_prn("invalid")
+        # Returns: ''
     """
     match = re.match(f"({PORTFOLIO_PRN_REGEX})", extract_prn(obj))
     return match.group(1) if match else V_EMPTY
@@ -263,11 +271,12 @@ def extract_app_prn(obj: Any) -> str:
     Returns:
         The app PRN (e.g., "prn:portfolio:app") or empty string.
 
-    Examples:
-        >>> extract_app_prn("prn:ecommerce:web:main:1.0.0")
-        'prn:ecommerce:web'
-        >>> extract_app_prn("prn:ecommerce")
-        ''
+    Examples::
+
+        extract_app_prn("prn:ecommerce:web:main:1.0.0")
+        # Returns: 'prn:ecommerce:web'
+        extract_app_prn("prn:ecommerce")
+        # Returns: ''
     """
     match = re.match(f"({APP_PRN_REGEX})", extract_prn(obj))
     return match.group(1) if match else V_EMPTY
@@ -282,11 +291,12 @@ def extract_branch_prn(obj: Any) -> str:
     Returns:
         The branch PRN (e.g., "prn:portfolio:app:branch") or empty string.
 
-    Examples:
-        >>> extract_branch_prn("prn:ecommerce:web:main:1.0.0")
-        'prn:ecommerce:web:main'
-        >>> extract_branch_prn("prn:ecommerce:web")
-        ''
+    Examples::
+
+        extract_branch_prn("prn:ecommerce:web:main:1.0.0")
+        # Returns: 'prn:ecommerce:web:main'
+        extract_branch_prn("prn:ecommerce:web")
+        # Returns: ''
     """
     match = re.match(f"({BRANCH_PRN_REGEX})", extract_prn(obj))
     return match.group(1) if match else V_EMPTY
@@ -301,11 +311,12 @@ def extract_build_prn(obj: Any) -> str:
     Returns:
         The build PRN (e.g., "prn:portfolio:app:branch:build") or empty string.
 
-    Examples:
-        >>> extract_build_prn("prn:ecommerce:web:main:1.0.0:frontend")
-        'prn:ecommerce:web:main:1.0.0'
-        >>> extract_build_prn("prn:ecommerce:web:main")
-        ''
+    Examples::
+
+        extract_build_prn("prn:ecommerce:web:main:1.0.0:frontend")
+        # Returns: 'prn:ecommerce:web:main:1.0.0'
+        extract_build_prn("prn:ecommerce:web:main")
+        # Returns: ''
     """
     match = re.match(f"({BUILD_PRN_REGEX})", extract_prn(obj))
     return match.group(1) if match else V_EMPTY
@@ -320,11 +331,12 @@ def extract_component_prn(obj: Any) -> str:
     Returns:
         The component PRN (e.g., "prn:portfolio:app:branch:build:component") or empty string.
 
-    Examples:
-        >>> extract_component_prn("prn:ecommerce:web:main:1.0.0:frontend")
-        'prn:ecommerce:web:main:1.0.0:frontend'
-        >>> extract_component_prn("prn:ecommerce:web:main:1.0.0")
-        ''
+    Examples::
+
+        extract_component_prn("prn:ecommerce:web:main:1.0.0:frontend")
+        # Returns: 'prn:ecommerce:web:main:1.0.0:frontend'
+        extract_component_prn("prn:ecommerce:web:main:1.0.0")
+        # Returns: ''
     """
     match = re.match(f"({COMPONENT_PRN_REGEX})", extract_prn(obj))
     return match.group(1) if match else V_EMPTY
@@ -343,12 +355,13 @@ def generate_prn(scope: str, request: dict) -> str | None:
     Returns:
         The generated PRN, or None if the scope is invalid.
 
-    Examples:
-        >>> request = {"name": "new-app", "portfolio_prn": "prn:ecommerce"}
-        >>> generate_prn("app", request)
-        'prn:ecommerce:new-app'
-        >>> generate_prn("invalid", request)
-        None
+    Examples::
+
+        request = {"name": "new-app", "portfolio_prn": "prn:ecommerce"}
+        generate_prn("app", request)
+        # Returns: 'prn:ecommerce:new-app'
+        generate_prn("invalid", request)
+        # Returns: None
     """
     if scope == SCOPE_PORTFOLIO:
         return generate_portfolio_prn(request)
@@ -374,11 +387,12 @@ def validate_prn(scope: str, prn: Any) -> bool:
     Returns:
         True if the PRN is valid for the given scope, otherwise False.
 
-    Examples:
-        >>> validate_prn("portfolio", "prn:ecommerce")
-        True
-        >>> validate_prn("app", "prn:ecommerce")
-        False
+    Examples::
+
+        validate_prn("portfolio", "prn:ecommerce")
+        # Returns: True
+        validate_prn("app", "prn:ecommerce")
+        # Returns: False
     """
     prn_str = extract_prn(prn)
     if scope == SCOPE_PORTFOLIO:
@@ -404,11 +418,12 @@ def validate_item_type(scope: str) -> bool:
     Returns:
         True if the scope is valid, otherwise False.
 
-    Examples:
-        >>> validate_item_type("portfolio")
-        True
-        >>> validate_item_type("invalid")
-        False
+    Examples::
+
+        validate_item_type("portfolio")
+        # Returns: True
+        validate_item_type("invalid")
+        # Returns: False
     """
     return scope in [
         SCOPE_PORTFOLIO,
@@ -431,11 +446,12 @@ def generate_portfolio_prn(request: dict) -> str:
     Returns:
         The extracted or generated portfolio PRN.
 
-    Examples:
-        >>> generate_portfolio_prn({"name": "ecommerce"})
-        'prn:ecommerce'
-        >>> generate_portfolio_prn({"prn": "prn:ecommerce"})
-        'prn:ecommerce'
+    Examples::
+
+        generate_portfolio_prn({"name": "ecommerce"})
+        # Returns: 'prn:ecommerce'
+        generate_portfolio_prn({"prn": "prn:ecommerce"})
+        # Returns: 'prn:ecommerce'
     """
     prn = request.get(ARG_PORTFOLIO_PRN, "")
     if validate_portfolio_prn(prn):
@@ -465,11 +481,12 @@ def generate_app_prn(request: dict) -> str:
     Returns:
         The extracted or generated app PRN.
 
-    Examples:
-        >>> generate_app_prn({"name": "web", "portfolio_prn": "prn:ecommerce"})
-        'prn:ecommerce:web'
-        >>> generate_app_prn({"prn": "prn:ecommerce:web"})
-        'prn:ecommerce:web'
+    Examples::
+
+        generate_app_prn({"name": "web", "portfolio_prn": "prn:ecommerce"})
+        # Returns: 'prn:ecommerce:web'
+        generate_app_prn({"prn": "prn:ecommerce:web"})
+        # Returns: 'prn:ecommerce:web'
     """
     prn = request.get(ARG_APP_PRN, "")
     if validate_app_prn(prn):
@@ -499,13 +516,14 @@ def branch_short_name(name: str | None) -> str | None:
     Returns:
         The shortened and sanitized branch name.
 
-    Examples:
-        >>> branch_short_name("feature/USER-123-awesome-feature")
-        'feature-user-123-awes'
-        >>> branch_short_name("main")
-        'main'
-        >>> branch_short_name(None)
-        None
+    Examples::
+
+        branch_short_name("feature/USER-123-awesome-feature")
+        # Returns: 'feature-user-123-awes'
+        branch_short_name("main")
+        # Returns: 'main'
+        branch_short_name(None)
+        # Returns: None
     """
     if name is None:
         return None
@@ -527,11 +545,12 @@ def generate_branch_prn(request: dict) -> str:
     Returns:
         The extracted or generated branch PRN.
 
-    Examples:
-        >>> generate_branch_prn({"name": "main", "app_prn": "prn:ecommerce:web"})
-        'prn:ecommerce:web:main'
-        >>> generate_branch_prn({"prn": "prn:ecommerce:web:main"})
-        'prn:ecommerce:web:main'
+    Examples::
+
+        generate_branch_prn({"name": "main", "app_prn": "prn:ecommerce:web"})
+        # Returns: 'prn:ecommerce:web:main'
+        generate_branch_prn({"prn": "prn:ecommerce:web:main"})
+        # Returns: 'prn:ecommerce:web:main'
     """
     prn = request.get(ARG_BRANCH_PRN, "")
     if validate_branch_prn(prn):
@@ -562,11 +581,12 @@ def generate_build_prn(request: dict) -> str:
     Returns:
         The extracted or generated build PRN.
 
-    Examples:
-        >>> generate_build_prn({"name": "1.0.0", "branch_prn": "prn:ecommerce:web:main"})
-        'prn:ecommerce:web:main:1.0.0'
-        >>> generate_build_prn({"prn": "prn:ecommerce:web:main:1.0.0"})
-        'prn:ecommerce:web:main:1.0.0'
+    Examples::
+
+        generate_build_prn({"name": "1.0.0", "branch_prn": "prn:ecommerce:web:main"})
+        # Returns: 'prn:ecommerce:web:main:1.0.0'
+        generate_build_prn({"prn": "prn:ecommerce:web:main:1.0.0"})
+        # Returns: 'prn:ecommerce:web:main:1.0.0'
     """
     prn = request.get(ARG_BUILD_PRN, "")
     if validate_build_prn(prn):
@@ -597,11 +617,12 @@ def generate_component_prn(request: dict) -> str:
     Returns:
         The extracted or generated component PRN.
 
-    Examples:
-        >>> generate_component_prn({"name": "frontend", "build_prn": "prn:ecommerce:web:main:1.0.0"})
-        'prn:ecommerce:web:main:1.0.0:frontend'
-        >>> generate_component_prn({"prn": "prn:ecommerce:web:main:1.0.0:frontend"})
-        'prn:ecommerce:web:main:1.0.0:frontend'
+    Examples::
+
+        generate_component_prn({"name": "frontend", "build_prn": "prn:ecommerce:web:main:1.0.0"})
+        # Returns: 'prn:ecommerce:web:main:1.0.0:frontend'
+        generate_component_prn({"prn": "prn:ecommerce:web:main:1.0.0:frontend"})
+        # Returns: 'prn:ecommerce:web:main:1.0.0:frontend'
     """
     prn = request.get(ARG_COMPONENT_PRN, "")
     if validate_component_prn(prn):
@@ -628,11 +649,12 @@ def validate_item_prn(prn: str) -> bool:
     Returns:
         True if the PRN format is valid, otherwise False.
 
-    Examples:
-        >>> validate_item_prn("prn:ecommerce:web")
-        True
-        >>> validate_item_prn("invalid")
-        False
+    Examples::
+
+        validate_item_prn("prn:ecommerce:web")
+        # Returns: True
+        validate_item_prn("invalid")
+        # Returns: False
     """
     return re.fullmatch(PRN_REGEX, prn) is not None
 
@@ -646,11 +668,12 @@ def validate_portfolio_prn(prn: str) -> bool:
     Returns:
         True if the PRN is a valid portfolio PRN, otherwise False.
 
-    Examples:
-        >>> validate_portfolio_prn("prn:ecommerce")
-        True
-        >>> validate_portfolio_prn("prn:ecommerce:web")
-        False
+    Examples::
+
+        validate_portfolio_prn("prn:ecommerce")
+        # Returns: True
+        validate_portfolio_prn("prn:ecommerce:web")
+        # Returns: False
     """
     return re.fullmatch(PORTFOLIO_PRN_REGEX, prn) is not None
 
@@ -664,11 +687,12 @@ def validate_app_prn(prn: str) -> bool:
     Returns:
         True if the PRN is a valid app PRN, otherwise False.
 
-    Examples:
-        >>> validate_app_prn("prn:ecommerce:web")
-        True
-        >>> validate_app_prn("prn:ecommerce")
-        False
+    Examples::
+
+        validate_app_prn("prn:ecommerce:web")
+        # Returns: True
+        validate_app_prn("prn:ecommerce")
+        # Returns: False
     """
     return re.fullmatch(APP_PRN_REGEX, prn) is not None
 
@@ -682,11 +706,12 @@ def validate_branch_prn(prn: str) -> bool:
     Returns:
         True if the PRN is a valid branch PRN, otherwise False.
 
-    Examples:
-        >>> validate_branch_prn("prn:ecommerce:web:main")
-        True
-        >>> validate_branch_prn("prn:ecommerce:web")
-        False
+    Examples::
+
+        validate_branch_prn("prn:ecommerce:web:main")
+        # Returns: True
+        validate_branch_prn("prn:ecommerce:web")
+        # Returns: False
     """
     return re.fullmatch(BRANCH_PRN_REGEX, prn) is not None
 
@@ -700,11 +725,12 @@ def validate_build_prn(prn: str) -> bool:
     Returns:
         True if the PRN is a valid build PRN, otherwise False.
 
-    Examples:
-        >>> validate_build_prn("prn:ecommerce:web:main:1.0.0")
-        True
-        >>> validate_build_prn("prn:ecommerce:web:main")
-        False
+    Examples::
+
+        validate_build_prn("prn:ecommerce:web:main:1.0.0")
+        # Returns: True
+        validate_build_prn("prn:ecommerce:web:main")
+        # Returns: False
     """
     return re.fullmatch(BUILD_PRN_REGEX, prn) is not None
 
@@ -718,10 +744,11 @@ def validate_component_prn(prn: str) -> bool:
     Returns:
         True if the PRN is a valid component PRN, otherwise False.
 
-    Examples:
-        >>> validate_component_prn("prn:ecommerce:web:main:1.0.0:frontend")
-        True
-        >>> validate_component_prn("prn:ecommerce:web:main:1.0.0")
-        False
+    Examples::
+
+        validate_component_prn("prn:ecommerce:web:main:1.0.0:frontend")
+        # Returns: True
+        validate_component_prn("prn:ecommerce:web:main:1.0.0")
+        # Returns: False
     """
     return re.fullmatch(COMPONENT_PRN_REGEX, prn) is not None

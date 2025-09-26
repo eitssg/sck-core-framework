@@ -120,21 +120,22 @@ class ActionResource(BaseModel):
     The class provides validation for action integrity, dependency management,
     and output organization to ensure reliable automation workflows.
 
-    Examples:
-        Basic action:
-        >>> action = ActionResource(
-        ...     kind="AWS::CreateStack",
-        ...     metadata=ActionMetadata(name="create-vpc"),
-        ...     spec={"stack_name": "vpc-stack", "template": "vpc.yaml"}
-        ... )
+    Examples::
 
-        Action with dependencies:
-        >>> action = ActionResource(
-        ...     kind="AWS::CreateStack",
-        ...     metadata=ActionMetadata(name="create-database"),
-        ...     spec={"stack_name": "db-stack"},
-        ...     depends_on=["create-vpc"]
-        ... )
+        # Returns: Basic action:
+        action = ActionResource(
+        kind="AWS::CreateStack",
+        metadata=ActionMetadata(name="create-vpc"),
+        spec={"stack_name": "vpc-stack", "template": "vpc.yaml"}
+        )
+
+        # Returns: Action with dependencies:
+        action = ActionResource(
+        kind="AWS::CreateStack",
+        metadata=ActionMetadata(name="create-database"),
+        spec={"stack_name": "db-stack"},
+        depends_on=["create-vpc"]
+        )
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)

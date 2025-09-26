@@ -20,26 +20,27 @@ Common Use Cases:
 Classes:
     DeploySpec: Model for deployment specifications containing ActionResource objects.
 
-Examples:
-    Creating a DeploySpec with multiple actions:
+Examples::
 
-    >>> from core_framework.models import ActionResource
-    >>> deploy_spec = DeploySpec(actions=[
-    ...     ActionResource(
-    ...         name="create-vpc",
-    ...         kind="create_stack",
-    ...         params={"stack_name": "vpc-stack"}),
-    ...     ActionResource(
-    ...         name="create-app",
-    ...         kind="create_stack",
-    ...         params={"stack_name": "app-stack"})
-    ... ])
+    # Returns: Creating a DeploySpec with multiple actions:
 
-    Loading from YAML and converting to JSON:
+    from core_framework.models import ActionResource
+    deploy_spec = DeploySpec(actions=[
+    ActionResource(
+    name="create-vpc",
+    kind="create_stack",
+    params={"stack_name": "vpc-stack"}),
+    ActionResource(
+    name="create-app",
+    kind="create_stack",
+    params={"stack_name": "app-stack"})
+    ])
 
-    >>> with open("deploy.actions", "r") as f:
-    ...     deploy_spec = DeploySpec.from_yaml(f)
-    >>> json_content = deploy_spec.to_json()
+    # Returns: Loading from YAML and converting to JSON:
+
+    with open("deploy.actions", "r") as f:
+    deploy_spec = DeploySpec.from_yaml(f)
+    json_content = deploy_spec.to_json()
 """
 
 from typing import Self, Any, TextIO
@@ -70,37 +71,38 @@ class DeploySpec(BaseModel):
         is_empty: Whether the specification contains no actions.
         actions: Deprecated property for backward compatibility.
 
-    Examples:
-        >>> # Creating a DeploySpec with actions
-        >>> action = ActionResource(
-        ...     name="create-s3",
-        ...     kind="create_stack",
-        ...     params={"stack_name": "my-bucket"}
-        ... )
-        >>> deploy_spec = DeploySpec(actions=[action])
-        >>> print(len(deploy_spec))
-        1
+    Examples::
 
-        >>> # Converting to YAML
-        >>> yaml_content = deploy_spec.to_yaml()
-        >>> print("Actions:" in yaml_content)
-        True
+        # Creating a DeploySpec with actions
+        action = ActionResource(
+        name="create-s3",
+        kind="create_stack",
+        params={"stack_name": "my-bucket"}
+        )
+        deploy_spec = DeploySpec(actions=[action])
+        print(len(deploy_spec))
+        # Returns: 1
 
-        >>> # Loading from YAML stream
-        >>> with open("deploy.actions", "r") as f:
-        ...     deploy_spec = DeploySpec.from_yaml(f)
+        # Converting to YAML
+        yaml_content = deploy_spec.to_yaml()
+        print("Actions:" in yaml_content)
+        # Returns: True
 
-        >>> # Adding actions dynamically
-        >>> new_action = ActionResource(
-        ...     name="create-db",
-        ...     kind="create_stack",
-        ...     params={"stack_name": "database"}
-        ... )
-        >>> deploy_spec.add_action(new_action)
+        # Loading from YAML stream
+        with open("deploy.actions", "r") as f:
+        deploy_spec = DeploySpec.from_yaml(f)
 
-        >>> # Filtering actions by kind
-        >>> stack_actions = deploy_spec.get_actions_by_kind("create_stack")
-        >>> print(f"Found {len(stack_actions)} stack creation actions")
+        # Adding actions dynamically
+        new_action = ActionResource(
+        name="create-db",
+        kind="create_stack",
+        params={"stack_name": "database"}
+        )
+        deploy_spec.add_action(new_action)
+
+        # Filtering actions by kind
+        stack_actions = deploy_spec.get_actions_by_kind("create_stack")
+        print(f"Found {len(stack_actions)} stack creation actions")
 
     Validation Rules:
         - **Unique Stack Names**: No duplicate stack names within same kind/account/region
@@ -132,18 +134,19 @@ class DeploySpec(BaseModel):
             ValueError: If duplicate stack names are found for the same action kind,
                        account, and region combination.
 
-        Examples:
-            >>> # This will pass validation - different regions
-            >>> action1 = ActionResource(name="web-east", kind="create_stack",
-            ...                     params={"stack_name": "web", "region": "us-east-1"})
-            >>> action2 = ActionResource(name="web-west", kind="create_stack",
-            ...                     params={"stack_name": "web", "region": "us-west-2"})
-            >>> spec = DeploySpec(actions=[action1, action2])  # Valid
+        Examples::
 
-            >>> # This will fail validation - same region and stack name
-            >>> action3 = ActionResource(name="web-duplicate", kind="create_stack",
-            ...                     params={"stack_name": "web", "region": "us-east-1"})
-            >>> spec = DeploySpec(actions=[action1, action3])  # Raises ValueError
+            # This will pass validation - different regions
+            action1 = ActionResource(name="web-east", kind="create_stack",
+            params={"stack_name": "web", "region": "us-east-1"})
+            action2 = ActionResource(name="web-west", kind="create_stack",
+            params={"stack_name": "web", "region": "us-west-2"})
+            spec = DeploySpec(actions=[action1, action2])  # Valid
+
+            # This will fail validation - same region and stack name
+            action3 = ActionResource(name="web-duplicate", kind="create_stack",
+            params={"stack_name": "web", "region": "us-east-1"})
+            spec = DeploySpec(actions=[action1, action3])  # Raises ValueError
 
         Validation Logic:
             1. **Stack Name Extraction**: Gets stack_name from action parameters
@@ -205,15 +208,16 @@ class DeploySpec(BaseModel):
         Returns:
             YAML string representation of the DeploySpec.
 
-        Examples:
-            >>> action = ActionResource(name="create-vpc", kind="create_stack",
-            ...                    params={"stack_name": "vpc-stack"})
-            >>> deploy_spec = DeploySpec(actions=[action])
-            >>> yaml_content = deploy_spec.to_yaml()
-            >>> print("Actions:" in yaml_content)
-            True
-            >>> print("Name: create-vpc" in yaml_content)
-            True
+        Examples::
+
+            action = ActionResource(name="create-vpc", kind="create_stack",
+            params={"stack_name": "vpc-stack"})
+            deploy_spec = DeploySpec(actions=[action])
+            yaml_content = deploy_spec.to_yaml()
+            print("Actions:" in yaml_content)
+            # Returns: True
+            print("Name: create-vpc" in yaml_content)
+            # Returns: True
 
         Output Format:
             The YAML output uses aliases for field names (e.g., "Actions" instead of "actions")
@@ -227,15 +231,16 @@ class DeploySpec(BaseModel):
         Returns:
             JSON string representation of the DeploySpec.
 
-        Examples:
-            >>> action = ActionResource(name="create-vpc", kind="create_stack",
-            ...                    params={"stack_name": "vpc-stack"})
-            >>> deploy_spec = DeploySpec(actions=[action])
-            >>> json_content = deploy_spec.to_json()
-            >>> print('"Actions"' in json_content)
-            True
-            >>> print('"Name": "create-vpc"' in json_content)
-            True
+        Examples::
+
+            action = ActionResource(name="create-vpc", kind="create_stack",
+            params={"stack_name": "vpc-stack"})
+            deploy_spec = DeploySpec(actions=[action])
+            json_content = deploy_spec.to_json()
+            print('"Actions"' in json_content)
+            # Returns: True
+            print('"Name": "create-vpc"' in json_content)
+            # Returns: True
 
         Output Format:
             The JSON output uses aliases for field names and excludes None values
@@ -257,24 +262,25 @@ class DeploySpec(BaseModel):
         Raises:
             ValueError: If the mimetype is not supported or data cannot be parsed.
 
-        Examples:
-            >>> # From file stream with auto-detection
-            >>> with open("deploy.actions", "r") as f:
-            ...     deploy_spec = DeploySpec.from_stream(f)
+        Examples::
 
-            >>> # From string with explicit mimetype
-            >>> yaml_content = '''
-            ... Actions:
-            ...   - Name: create-vpc
-            ...     Kind: create_stack
-            ...     Spec:
-            ...       stack_name: vpc-stack
-            ... '''
-            >>> deploy_spec = DeploySpec.from_stream(yaml_content, "application/yaml")
+            # From file stream with auto-detection
+            with open("deploy.actions", "r") as f:
+            deploy_spec = DeploySpec.from_stream(f)
 
-            >>> # JSON format
-            >>> json_content = '{"Actions": [{"Name": "test", "Kind": "create_stack"}]}'
-            >>> deploy_spec = DeploySpec.from_stream(json_content, "application/json")
+            # From string with explicit mimetype
+            yaml_content = '''
+            Actions:
+            - Name: create-vpc
+            Kind: create_stack
+            Spec:
+            stack_name: vpc-stack
+            '''
+            deploy_spec = DeploySpec.from_stream(yaml_content, "application/yaml")
+
+            # JSON format
+            json_content = '{"Actions": [{"Name": "test", "Kind": "create_stack"}]}'
+            deploy_spec = DeploySpec.from_stream(json_content, "application/json")
 
         Supported MIME Types:
             - **YAML**: application/yaml, application/x-yaml, text/yaml, text/x-yaml
@@ -313,30 +319,31 @@ class DeploySpec(BaseModel):
         Raises:
             ValueError: If the YAML contains invalid data or cannot be parsed.
 
-        Examples:
-            >>> # From file stream
-            >>> with open("deploy.actions", "r") as f:
-            ...     deploy_spec = DeploySpec.from_yaml(f)
+        Examples::
 
-            >>> # From string
-            >>> yaml_content = '''
-            ... Actions:
-            ...   - Name: create-vpc
-            ...     Kind: create_stack
-            ...     Spec:
-            ...       stack_name: vpc-stack
-            ... '''
-            >>> deploy_spec = DeploySpec.from_yaml(yaml_content)
-            >>> print(deploy_spec.actions[0].name)
-            'create-vpc'
+            # From file stream
+            with open("deploy.actions", "r") as f:
+            deploy_spec = DeploySpec.from_yaml(f)
 
-            >>> # Handles deprecated field names
-            >>> legacy_yaml = '''
-            ... Actions:
-            ...   - Name: legacy-action
-            ...     Kind: create_stack
-            ... '''
-            >>> deploy_spec = DeploySpec.from_yaml(legacy_yaml)  # Works with warning
+            # From string
+            yaml_content = '''
+            Actions:
+            - Name: create-vpc
+            Kind: create_stack
+            Spec:
+            stack_name: vpc-stack
+            '''
+            deploy_spec = DeploySpec.from_yaml(yaml_content)
+            print(deploy_spec.actions[0].name)
+            # Returns: 'create-vpc'
+
+            # Handles deprecated field names
+            legacy_yaml = '''
+            Actions:
+            - Name: legacy-action
+            Kind: create_stack
+            '''
+            deploy_spec = DeploySpec.from_yaml(legacy_yaml)  # Works with warning
 
         Error Handling:
             Wraps parsing exceptions in ValueError with descriptive messages
@@ -361,28 +368,29 @@ class DeploySpec(BaseModel):
         Raises:
             ValueError: If the JSON contains invalid data or cannot be parsed.
 
-        Examples:
-            >>> # From file stream
-            >>> with open("deploy.actions", "r") as f:
-            ...     deploy_spec = DeploySpec.from_json(f)
+        Examples::
 
-            >>> # From string
-            >>> json_content = '''
-            ... {
-            ...   "Actions": [
-            ...     {
-            ...       "Name": "create-vpc",
-            ...       "Kind": "create_stack",
-            ...       "Spec": {
-            ...         "stack_name": "vpc-stack"
-            ...       }
-            ...     }
-            ...   ]
-            ... }
-            ... '''
-            >>> deploy_spec = DeploySpec.from_json(json_content)
-            >>> print(deploy_spec.actions[0].name)
-            'create-vpc'
+            # From file stream
+            with open("deploy.actions", "r") as f:
+            deploy_spec = DeploySpec.from_json(f)
+
+            # From string
+            json_content = '''
+            {
+            "Actions": [
+            {
+            "Name": "create-vpc",
+            "Kind": "create_stack",
+            "Spec": {
+            "stack_name": "vpc-stack"
+            }
+            }
+            ]
+            }
+            '''
+            deploy_spec = DeploySpec.from_json(json_content)
+            print(deploy_spec.actions[0].name)
+            # Returns: 'create-vpc'
 
         Error Handling:
             Wraps parsing exceptions in ValueError with descriptive messages
@@ -403,24 +411,25 @@ class DeploySpec(BaseModel):
         Raises:
             ValueError: If the action is invalid or would create duplicate stack names.
 
-        Examples:
-            >>> deploy_spec = DeploySpec()
-            >>> action = ActionResource(
-            ...     name="create-vpc",
-            ...     kind="create_stack",
-            ...     params={"stack_name": "vpc-stack"}
-            ... )
-            >>> deploy_spec.add_action(action)
-            >>> print(len(deploy_spec))
-            1
+        Examples::
 
-            >>> # Adding duplicate stack name fails
-            >>> duplicate_action = ActionResource(
-            ...     name="create-vpc-2",
-            ...     kind="create_stack",
-            ...     params={"stack_name": "vpc-stack"}  # Same stack name
-            ... )
-            >>> deploy_spec.add_action(duplicate_action)  # Raises ValueError
+            deploy_spec = DeploySpec()
+            action = ActionResource(
+            name="create-vpc",
+            kind="create_stack",
+            params={"stack_name": "vpc-stack"}
+            )
+            deploy_spec.add_action(action)
+            print(len(deploy_spec))
+            # Returns: 1
+
+            # Adding duplicate stack name fails
+            duplicate_action = ActionResource(
+            name="create-vpc-2",
+            kind="create_stack",
+            params={"stack_name": "vpc-stack"}  # Same stack name
+            )
+            deploy_spec.add_action(duplicate_action)  # Raises ValueError
 
         Validation:
             The method validates the action before adding it by creating a temporary
@@ -448,20 +457,21 @@ class DeploySpec(BaseModel):
         Returns:
             True if the action was found and removed, False otherwise.
 
-        Examples:
-            >>> action1 = ActionResource(name="create-vpc", kind="create_stack")
-            >>> action2 = ActionResource(name="create-app", kind="create_stack")
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> removed = deploy_spec.remove_action("create-vpc")
-            >>> print(removed)
-            True
-            >>> print(len(deploy_spec))
-            1
+        Examples::
 
-            >>> # Removing non-existent action
-            >>> removed = deploy_spec.remove_action("non-existent")
-            >>> print(removed)
-            False
+            action1 = ActionResource(name="create-vpc", kind="create_stack")
+            action2 = ActionResource(name="create-app", kind="create_stack")
+            deploy_spec = DeploySpec(actions=[action1, action2])
+            removed = deploy_spec.remove_action("create-vpc")
+            print(removed)
+            # Returns: True
+            print(len(deploy_spec))
+            # Returns: 1
+
+            # Removing non-existent action
+            removed = deploy_spec.remove_action("non-existent")
+            print(removed)
+            # Returns: False
         """
         for i, action in enumerate(self.actions):
             if action.name == name:
@@ -478,17 +488,18 @@ class DeploySpec(BaseModel):
         Returns:
             ActionResource if found, None otherwise.
 
-        Examples:
-            >>> action = ActionResource(name="create-vpc", kind="create_stack")
-            >>> deploy_spec = DeploySpec(actions=[action])
-            >>> found_action = deploy_spec.get_action("create-vpc")
-            >>> print(found_action.name)
-            'create-vpc'
+        Examples::
 
-            >>> # Non-existent action
-            >>> missing = deploy_spec.get_action("non-existent")
-            >>> print(missing)
-            None
+            action = ActionResource(name="create-vpc", kind="create_stack")
+            deploy_spec = DeploySpec(actions=[action])
+            found_action = deploy_spec.get_action("create-vpc")
+            print(found_action.name)
+            # Returns: 'create-vpc'
+
+            # Non-existent action
+            missing = deploy_spec.get_action("non-existent")
+            print(missing)
+            # Returns: None
         """
         for action in self.actions:
             if action.name == name:
@@ -504,19 +515,20 @@ class DeploySpec(BaseModel):
         Returns:
             List of ActionResource objects matching the specified kind.
 
-        Examples:
-            >>> action1 = ActionResource(name="create-vpc", kind="create_stack")
-            >>> action2 = ActionResource(name="create-app", kind="create_stack")
-            >>> action3 = ActionResource(name="delete-old", kind="delete_stack")
-            >>> deploy_spec = DeploySpec(actions=[action1, action2, action3])
+        Examples::
 
-            >>> stack_actions = deploy_spec.get_actions_by_kind("create_stack")
-            >>> print(len(stack_actions))
-            2
+            action1 = ActionResource(name="create-vpc", kind="create_stack")
+            action2 = ActionResource(name="create-app", kind="create_stack")
+            action3 = ActionResource(name="delete-old", kind="delete_stack")
+            deploy_spec = DeploySpec(actions=[action1, action2, action3])
 
-            >>> delete_actions = deploy_spec.get_actions_by_kind("delete_stack")
-            >>> print(len(delete_actions))
-            1
+            stack_actions = deploy_spec.get_actions_by_kind("create_stack")
+            print(len(stack_actions))
+            # Returns: 2
+
+            delete_actions = deploy_spec.get_actions_by_kind("delete_stack")
+            print(len(delete_actions))
+            # Returns: 1
         """
         return [action for action in self.actions if action.kind == kind]
 
@@ -529,19 +541,20 @@ class DeploySpec(BaseModel):
         Returns:
             List of ActionResource objects matching the specified scope.
 
-        Examples:
-            >>> action1 = ActionResource(name="build-action", kind="create_stack", scope="build")
-            >>> action2 = ActionResource(name="app-action", kind="create_stack", scope="app")
-            >>> action3 = ActionResource(name="branch-action", kind="create_stack", scope="branch")
-            >>> deploy_spec = DeploySpec(actions=[action1, action2, action3])
+        Examples::
 
-            >>> build_actions = deploy_spec.get_actions_by_scope("build")
-            >>> print(len(build_actions))
-            1
+            action1 = ActionResource(name="build-action", kind="create_stack", scope="build")
+            action2 = ActionResource(name="app-action", kind="create_stack", scope="app")
+            action3 = ActionResource(name="branch-action", kind="create_stack", scope="branch")
+            deploy_spec = DeploySpec(actions=[action1, action2, action3])
 
-            >>> app_actions = deploy_spec.get_actions_by_scope("app")
-            >>> print(len(app_actions))
-            1
+            build_actions = deploy_spec.get_actions_by_scope("build")
+            print(len(build_actions))
+            # Returns: 1
+
+            app_actions = deploy_spec.get_actions_by_scope("app")
+            print(len(app_actions))
+            # Returns: 1
         """
         return [action for action in self.actions if action.scope == scope]
 
@@ -552,12 +565,13 @@ class DeploySpec(BaseModel):
         Returns:
             Number of actions.
 
-        Examples:
-            >>> action1 = ActionResource(name="create-vpc", kind="create_stack")
-            >>> action2 = ActionResource(name="create-app", kind="create_stack")
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> print(deploy_spec.action_count)
-            2
+        Examples::
+
+            action1 = ActionResource(name="create-vpc", kind="create_stack")
+            action2 = ActionResource(name="create-app", kind="create_stack")
+            deploy_spec = DeploySpec(actions=[action1, action2])
+            print(deploy_spec.action_count)
+            # Returns: 2
         """
         return len(self.actions)
 
@@ -568,15 +582,16 @@ class DeploySpec(BaseModel):
         Returns:
             True if there are no actions, False otherwise.
 
-        Examples:
-            >>> deploy_spec = DeploySpec()
-            >>> print(deploy_spec.is_empty)
-            True
+        Examples::
 
-            >>> action = ActionResource(name="create-vpc", kind="create_stack")
-            >>> deploy_spec.add_action(action)
-            >>> print(deploy_spec.is_empty)
-            False
+            deploy_spec = DeploySpec()
+            print(deploy_spec.is_empty)
+            # Returns: True
+
+            action = ActionResource(name="create-vpc", kind="create_stack")
+            deploy_spec.add_action(action)
+            print(deploy_spec.is_empty)
+            # Returns: False
         """
         return len(self.actions) == 0
 
@@ -590,13 +605,14 @@ class DeploySpec(BaseModel):
         Returns:
             Dictionary representation with None values excluded and aliases used.
 
-        Examples:
-            >>> deploy_spec = DeploySpec(actions=[action1])
-            >>> data = deploy_spec.model_dump()
-            >>> print("Actions" in data)  # Uses alias
-            True
-            >>> print(None in data.values())  # None values excluded
-            False
+        Examples::
+
+            deploy_spec = DeploySpec(actions=[action1])
+            data = deploy_spec.model_dump()
+            print("Actions" in data)  # Uses alias
+            # Returns: True
+            print(None in data.values())  # None values excluded
+            # Returns: False
 
         Default Behavior:
             - **exclude_none=True**: Removes None values for cleaner output
@@ -612,10 +628,11 @@ class DeploySpec(BaseModel):
         Returns:
             Number of actions.
 
-        Examples:
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> print(len(deploy_spec))
-            2
+        Examples::
+
+            deploy_spec = DeploySpec(actions=[action1, action2])
+            print(len(deploy_spec))
+            # Returns: 2
         """
         return len(self.actions)
 
@@ -625,12 +642,13 @@ class DeploySpec(BaseModel):
         Yields:
             Each ActionResource in the specification.
 
-        Examples:
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> for action in deploy_spec:
-            ...     print(action.name)
-            'action1-name'
-            'action2-name'
+        Examples::
+
+            deploy_spec = DeploySpec(actions=[action1, action2])
+            for action in deploy_spec:
+            print(action.name)
+            # Returns: 'action1-name'
+            # Returns: 'action2-name'
         """
         return iter(self.actions)
 
@@ -646,15 +664,16 @@ class DeploySpec(BaseModel):
         Raises:
             IndexError: If the index is out of range.
 
-        Examples:
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> first_action = deploy_spec[0]
-            >>> print(first_action.name)
-            'action1-name'
+        Examples::
 
-            >>> last_action = deploy_spec[-1]  # Negative indexing works
-            >>> print(last_action.name)
-            'action2-name'
+            deploy_spec = DeploySpec(actions=[action1, action2])
+            first_action = deploy_spec[0]
+            print(first_action.name)
+            # Returns: 'action1-name'
+
+            last_action = deploy_spec[-1]  # Negative indexing works
+            print(last_action.name)
+            # Returns: 'action2-name'
         """
         return self.actions[index]
 
@@ -664,16 +683,17 @@ class DeploySpec(BaseModel):
         Returns:
             String showing the number of actions and their names.
 
-        Examples:
-            >>> deploy_spec = DeploySpec()
-            >>> str(deploy_spec)
-            'DeploySpec(empty)'
+        Examples::
 
-            >>> action1 = ActionResource(name="create-vpc", kind="create_stack")
-            >>> action2 = ActionResource(name="create-app", kind="create_stack")
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> str(deploy_spec)
-            'DeploySpec(2 actions: create-vpc, create-app)'
+            deploy_spec = DeploySpec()
+            str(deploy_spec)
+            # Returns: 'DeploySpec(empty)'
+
+            action1 = ActionResource(name="create-vpc", kind="create_stack")
+            action2 = ActionResource(name="create-app", kind="create_stack")
+            deploy_spec = DeploySpec(actions=[action1, action2])
+            str(deploy_spec)
+            # Returns: 'DeploySpec(2 actions: create-vpc, create-app)'
         """
         if not self.actions:
             return "DeploySpec(empty)"
@@ -686,9 +706,10 @@ class DeploySpec(BaseModel):
         Returns:
             Detailed representation showing the number of actions.
 
-        Examples:
-            >>> deploy_spec = DeploySpec(actions=[action1, action2])
-            >>> repr(deploy_spec)
-            'DeploySpec(actions=2)'
+        Examples::
+
+            deploy_spec = DeploySpec(actions=[action1, action2])
+            repr(deploy_spec)
+            # Returns: 'DeploySpec(actions=2)'
         """
         return f"DeploySpec(actions={len(self.actions)})"

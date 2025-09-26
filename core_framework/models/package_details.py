@@ -69,50 +69,51 @@ class PackageDetails(FileDetails):
         data_path: Storage volume path for the application (local mode only).
         temp_dir: Temporary directory for package processing operations.
 
-    Examples:
-        >>> # S3 storage mode with full compilation
-        >>> package = PackageDetails(
-        ...     client="my-client",
-        ...     bucket_name="deployment-bucket",
-        ...     bucket_region="us-east-1",
-        ...     key="packages/ecommerce/web/main/1.0.0/package.zip",
-        ...     mode="service",
-        ...     compile_mode="full"
-        ... )
-        >>> print(package.is_service_mode())
-        True
+    Examples::
 
-        >>> # Local storage mode with incremental compilation
-        >>> package = PackageDetails(
-        ...     client="my-client",
-        ...     bucket_name="/var/deployments",
-        ...     key="packages/ecommerce/web/main/1.0.0/package.zip",
-        ...     mode="local",
-        ...     compile_mode="incremental"
-        ... )
-        >>> print(package.get_full_path())
-        '/var/deployments/packages/ecommerce/web/main/1.0.0/package.zip'
+        # S3 storage mode with full compilation
+        package = PackageDetails(
+        client="my-client",
+        bucket_name="deployment-bucket",
+        bucket_region="us-east-1",
+        key="packages/ecommerce/web/main/1.0.0/package.zip",
+        mode="service",
+        compile_mode="full"
+        )
+        print(package.is_service_mode())
+        # Returns: True
 
-        >>> # Automatic creation from deployment context
-        >>> from core_framework.models.deployment_details import DeploymentDetails
-        >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-        >>> package = PackageDetails.from_arguments(deployment_details=dd)
-        >>> print(package.key)
-        'packages/ecommerce/web/main/1.0.0/package.zip'
+        # Local storage mode with incremental compilation
+        package = PackageDetails(
+        client="my-client",
+        bucket_name="/var/deployments",
+        key="packages/ecommerce/web/main/1.0.0/package.zip",
+        mode="local",
+        compile_mode="incremental"
+        )
+        print(package.get_full_path())
+        # Returns: '/var/deployments/packages/ecommerce/web/main/1.0.0/package.zip'
 
-        >>> # With deployment specification
-        >>> from core_framework.models.deploy_spec import DeploySpec
-        >>> from core_framework.models.action_resource import ActionResource
-        >>> action = ActionResource(label="deploy", type="create_stack", params={"stack_name": "web"})
-        >>> deploy_spec = DeploySpec(actions=[action])
-        >>> package = PackageDetails(
-        ...     client="my-client",
-        ...     bucket_name="deployment-bucket",
-        ...     key="packages/ecommerce/web/main/1.0.0/package.zip",
-        ...     deployspec=deploy_spec
-        ... )
-        >>> print(len(package.actions))
-        1
+        # Automatic creation from deployment context
+        from core_framework.models.deployment_details import DeploymentDetails
+        dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+        package = PackageDetails.from_arguments(deployment_details=dd)
+        print(package.key)
+        # Returns: 'packages/ecommerce/web/main/1.0.0/package.zip'
+
+        # With deployment specification
+        from core_framework.models.deploy_spec import DeploySpec
+        from core_framework.models.action_resource import ActionResource
+        action = ActionResource(label="deploy", type="create_stack", params={"stack_name": "web"})
+        deploy_spec = DeploySpec(actions=[action])
+        package = PackageDetails(
+        client="my-client",
+        bucket_name="deployment-bucket",
+        key="packages/ecommerce/web/main/1.0.0/package.zip",
+        deployspec=deploy_spec
+        )
+        print(len(package.actions))
+        # Returns: 1
 
     Storage Patterns:
         Packages follow a consistent hierarchical organization:
@@ -154,13 +155,14 @@ class PackageDetails(FileDetails):
         Raises:
             ValueError: If compile mode is not 'full' or 'incremental'.
 
-        Examples:
-            >>> PackageDetails.validate_compile_mode("full")
-            'full'
-            >>> PackageDetails.validate_compile_mode("incremental")
-            'incremental'
-            >>> PackageDetails.validate_compile_mode("invalid")
-            ValueError: Compile mode must be 'full' or 'incremental', got 'invalid'
+        Examples::
+
+            PackageDetails.validate_compile_mode("full")
+            # Returns: 'full'
+            PackageDetails.validate_compile_mode("incremental")
+            # Returns: 'incremental'
+            PackageDetails.validate_compile_mode("invalid")
+            # Returns: ValueError: Compile mode must be 'full' or 'incremental', got 'invalid'
         """
         if value not in [V_FULL, V_INCREMENTAL, V_EMPTY]:
             raise ValueError(f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'")
@@ -180,11 +182,12 @@ class PackageDetails(FileDetails):
         Returns:
             Normalized values with default content type set.
 
-        Examples:
-            >>> values = {"client": "test", "bucket_name": "bucket"}
-            >>> normalized = PackageDetails.validate_model_before(values)
-            >>> print(normalized["content_type"])
-            'application/zip'
+        Examples::
+
+            values = {"client": "test", "bucket_name": "bucket"}
+            normalized = PackageDetails.validate_model_before(values)
+            print(normalized["content_type"])
+            # Returns: 'application/zip'
         """
         if isinstance(values, dict):
             content_type = values.pop("content_type", None) or values.pop("ContentType", None)
@@ -204,18 +207,19 @@ class PackageDetails(FileDetails):
             deployment_details: Deployment context containing portfolio, app, build info.
             filename: Package filename (e.g., "package.zip").
 
-        Examples:
-            >>> from core_framework.models.deployment_details import DeploymentDetails
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-            >>> package = PackageDetails(client="test", bucket_name="test-bucket")
-            >>> package.set_key(dd, "package.zip")
-            >>> print(package.key)
-            'packages/ecommerce/web/main/1.0.0/package.zip'
+        Examples::
 
-            >>> # Different package types
-            >>> package.set_key(dd, "templates.zip")
-            >>> print(package.key)
-            'packages/ecommerce/web/main/1.0.0/templates.zip'
+            from core_framework.models.deployment_details import DeploymentDetails
+            dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+            package = PackageDetails(client="test", bucket_name="test-bucket")
+            package.set_key(dd, "package.zip")
+            print(package.key)
+            # Returns: 'packages/ecommerce/web/main/1.0.0/package.zip'
+
+            # Different package types
+            package.set_key(dd, "templates.zip")
+            print(package.key)
+            # Returns: 'packages/ecommerce/web/main/1.0.0/templates.zip'
 
         Path Generation:
             The generated path uses the deployment hierarchy:
@@ -265,53 +269,54 @@ class PackageDetails(FileDetails):
         Raises:
             ValueError: If required parameters are missing or invalid for key generation.
 
-        Examples:
-            >>> # Explicit key specification
-            >>> package = PackageDetails.from_arguments(
-            ...     client="my-client",
-            ...     key="packages/ecommerce/web/main/1.0.0/package.zip",
-            ...     mode="service"
-            ... )
-            >>> print(package.key)
-            'packages/ecommerce/web/main/1.0.0/package.zip'
+        Examples::
 
-            >>> # Auto-generation from deployment details
-            >>> from core_framework.models.deployment_details import DeploymentDetails
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-            >>> package = PackageDetails.from_arguments(deployment_details=dd)
-            >>> print(package.key)
-            'packages/ecommerce/web/main/1.0.0/package.zip'
+            # Explicit key specification
+            package = PackageDetails.from_arguments(
+            client="my-client",
+            key="packages/ecommerce/web/main/1.0.0/package.zip",
+            mode="service"
+            )
+            print(package.key)
+            # Returns: 'packages/ecommerce/web/main/1.0.0/package.zip'
 
-            >>> # Minimal arguments with auto-generation
-            >>> package = PackageDetails.from_arguments(
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     build="1.0.0"
-            ... )
-            >>> print(package.key)
-            'packages/ecommerce/web/main/1.0.0/package.zip'
+            # Auto-generation from deployment details
+            from core_framework.models.deployment_details import DeploymentDetails
+            dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+            package = PackageDetails.from_arguments(deployment_details=dd)
+            print(package.key)
+            # Returns: 'packages/ecommerce/web/main/1.0.0/package.zip'
 
-            >>> # With deployment specification
-            >>> from core_framework.models.deploy_spec import DeploySpec
-            >>> actions = [{"label": "deploy", "type": "create_stack", "params": {}}]
-            >>> package = PackageDetails.from_arguments(
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     build="1.0.0",
-            ...     deployspec=actions
-            ... )
-            >>> print(len(package.actions))
-            1
+            # Minimal arguments with auto-generation
+            package = PackageDetails.from_arguments(
+            portfolio="ecommerce",
+            app="web",
+            build="1.0.0"
+            )
+            print(package.key)
+            # Returns: 'packages/ecommerce/web/main/1.0.0/package.zip'
 
-            >>> # Command line integration
-            >>> cli_args = {
-            ...     "portfolio": "ecommerce",
-            ...     "app": "web",
-            ...     "build": "1.0.0",
-            ...     "compile_mode": "incremental",
-            ...     "mode": "local"
-            ... }
-            >>> package = PackageDetails.from_arguments(**cli_args)
+            # With deployment specification
+            from core_framework.models.deploy_spec import DeploySpec
+            actions = [{"label": "deploy", "type": "create_stack", "params": {}}]
+            package = PackageDetails.from_arguments(
+            portfolio="ecommerce",
+            app="web",
+            build="1.0.0",
+            deployspec=actions
+            )
+            print(len(package.actions))
+            # Returns: 1
+
+            # Command line integration
+            cli_args = {
+            "portfolio": "ecommerce",
+            "app": "web",
+            "build": "1.0.0",
+            "compile_mode": "incremental",
+            "mode": "local"
+            }
+            package = PackageDetails.from_arguments(**cli_args)
 
         Key Generation Logic:
             1. **Explicit key**: If 'key' parameter provided, use directly
@@ -398,14 +403,15 @@ class PackageDetails(FileDetails):
         Returns:
             String showing the storage mode and package location.
 
-        Examples:
-            >>> package = PackageDetails(
-            ...     bucket_name="my-bucket",
-            ...     key="packages/app/main/1.0.0/package.zip",
-            ...     mode="service"
-            ... )
-            >>> str(package)
-            'PackageDetails(service: my-bucket/packages/app/main/1.0.0/package.zip)'
+        Examples::
+
+            package = PackageDetails(
+            bucket_name="my-bucket",
+            key="packages/app/main/1.0.0/package.zip",
+            mode="service"
+            )
+            str(package)
+            # Returns: 'PackageDetails(service: my-bucket/packages/app/main/1.0.0/package.zip)'
         """
         return f"PackageDetails({self.mode}: {self.bucket_name}/{self.key})"
 
@@ -415,9 +421,10 @@ class PackageDetails(FileDetails):
         Returns:
             Detailed representation showing key attributes for debugging.
 
-        Examples:
-            >>> package = PackageDetails(bucket_name="my-bucket", key="packages/app/package.zip")
-            >>> repr(package)
-            "PackageDetails(bucket_name='my-bucket', key='packages/app/package.zip')"
+        Examples::
+
+            package = PackageDetails(bucket_name="my-bucket", key="packages/app/package.zip")
+            repr(package)
+            # Returns: "PackageDetails(bucket_name='my-bucket', key='packages/app/package.zip')"
         """
         return f"PackageDetails(bucket_name='{self.bucket_name}', key='{self.key}')"

@@ -1131,6 +1131,7 @@ def filter_snapshot_id(render_context: Context, snapshot_spec: dict, component_t
         Dictionary with snapshot parameters:
         - SnapshotIdentifier: The actual EBS snapshot ID
         - OwnerAccount: Account ID if cross-account sharing (optional)
+
         Returns None if snapshot not found or context unavailable.
 
     Raises:

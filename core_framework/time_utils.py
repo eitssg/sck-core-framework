@@ -25,18 +25,19 @@ def make_default_time() -> datetime:
     Returns:
         Current UTC datetime with timezone information.
 
-    Examples:
-        >>> timestamp = make_default_time()
-        >>> print(timestamp.tzinfo)
-        datetime.timezone.utc
-        >>> print(timestamp.isoformat())
-        '2024-01-15T14:30:45.123456+00:00'
+    Examples::
 
-        >>> # Framework usage patterns
-        >>> build_start_time = make_default_time()
-        >>> # ... perform build operations ...
-        >>> build_end_time = make_default_time()
-        >>> duration = build_end_time - build_start_time
+        timestamp = make_default_time()
+        print(timestamp.tzinfo)
+        # Returns: datetime.timezone.utc
+        print(timestamp.isoformat())
+        # Returns: '2024-01-15T14:30:45.123456+00:00'
+
+        # Framework usage patterns
+        build_start_time = make_default_time()
+        # ... perform build operations ...
+        build_end_time = make_default_time()
+        duration = build_end_time - build_start_time
 
     Usage Patterns:
         Common framework integration scenarios:

@@ -269,13 +269,15 @@ class CoreLogTextFormatter(CoreLogFormatter):
     are formatted as indented YAML for improved readability.
 
     Output Format:
-        Standard log lines follow the pattern:
-        TIMESTAMP [LOGGER] [LEVEL] MESSAGE
+        Standard log lines follow the pattern::
 
-        When details are present, they are appended as indented YAML:
-        TIMESTAMP [LOGGER] [LEVEL] MESSAGE
-            key1: value1
-            key2: value2
+            TIMESTAMP [LOGGER] [LEVEL] MESSAGE
+
+        When details are present, they are appended as indented YAML::
+
+            TIMESTAMP [LOGGER] [LEVEL] MESSAGE
+                key1: value1
+                key2: value2
     """
 
     def __init__(self, text_format: str | None = None, datefmt: str | None = None):

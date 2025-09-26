@@ -20,37 +20,38 @@ Storage Modes:
     - **S3 Mode (V_SERVICE)**: Production deployment using AWS S3 bucket storage
     - **Local Mode (V_LOCAL)**: Development workflow using local filesystem storage
 
-Examples:
-    >>> from core_framework.models import ActionDetails, DeploymentDetails
+Examples::
 
-    >>> # Create from task name (most common pattern)
-    >>> details = ActionDetails.from_arguments(
-    ...     task="deploy",
-    ...     client="acme",
-    ...     bucket_name="acme-deployments",
-    ...     bucket_region="us-east-1"
-    ... )
-    >>> print(details.key)  # "acme/artefacts/deploy.actions"
+    from core_framework.models import ActionDetails, DeploymentDetails
 
-    >>> # Create with explicit key
-    >>> details = ActionDetails.from_arguments(
-    ...     client="acme",
-    ...     key="custom/deployment/special.actions",
-    ...     bucket_name="acme-deployments"
-    ... )
+    # Create from task name (most common pattern)
+    details = ActionDetails.from_arguments(
+    task="deploy",
+    client="acme",
+    bucket_name="acme-deployments",
+    bucket_region="us-east-1"
+    )
+    print(details.key)  # "acme/artefacts/deploy.actions"
 
-    >>> # Create for local development
-    >>> details = ActionDetails.from_arguments(
-    ...     task="test",
-    ...     client="dev-client",
-    ...     bucket_name="/var/local/deployments",
-    ...     mode="local"
-    ... )
+    # Create with explicit key
+    details = ActionDetails.from_arguments(
+    client="acme",
+    key="custom/deployment/special.actions",
+    bucket_name="acme-deployments"
+    )
 
-    >>> # Set key from deployment context
-    >>> deployment_details = DeploymentDetails(client="acme", environment="prod")
-    >>> details = ActionDetails(client="acme", bucket_name="acme-bucket")
-    >>> details.set_key(deployment_details, "rollback.actions")
+    # Create for local development
+    details = ActionDetails.from_arguments(
+    task="test",
+    client="dev-client",
+    bucket_name="/var/local/deployments",
+    mode="local"
+    )
+
+    # Set key from deployment context
+    deployment_details = DeploymentDetails(client="acme", environment="prod")
+    details = ActionDetails(client="acme", bucket_name="acme-bucket")
+    details.set_key(deployment_details, "rollback.actions")
 
 Related Classes:
     - FileDetails: Base class providing common file descriptor functionality
@@ -91,29 +92,30 @@ class ActionDetails(FileDetails):
         content_type (str): MIME type such as 'application/yaml' or 'application/json'.
         mode (str): Storage mode - V_LOCAL for filesystem or V_SERVICE for S3 storage.
 
-    Examples:
-        >>> # Basic S3 action details
-        >>> details = ActionDetails(
-        ...     client="acme",
-        ...     bucket_name="acme-deployments",
-        ...     bucket_region="us-east-1",
-        ...     key="artefacts/deploy.actions",
-        ...     content_type="application/yaml"
-        ... )
+    Examples::
 
-        >>> # Local filesystem action details
-        >>> details = ActionDetails(
-        ...     client="dev-client",
-        ...     bucket_name="/var/deployments",
-        ...     key="artefacts/test.actions",
-        ...     mode="local"
-        ... )
+        # Basic S3 action details
+        details = ActionDetails(
+        client="acme",
+        bucket_name="acme-deployments",
+        bucket_region="us-east-1",
+        key="artefacts/deploy.actions",
+        content_type="application/yaml"
+        )
 
-        >>> # Check storage mode and construct paths
-        >>> if details.mode == "service":
-        ...     s3_url = f"s3://{details.bucket_name}/{details.key}"
-        ... else:
-        ...     local_path = f"{details.bucket_name}/{details.key}"
+        # Local filesystem action details
+        details = ActionDetails(
+        client="dev-client",
+        bucket_name="/var/deployments",
+        key="artefacts/test.actions",
+        mode="local"
+        )
+
+        # Check storage mode and construct paths
+        if details.mode == "service":
+        s3_url = f"s3://{details.bucket_name}/{details.key}"
+        else:
+        local_path = f"{details.bucket_name}/{details.key}"
 
     Storage Patterns:
         **S3 Storage (Production)**:
@@ -165,21 +167,22 @@ class ActionDetails(FileDetails):
                  - content_type: Normalized MIME type (defaults to "application/yaml")
                  - All other fields preserved and normalized
 
-        Examples:
-            >>> # Called automatically during instance creation
-            >>> details = ActionDetails(
-            ...     client="test",
-            ...     bucket_name="test-bucket",
-            ...     ContentType="application/json"  # Gets normalized to content_type
-            ... )
-            >>> print(details.content_type)  # "application/json"
+        Examples::
 
-            >>> # Default content type applied
-            >>> details = ActionDetails(
-            ...     client="test",
-            ...     bucket_name="test-bucket"
-            ... )
-            >>> print(details.content_type)  # "application/yaml"
+            # Called automatically during instance creation
+            details = ActionDetails(
+            client="test",
+            bucket_name="test-bucket",
+            ContentType="application/json"  # Gets normalized to content_type
+            )
+            print(details.content_type)  # "application/json"
+
+            # Default content type applied
+            details = ActionDetails(
+            client="test",
+            bucket_name="test-bucket"
+            )
+            print(details.content_type)  # "application/yaml"
 
         Note:
             This validator runs before field validation and handles the common pattern
@@ -204,22 +207,23 @@ class ActionDetails(FileDetails):
                                    Must include client, environment, and other contextual information.
             filename (str): Name of the action file including extension (e.g., "deploy.actions").
 
-        Examples:
-            >>> from core_framework.models import ActionDetails, DeploymentDetails
+        Examples::
 
-            >>> # Set key for production deployment
-            >>> details = ActionDetails(client="acme", bucket_name="acme-deployments")
-            >>> deployment = DeploymentDetails(client="acme", environment="production")
-            >>> details.set_key(deployment, "deploy.actions")
-            >>> print(details.key)  # "acme/production/artefacts/deploy.actions"
+            from core_framework.models import ActionDetails, DeploymentDetails
 
-            >>> # Set key for staging rollback
-            >>> details.set_key(deployment, "rollback.actions")
-            >>> print(details.key)  # "acme/production/artefacts/rollback.actions"
+            # Set key for production deployment
+            details = ActionDetails(client="acme", bucket_name="acme-deployments")
+            deployment = DeploymentDetails(client="acme", environment="production")
+            details.set_key(deployment, "deploy.actions")
+            print(details.key)  # "acme/production/artefacts/deploy.actions"
 
-            >>> # Custom action file
-            >>> details.set_key(deployment, "custom-migration.actions")
-            >>> print(details.key)  # "acme/production/artefacts/custom-migration.actions"
+            # Set key for staging rollback
+            details.set_key(deployment, "rollback.actions")
+            print(details.key)  # "acme/production/artefacts/rollback.actions"
+
+            # Custom action file
+            details.set_key(deployment, "custom-migration.actions")
+            print(details.key)  # "acme/production/artefacts/custom-migration.actions"
 
         Key Structure:
             The generated key follows this pattern:
@@ -272,44 +276,45 @@ class ActionDetails(FileDetails):
             ValueError: If required parameters cannot be determined or if there are
                        validation errors in the provided arguments.
 
-        Examples:
-            >>> # Create from task name (common pattern)
-            >>> details = ActionDetails.from_arguments(
-            ...     task="deploy",
-            ...     client="acme",
-            ...     bucket_region="us-east-1"
-            ... )
-            >>> print(details.key)  # Auto-generated from task and context
+        Examples::
 
-            >>> # Create with explicit key
-            >>> details = ActionDetails.from_arguments(
-            ...     client="acme",
-            ...     key="custom/path/special.actions",
-            ...     bucket_name="acme-bucket"
-            ... )
+            # Create from task name (common pattern)
+            details = ActionDetails.from_arguments(
+            task="deploy",
+            client="acme",
+            bucket_region="us-east-1"
+            )
+            print(details.key)  # Auto-generated from task and context
 
-            >>> # Create for local development
-            >>> details = ActionDetails.from_arguments(
-            ...     task="test",
-            ...     client="dev",
-            ...     mode="local",
-            ...     bucket_name="/tmp/actions"
-            ... )
+            # Create with explicit key
+            details = ActionDetails.from_arguments(
+            client="acme",
+            key="custom/path/special.actions",
+            bucket_name="acme-bucket"
+            )
 
-            >>> # Create from command line arguments
-            >>> cli_args = {
-            ...     "Task": "deploy",
-            ...     "Client": "production-client",
-            ...     "BucketRegion": "eu-west-1"
-            ... }
-            >>> details = ActionDetails.from_arguments(**cli_args)
+            # Create for local development
+            details = ActionDetails.from_arguments(
+            task="test",
+            client="dev",
+            mode="local",
+            bucket_name="/tmp/actions"
+            )
 
-            >>> # Create with deployment context
-            >>> deployment = DeploymentDetails(client="acme", environment="staging")
-            >>> details = ActionDetails.from_arguments(
-            ...     action_file="rollback.actions",
-            ...     deployment_details=deployment
-            ... )
+            # Create from command line arguments
+            cli_args = {
+            "Task": "deploy",
+            "Client": "production-client",
+            "BucketRegion": "eu-west-1"
+            }
+            details = ActionDetails.from_arguments(**cli_args)
+
+            # Create with deployment context
+            deployment = DeploymentDetails(client="acme", environment="staging")
+            details = ActionDetails.from_arguments(
+            action_file="rollback.actions",
+            deployment_details=deployment
+            )
 
         Parameter Resolution:
             The method uses intelligent defaults and context-aware resolution:

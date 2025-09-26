@@ -48,34 +48,35 @@ class StateDetails(FileDetails):
         version_id: S3 object version ID for versioned state files.
         content_type: MIME type of state file (defaults to 'application/x-yaml').
 
-    Examples:
-        >>> # S3 storage mode
-        >>> state = StateDetails(
-        ...     client="my-client",
-        ...     bucket_name="deployment-bucket",
-        ...     bucket_region="us-east-1",
-        ...     key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
-        ...     mode="service"
-        ... )
-        >>> print(state.is_service_mode())
-        True
+    Examples::
 
-        >>> # Local storage mode
-        >>> state = StateDetails(
-        ...     client="my-client",
-        ...     bucket_name="/var/deployments",
-        ...     key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
-        ...     mode="local"
-        ... )
-        >>> print(state.get_full_path())
-        '/var/deployments/artefacts/ecommerce/web/main/1.0.0/deploy.state'
+        # S3 storage mode
+        state = StateDetails(
+        client="my-client",
+        bucket_name="deployment-bucket",
+        bucket_region="us-east-1",
+        key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
+        mode="service"
+        )
+        print(state.is_service_mode())
+        # Returns: True
 
-        >>> # Automatic creation from deployment context
-        >>> from core_framework.models.deployment_details import DeploymentDetails
-        >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-        >>> state = StateDetails.from_arguments(deployment_details=dd, task="deploy")
-        >>> print(state.key)
-        'artefacts/ecommerce/web/main/1.0.0/deploy.state'
+        # Local storage mode
+        state = StateDetails(
+        client="my-client",
+        bucket_name="/var/deployments",
+        key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
+        mode="local"
+        )
+        print(state.get_full_path())
+        # Returns: '/var/deployments/artefacts/ecommerce/web/main/1.0.0/deploy.state'
+
+        # Automatic creation from deployment context
+        from core_framework.models.deployment_details import DeploymentDetails
+        dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+        state = StateDetails.from_arguments(deployment_details=dd, task="deploy")
+        print(state.key)
+        # Returns: 'artefacts/ecommerce/web/main/1.0.0/deploy.state'
 
     Storage Patterns:
         State files follow a consistent naming and organization pattern:
@@ -106,11 +107,12 @@ class StateDetails(FileDetails):
         Returns:
             Normalized values with default content type set.
 
-        Examples:
-            >>> values = {"client": "test", "bucket_name": "bucket"}
-            >>> normalized = StateDetails.validate_model_before(values)
-            >>> print(normalized["content_type"])
-            'application/yaml'
+        Examples::
+
+            values = {"client": "test", "bucket_name": "bucket"}
+            normalized = StateDetails.validate_model_before(values)
+            print(normalized["content_type"])
+            # Returns: 'application/yaml'
         """
         if isinstance(values, dict):
             content_type = values.pop("content_type", None) or values.pop("ContentType", None)
@@ -130,18 +132,19 @@ class StateDetails(FileDetails):
             deployment_details: Deployment context containing portfolio, app, build info.
             filename: State filename (e.g., "deploy.state", "release.state").
 
-        Examples:
-            >>> from core_framework.models.deployment_details import DeploymentDetails
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-            >>> state = StateDetails(client="test", bucket_name="test-bucket", mode="local")
-            >>> state.set_key(dd, "deploy.state")
-            >>> print(state.key)
-            'artefacts/ecommerce/web/main/1.0.0/deploy.state'
+        Examples::
 
-            >>> # Different tasks use same hierarchy
-            >>> state.set_key(dd, "release.state")
-            >>> print(state.key)
-            'artefacts/ecommerce/web/main/1.0.0/release.state'
+            from core_framework.models.deployment_details import DeploymentDetails
+            dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+            state = StateDetails(client="test", bucket_name="test-bucket", mode="local")
+            state.set_key(dd, "deploy.state")
+            print(state.key)
+            # Returns: 'artefacts/ecommerce/web/main/1.0.0/deploy.state'
+
+            # Different tasks use same hierarchy
+            state.set_key(dd, "release.state")
+            print(state.key)
+            # Returns: 'artefacts/ecommerce/web/main/1.0.0/release.state'
 
         Path Generation:
             The generated path follows the pattern:
@@ -188,45 +191,46 @@ class StateDetails(FileDetails):
         Raises:
             ValueError: If required parameters are missing or invalid.
 
-        Examples:
-            >>> # Explicit key specification
-            >>> state = StateDetails.from_arguments(
-            ...     client="my-client",
-            ...     key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
-            ...     mode="service"
-            ... )
-            >>> print(state.key)
-            'artefacts/ecommerce/web/main/1.0.0/deploy.state'
+        Examples::
 
-            >>> # Auto-generation from task and deployment details
-            >>> from core_framework.models.deployment_details import DeploymentDetails
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
-            >>> state = StateDetails.from_arguments(
-            ...     deployment_details=dd,
-            ...     task="deploy"
-            ... )
-            >>> print(state.key)
-            'artefacts/ecommerce/web/main/1.0.0/deploy.state'
+            # Explicit key specification
+            state = StateDetails.from_arguments(
+            client="my-client",
+            key="artefacts/ecommerce/web/main/1.0.0/deploy.state",
+            mode="service"
+            )
+            print(state.key)
+            # Returns: 'artefacts/ecommerce/web/main/1.0.0/deploy.state'
 
-            >>> # Minimal arguments with auto-generation
-            >>> state = StateDetails.from_arguments(
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     build="1.0.0",
-            ...     task="release"
-            ... )
-            >>> print(state.key)
-            'artefacts/ecommerce/web/main/1.0.0/release.state'
+            # Auto-generation from task and deployment details
+            from core_framework.models.deployment_details import DeploymentDetails
+            dd = DeploymentDetails(portfolio="ecommerce", app="web", build="1.0.0")
+            state = StateDetails.from_arguments(
+            deployment_details=dd,
+            task="deploy"
+            )
+            print(state.key)
+            # Returns: 'artefacts/ecommerce/web/main/1.0.0/deploy.state'
 
-            >>> # Command line integration
-            >>> cli_args = {
-            ...     "portfolio": "ecommerce",
-            ...     "app": "web",
-            ...     "build": "1.0.0",
-            ...     "task": "deploy",
-            ...     "mode": "local"
-            ... }
-            >>> state = StateDetails.from_arguments(**cli_args)
+            # Minimal arguments with auto-generation
+            state = StateDetails.from_arguments(
+            portfolio="ecommerce",
+            app="web",
+            build="1.0.0",
+            task="release"
+            )
+            print(state.key)
+            # Returns: 'artefacts/ecommerce/web/main/1.0.0/release.state'
+
+            # Command line integration
+            cli_args = {
+            "portfolio": "ecommerce",
+            "app": "web",
+            "build": "1.0.0",
+            "task": "deploy",
+            "mode": "local"
+            }
+            state = StateDetails.from_arguments(**cli_args)
 
         Key Generation Logic:
             1. **Explicit key**: If 'key' parameter provided, use directly
@@ -309,10 +313,11 @@ class StateDetails(FileDetails):
         Returns:
             String showing the storage mode and file location.
 
-        Examples:
-            >>> state = StateDetails(client="test", bucket_name="bucket", key="deploy.state")
-            >>> str(state)
-            'StateDetails(local: bucket/deploy.state)'
+        Examples::
+
+            state = StateDetails(client="test", bucket_name="bucket", key="deploy.state")
+            str(state)
+            # Returns: 'StateDetails(local: bucket/deploy.state)'
         """
         return f"StateDetails({self.mode}: {self.bucket_name}/{self.key})"
 
@@ -322,9 +327,10 @@ class StateDetails(FileDetails):
         Returns:
             Detailed representation showing key attributes.
 
-        Examples:
-            >>> state = StateDetails(bucket_name="bucket", key="deploy.state")
-            >>> repr(state)
-            "StateDetails(bucket_name='bucket', key='deploy.state')"
+        Examples::
+
+            state = StateDetails(bucket_name="bucket", key="deploy.state")
+            repr(state)
+            # Returns: "StateDetails(bucket_name='bucket', key='deploy.state')"
         """
         return f"StateDetails(bucket_name='{self.bucket_name}', key='{self.key}')"

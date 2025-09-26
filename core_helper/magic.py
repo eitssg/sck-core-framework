@@ -256,8 +256,8 @@ class MagicObject(BaseModel):
         Args:
             **kwargs: Keyword arguments.
                 CopySource (dict): Dictionary containing source bucket and key.
-                    Bucket (str): The source bucket name.
-                    Key (str): The source object key.
+                Bucket (str): The source bucket name.
+                Key (str): The source object key.
 
         Returns:
             A dictionary emulating the S3 CopyObjectResult with ETag,

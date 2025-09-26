@@ -28,30 +28,31 @@ Deployment Hierarchy:
                     └── Component (load-balancer)
     ```
 
-Examples:
-    >>> from core_framework.models import DeploymentDetails
+Examples::
 
-    >>> # Create basic deployment details
-    >>> dd = DeploymentDetails(
-    ...     client="acme-corp",
-    ...     portfolio="ecommerce",
-    ...     app="web-frontend",
-    ...     branch="main",
-    ...     build="v1.2.3"
-    ... )
+    from core_framework.models import DeploymentDetails
 
-    >>> # Generate resource identifiers
-    >>> print(dd.get_build_prn())  # "prn:ecommerce:web-frontend:main:v1.2.3"
+    # Create basic deployment details
+    dd = DeploymentDetails(
+    client="acme-corp",
+    portfolio="ecommerce",
+    app="web-frontend",
+    branch="main",
+    build="v1.2.3"
+    )
 
-    >>> # Generate S3 object keys
-    >>> key = dd.get_object_key("artefacts", "deploy.yaml")
-    >>> print(key)  # "artefacts/ecommerce/web-frontend/main/v1.2.3/deploy.yaml"
+    # Generate resource identifiers
+    print(dd.get_build_prn())  # "prn:ecommerce:web-frontend:main:v1.2.3"
 
-    >>> # Create from flexible arguments
-    >>> dd = DeploymentDetails.from_arguments(
-    ...     portfolio="mobile-apps",
-    ...     app="ios-client"
-    ... )
+    # Generate S3 object keys
+    key = dd.get_object_key("artefacts", "deploy.yaml")
+    print(key)  # "artefacts/ecommerce/web-frontend/main/v1.2.3/deploy.yaml"
+
+    # Create from flexible arguments
+    dd = DeploymentDetails.from_arguments(
+    portfolio="mobile-apps",
+    app="ios-client"
+    )
 
 Related Classes:
     - ActionDetails: Uses DeploymentDetails for action file path generation
@@ -120,40 +121,41 @@ class DeploymentDetails(BaseModel):
         stack_file (str, optional): CloudFormation stack file name for infrastructure deployment.
         delivered_by (str, optional): Person or system responsible for the deployment.
 
-    Examples:
-        >>> # Complete deployment hierarchy
-        >>> dd = DeploymentDetails(
-        ...     client="acme-corp",
-        ...     portfolio="ecommerce",
-        ...     app="web-frontend",
-        ...     branch="feature/new-checkout",
-        ...     build="v2.1.0-beta.3+f9a8b7c",
-        ...     component="load-balancer",
-        ...     environment="staging",
-        ...     data_center="us-east-1"
-        ... )
+    Examples::
 
-        >>> # Portfolio-level deployment
-        >>> dd = DeploymentDetails(
-        ...     client="acme-corp",
-        ...     portfolio="data-analytics"
-        ... )
+        # Complete deployment hierarchy
+        dd = DeploymentDetails(
+        client="acme-corp",
+        portfolio="ecommerce",
+        app="web-frontend",
+        branch="feature/new-checkout",
+        build="v2.1.0-beta.3+f9a8b7c",
+        component="load-balancer",
+        environment="staging",
+        data_center="us-east-1"
+        )
 
-        >>> # App-level deployment
-        >>> dd = DeploymentDetails(
-        ...     client="acme-corp",
-        ...     portfolio="mobile-apps",
-        ...     app="ios-client"
-        ... )
+        # Portfolio-level deployment
+        dd = DeploymentDetails(
+        client="acme-corp",
+        portfolio="data-analytics"
+        )
 
-        >>> # With custom tags and metadata
-        >>> dd = DeploymentDetails(
-        ...     client="acme-corp",
-        ...     portfolio="ecommerce",
-        ...     app="payment-service",
-        ...     tags={"Team": "payments", "CostCenter": "engineering"},
-        ...     delivered_by="jenkins-ci"
-        ... )
+        # App-level deployment
+        dd = DeploymentDetails(
+        client="acme-corp",
+        portfolio="mobile-apps",
+        app="ios-client"
+        )
+
+        # With custom tags and metadata
+        dd = DeploymentDetails(
+        client="acme-corp",
+        portfolio="ecommerce",
+        app="payment-service",
+        tags={"Team": "payments", "CostCenter": "engineering"},
+        delivered_by="jenkins-ci"
+        )
 
     Validation Rules:
         - **Component requires Build**: Cannot specify component without build
@@ -283,14 +285,15 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: Portfolio PRN in format 'prn:portfolio' (lowercase).
 
-        Examples:
-            >>> dd = DeploymentDetails(portfolio="ecommerce-platform")
-            >>> print(dd.get_portfolio_prn())
-            "prn:ecommerce-platform"
+        Examples::
 
-            >>> dd = DeploymentDetails(portfolio="Mobile-Apps")
-            >>> print(dd.get_portfolio_prn())
-            "prn:mobile-apps"
+            dd = DeploymentDetails(portfolio="ecommerce-platform")
+            print(dd.get_portfolio_prn())
+            # Returns: "prn:ecommerce-platform"
+
+            dd = DeploymentDetails(portfolio="Mobile-Apps")
+            print(dd.get_portfolio_prn())
+            # Returns: "prn:mobile-apps"
         """
         return f"prn:{self.portfolio}".lower()
 
@@ -303,14 +306,15 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: App PRN in format 'prn:portfolio:app' (lowercase).
 
-        Examples:
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web-frontend")
-            >>> print(dd.get_app_prn())
-            "prn:ecommerce:web-frontend"
+        Examples::
 
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app=None)
-            >>> print(dd.get_app_prn())
-            "prn:ecommerce:"
+            dd = DeploymentDetails(portfolio="ecommerce", app="web-frontend")
+            print(dd.get_app_prn())
+            # Returns: "prn:ecommerce:web-frontend"
+
+            dd = DeploymentDetails(portfolio="ecommerce", app=None)
+            print(dd.get_app_prn())
+            # Returns: "prn:ecommerce:"
         """
         return f"prn:{self.portfolio}:{self.app or ''}".lower()
 
@@ -324,23 +328,24 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: Branch PRN in format 'prn:portfolio:app:branch' (lowercase).
 
-        Examples:
-            >>> dd = DeploymentDetails(
-            ...     portfolio="ecommerce",
-            ...     app="web-frontend",
-            ...     branch_short_name="main"
-            ... )
-            >>> print(dd.get_branch_prn())
-            "prn:ecommerce:web-frontend:main"
+        Examples::
 
-            >>> dd = DeploymentDetails(
-            ...     portfolio="ecommerce",
-            ...     app="web-frontend",
-            ...     branch="feature/user-auth",
-            ...     branch_short_name="feature-user-auth"
-            ... )
-            >>> print(dd.get_branch_prn())
-            "prn:ecommerce:web-frontend:feature-user-auth"
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="web-frontend",
+            branch_short_name="main"
+            )
+            print(dd.get_branch_prn())
+            # Returns: "prn:ecommerce:web-frontend:main"
+
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="web-frontend",
+            branch="feature/user-auth",
+            branch_short_name="feature-user-auth"
+            )
+            print(dd.get_branch_prn())
+            # Returns: "prn:ecommerce:web-frontend:feature-user-auth"
         """
         return f"prn:{self.portfolio}:{self.app or ''}:{self.branch_short_name or ''}".lower()
 
@@ -353,24 +358,25 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: Build PRN in format 'prn:portfolio:app:branch:build' (lowercase).
 
-        Examples:
-            >>> dd = DeploymentDetails(
-            ...     portfolio="ecommerce",
-            ...     app="api-gateway",
-            ...     branch_short_name="main",
-            ...     build="v1.2.3"
-            ... )
-            >>> print(dd.get_build_prn())
-            "prn:ecommerce:api-gateway:main:v1.2.3"
+        Examples::
 
-            >>> dd = DeploymentDetails(
-            ...     portfolio="mobile-apps",
-            ...     app="ios-client",
-            ...     branch_short_name="release-2.0",
-            ...     build="2.0.1-beta.4+abc123"
-            ... )
-            >>> print(dd.get_build_prn())
-            "prn:mobile-apps:ios-client:release-2.0:2.0.1-beta.4+abc123"
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="api-gateway",
+            branch_short_name="main",
+            build="v1.2.3"
+            )
+            print(dd.get_build_prn())
+            # Returns: "prn:ecommerce:api-gateway:main:v1.2.3"
+
+            dd = DeploymentDetails(
+            portfolio="mobile-apps",
+            app="ios-client",
+            branch_short_name="release-2.0",
+            build="2.0.1-beta.4+abc123"
+            )
+            print(dd.get_build_prn())
+            # Returns: "prn:mobile-apps:ios-client:release-2.0:2.0.1-beta.4+abc123"
         """
         return f"prn:{self.portfolio}:{self.app or ''}:{self.branch_short_name or ''}:{self.build or ''}".lower()
 
@@ -383,26 +389,27 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: Component PRN in format 'prn:portfolio:app:branch:build:component' (lowercase).
 
-        Examples:
-            >>> dd = DeploymentDetails(
-            ...     portfolio="ecommerce",
-            ...     app="web-frontend",
-            ...     branch_short_name="main",
-            ...     build="v1.2.3",
-            ...     component="load-balancer"
-            ... )
-            >>> print(dd.get_component_prn())
-            "prn:ecommerce:web-frontend:main:v1.2.3:load-balancer"
+        Examples::
 
-            >>> dd = DeploymentDetails(
-            ...     portfolio="data-platform",
-            ...     app="etl-pipeline",
-            ...     branch_short_name="main",
-            ...     build="v3.1.0",
-            ...     component="postgres-db"
-            ... )
-            >>> print(dd.get_component_prn())
-            "prn:data-platform:etl-pipeline:main:v3.1.0:postgres-db"
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="web-frontend",
+            branch_short_name="main",
+            build="v1.2.3",
+            component="load-balancer"
+            )
+            print(dd.get_component_prn())
+            # Returns: "prn:ecommerce:web-frontend:main:v1.2.3:load-balancer"
+
+            dd = DeploymentDetails(
+            portfolio="data-platform",
+            app="etl-pipeline",
+            branch_short_name="main",
+            build="v3.1.0",
+            component="postgres-db"
+            )
+            print(dd.get_component_prn())
+            # Returns: "prn:data-platform:etl-pipeline:main:v3.1.0:postgres-db"
         """
         return f"prn:{self.portfolio}:{self.app or ''}:{self.branch_short_name or ''}:{self.build or ''}:{self.component or ''}".lower()
 
@@ -428,11 +435,12 @@ class DeploymentDetails(BaseModel):
                  - branch_short_name: Generated from branch if not provided
                  - delivered_by: Populated from framework default if missing
 
-        Examples:
-            >>> # Called automatically during instance creation
-            >>> values = {"portfolio": "test", "branch": "feature/user-login"}
-            >>> processed = DeploymentDetails.validate_model_before(values)
-            >>> print(processed["branch_short_name"])  # "feature-user-login"
+        Examples::
+
+            # Called automatically during instance creation
+            values = {"portfolio": "test", "branch": "feature/user-login"}
+            processed = DeploymentDetails.validate_model_before(values)
+            print(processed["branch_short_name"])  # "feature-user-login"
 
         Side Effects:
             Modifies the provided values dictionary by adding missing defaults
@@ -475,25 +483,26 @@ class DeploymentDetails(BaseModel):
                        - Build provided without Branch
                        - Branch provided without App
 
-        Examples:
-            >>> # Valid hierarchy
-            >>> dd = DeploymentDetails(
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     branch="main",
-            ...     build="v1.0",
-            ...     component="lb"
-            ... )  # Success
+        Examples::
 
-            >>> # Invalid: component without build
-            >>> try:
-            ...     dd = DeploymentDetails(
-            ...         portfolio="ecommerce",
-            ...         app="web",
-            ...         component="lb"
-            ...     )
-            ... except ValueError as e:
-            ...     print(e)  # "Build is required when Component is provided"
+            # Valid hierarchy
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="web",
+            branch="main",
+            build="v1.0",
+            component="lb"
+            )  # Success
+
+            # Invalid: component without build
+            try:
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="web",
+            component="lb"
+            )
+            except ValueError as e:
+            print(e)  # "Build is required when Component is provided"
 
         Validation Rules:
             - **Component → Build**: Component requires build to be specified
@@ -534,20 +543,21 @@ class DeploymentDetails(BaseModel):
                 - "app": When app provided but not branch
                 - "portfolio": When only portfolio provided
 
-        Examples:
-            >>> dd = DeploymentDetails(
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     branch="main",
-            ...     build="v1.0"
-            ... )
-            >>> print(dd.get_scope())  # "build"
+        Examples::
 
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web")
-            >>> print(dd.get_scope())  # "app"
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="web",
+            branch="main",
+            build="v1.0"
+            )
+            print(dd.get_scope())  # "build"
 
-            >>> dd = DeploymentDetails(portfolio="ecommerce")
-            >>> print(dd.get_scope())  # "portfolio"
+            dd = DeploymentDetails(portfolio="ecommerce", app="web")
+            print(dd.get_scope())  # "app"
+
+            dd = DeploymentDetails(portfolio="ecommerce")
+            print(dd.get_scope())  # "portfolio"
 
         Environment Override:
             The ENV_SCOPE environment variable can override automatic determination:
@@ -573,15 +583,16 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: Determined scope based on deepest level provided.
 
-        Examples:
-            >>> scope = DeploymentDetails.get_scope_from("ecom", "web", "main", "v1.0")
-            >>> print(scope)  # "build"
+        Examples::
 
-            >>> scope = DeploymentDetails.get_scope_from("ecom", "web", None, None)
-            >>> print(scope)  # "app"
+            scope = DeploymentDetails.get_scope_from("ecom", "web", "main", "v1.0")
+            print(scope)  # "build"
 
-            >>> scope = DeploymentDetails.get_scope_from("ecom", None, None, None)
-            >>> print(scope)  # "portfolio"
+            scope = DeploymentDetails.get_scope_from("ecom", "web", None, None)
+            print(scope)  # "app"
+
+            scope = DeploymentDetails.get_scope_from("ecom", None, None, None)
+            print(scope)  # "portfolio"
 
         Environment Override:
             The ENV_SCOPE environment variable takes precedence over automatic determination.
@@ -607,23 +618,24 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: Complete PRN with wildcards for missing fields.
 
-        Examples:
-            >>> dd = DeploymentDetails(portfolio="ecommerce", app="web")
-            >>> print(dd.get_identity())
-            "prn:ecommerce:web:*:*"
+        Examples::
 
-            >>> dd = DeploymentDetails(
-            ...     portfolio="ecommerce",
-            ...     app="web",
-            ...     branch_short_name="main",
-            ...     build="v1.0"
-            ... )
-            >>> print(dd.get_identity())
-            "prn:ecommerce:web:main:v1.0"
+            dd = DeploymentDetails(portfolio="ecommerce", app="web")
+            print(dd.get_identity())
+            # Returns: "prn:ecommerce:web:*:*"
 
-            >>> dd = DeploymentDetails(portfolio="mobile-apps")
-            >>> print(dd.get_identity())
-            "prn:mobile-apps:*:*:*"
+            dd = DeploymentDetails(
+            portfolio="ecommerce",
+            app="web",
+            branch_short_name="main",
+            build="v1.0"
+            )
+            print(dd.get_identity())
+            # Returns: "prn:ecommerce:web:main:v1.0"
+
+            dd = DeploymentDetails(portfolio="mobile-apps")
+            print(dd.get_identity())
+            # Returns: "prn:mobile-apps:*:*:*"
 
         Usage Patterns:
             Identity PRNs are commonly used for:
@@ -677,43 +689,44 @@ class DeploymentDetails(BaseModel):
             ValueError: If required client parameter cannot be determined or if
                        PRN parsing fails.
 
-        Examples:
-            >>> # Create from individual parameters
-            >>> dd = DeploymentDetails.from_arguments(
-            ...     client="acme-corp",
-            ...     portfolio="ecommerce",
-            ...     app="web-frontend"
-            ... )
+        Examples::
 
-            >>> # Create from PRN string
-            >>> dd = DeploymentDetails.from_arguments(
-            ...     client="acme-corp",
-            ...     prn="prn:ecommerce:web-frontend:main:v1.0.0:load-balancer"
-            ... )
+            # Create from individual parameters
+            dd = DeploymentDetails.from_arguments(
+            client="acme-corp",
+            portfolio="ecommerce",
+            app="web-frontend"
+            )
 
-            >>> # Create with framework defaults
-            >>> dd = DeploymentDetails.from_arguments(
-            ...     portfolio="mobile-apps"
-            ...     # client, app, branch, build from framework defaults
-            ... )
+            # Create from PRN string
+            dd = DeploymentDetails.from_arguments(
+            client="acme-corp",
+            prn="prn:ecommerce:web-frontend:main:v1.0.0:load-balancer"
+            )
 
-            >>> # Create with mixed case parameters (API compatibility)
-            >>> dd = DeploymentDetails.from_arguments(
-            ...     Client="AcmeCorp",
-            ...     Portfolio="Ecommerce",
-            ...     App="WebFrontend",
-            ...     Branch="feature/checkout",
-            ...     Build="v2.1.0"
-            ... )
+            # Create with framework defaults
+            dd = DeploymentDetails.from_arguments(
+            portfolio="mobile-apps"
+            # client, app, branch, build from framework defaults
+            )
 
-            >>> # Create with environment context
-            >>> dd = DeploymentDetails.from_arguments(
-            ...     portfolio="data-platform",
-            ...     app="etl-pipeline",
-            ...     environment="production",
-            ...     data_center="us-east-1",
-            ...     tags={"Team": "data-engineering", "Environment": "prod"}
-            ... )
+            # Create with mixed case parameters (API compatibility)
+            dd = DeploymentDetails.from_arguments(
+            Client="AcmeCorp",
+            Portfolio="Ecommerce",
+            App="WebFrontend",
+            Branch="feature/checkout",
+            Build="v2.1.0"
+            )
+
+            # Create with environment context
+            dd = DeploymentDetails.from_arguments(
+            portfolio="data-platform",
+            app="etl-pipeline",
+            environment="production",
+            data_center="us-east-1",
+            tags={"Team": "data-engineering", "Environment": "prod"}
+            )
 
         Parameter Resolution Priority:
             1. **PRN Parsing**: If prn parameter provided, parse hierarchy from it

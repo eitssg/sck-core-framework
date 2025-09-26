@@ -106,44 +106,45 @@ Integration with Core Automation:
     - **core-db**: Database operations with model persistence
     - **core-cli**: Command-line interface with configuration functions
 
-Examples:
-    Complete workflow example:
+Examples::
 
-    >>> import core_framework as cf
-    >>>
-    >>> # 1. Get environment configuration
-    >>> env = cf.get_environment()
-    >>> account = cf.get_automation_account()
-    >>> region = cf.get_region()
-    >>>
-    >>> # 2. Generate PRNs for resources
-    >>> portfolio = "my-portfolio"
-    >>> app = "web-app"
-    >>> branch = "feature-auth"
-    >>>
-    >>> portfolio_prn = cf.generate_portfolio_prn(portfolio)
-    >>> app_prn = cf.generate_app_prn(portfolio, app)
-    >>> branch_prn = cf.generate_branch_prn(portfolio, app, branch)
-    >>>
-    >>> # 3. Create deployment specification
-    >>> action = ActionResource(
-    ...     name="deploy-infrastructure",
-    ...     kind="AWS::CreateStack",
-    ...     params={
-    ...         "account": account,
-    ...         "region": region,
-    ...         "stack_name": f"{cf.branch_short_name(branch)}-infrastructure"
-    ...     }
-    ... )
-    >>>
-    >>> # 4. Generate task payload for execution
-    >>> payload = cf.generate_task_payload(
-    ...     action_resource=action,
-    ...     deployment_id=f"deploy-{cf.get_current_timestamp_short()}"
-    ... )
-    >>>
-    >>> # 5. Process and serialize
-    >>> yaml_output = cf.to_yaml(payload.model_dump())
+    # Returns: Complete workflow example:
+
+    import core_framework as cf
+    # Returns: >>>
+    # 1. Get environment configuration
+    env = cf.get_environment()
+    account = cf.get_automation_account()
+    region = cf.get_region()
+    # Returns: >>>
+    # 2. Generate PRNs for resources
+    portfolio = "my-portfolio"
+    app = "web-app"
+    branch = "feature-auth"
+    # Returns: >>>
+    portfolio_prn = cf.generate_portfolio_prn(portfolio)
+    app_prn = cf.generate_app_prn(portfolio, app)
+    branch_prn = cf.generate_branch_prn(portfolio, app, branch)
+    # Returns: >>>
+    # 3. Create deployment specification
+    action = ActionResource(
+    name="deploy-infrastructure",
+    kind="AWS::CreateStack",
+    params={
+    "account": account,
+    "region": region,
+    "stack_name": f"{cf.branch_short_name(branch)}-infrastructure"
+    }
+    )
+    # Returns: >>>
+    # 4. Generate task payload for execution
+    payload = cf.generate_task_payload(
+    action_resource=action,
+    deployment_id=f"deploy-{cf.get_current_timestamp_short()}"
+    )
+    # Returns: >>>
+    # 5. Process and serialize
+    yaml_output = cf.to_yaml(payload.model_dump())
 
 Error Handling:
     All functions include proper error handling and validation:
@@ -526,20 +527,21 @@ def get_function_categories() -> dict[str, list[str]]:
     Returns:
         Dictionary mapping category names to lists of function names.
 
-    Examples:
-        >>> categories = get_function_categories()
-        >>> print(categories["configuration"])
-        ['get_environment', 'get_region', 'get_automation_account', ...]
+    Examples::
 
-        >>> # Check what PRN functions are available
-        >>> prn_functions = categories["prn_system"]
-        >>> print("generate_app_prn" in prn_functions)
-        True
+        categories = get_function_categories()
+        print(categories["configuration"])
+        # Returns: ['get_environment', 'get_region', 'get_automation_account', ...]
 
-        >>> # Explore AWS resource functions
-        >>> aws_funcs = categories["aws_resources"]
-        >>> print(len(aws_funcs))
-        8
+        # Check what PRN functions are available
+        prn_functions = categories["prn_system"]
+        print("generate_app_prn" in prn_functions)
+        # Returns: True
+
+        # Explore AWS resource functions
+        aws_funcs = categories["aws_resources"]
+        print(len(aws_funcs))
+        # Returns: 8
     """
     return {
         "data_utilities": DATA_UTILITIES,
@@ -559,12 +561,13 @@ def get_version_info() -> dict[str, str]:
     Returns:
         Dictionary containing version details and metadata.
 
-    Examples:
-        >>> version_info = get_version_info()
-        >>> print(version_info["version"])
-        '0.0.11-pre.8+11ddda5'
-        >>> print(version_info["is_prerelease"])
-        True
+    Examples::
+
+        version_info = get_version_info()
+        print(version_info["version"])
+        # Returns: '0.0.11-pre.8+11ddda5'
+        print(version_info["is_prerelease"])
+        # Returns: True
     """
     import re
 
@@ -604,14 +607,15 @@ def get_framework_info() -> dict[str, any]:
     Returns:
         Dictionary containing framework metadata, capabilities, and configuration.
 
-    Examples:
-        >>> info = get_framework_info()
-        >>> print(info["name"])
-        'Core Automation Framework'
-        >>> print(len(info["capabilities"]))
-        8
-        >>> print(info["function_count"])
-        85
+    Examples::
+
+        info = get_framework_info()
+        print(info["name"])
+        # Returns: 'Core Automation Framework'
+        print(len(info["capabilities"]))
+        # Returns: 8
+        print(info["function_count"])
+        # Returns: 85
     """
     categories = get_function_categories()
     version_info = get_version_info()

@@ -272,13 +272,14 @@ def get_prn(
     Returns:
         The Pipeline Reference Number (PRN).
 
-    Examples:
-        >>> get_prn("ecommerce", "web", "main", "1.0.0", scope=SCOPE_BUILD)
-        'ecommerce:web:main:1.0.0'
-        >>> get_prn("ecommerce", "web", scope=SCOPE_APP)
-        'ecommerce:web'
-        >>> get_prn("ecommerce", "web", "main", "1.0.0", delim="-")
-        'ecommerce-web-main-1.0.0'
+    Examples::
+
+        get_prn("ecommerce", "web", "main", "1.0.0", scope=SCOPE_BUILD)
+        # Returns: 'ecommerce:web:main:1.0.0'
+        get_prn("ecommerce", "web", scope=SCOPE_APP)
+        # Returns: 'ecommerce:web'
+        get_prn("ecommerce", "web", "main", "1.0.0", delim="-")
+        # Returns: 'ecommerce-web-main-1.0.0'
     """
     result = portfolio
     if scope == SCOPE_PORTFOLIO:
@@ -317,11 +318,12 @@ def generate_bucket_name(
     Returns:
         The generated bucket name in format: {scope_prefix}{client}-{V_CORE_AUTOMATION}-{region}
 
-    Examples:
-        >>> generate_bucket_name("myclient", "us-east-1", "dev-")
-        'dev-myclient-core-automation-us-east-1'
-        >>> generate_bucket_name()  # Uses defaults from environment
-        'myclient-core-automation-us-east-1'
+    Examples::
+
+        generate_bucket_name("myclient", "us-east-1", "dev-")
+        # Returns: 'dev-myclient-core-automation-us-east-1'
+        generate_bucket_name()  # Uses defaults from environment
+        # Returns: 'myclient-core-automation-us-east-1'
     """
     if not client:
         client = get_client() or V_EMPTY
@@ -454,9 +456,10 @@ def get_prn_alt(
     Returns:
         PRN with hyphen delimiters.
 
-    Examples:
-        >>> get_prn_alt("ecommerce", "web", "main", "1.0.0")
-        'ecommerce-web-main-1.0.0'
+    Examples::
+
+        get_prn_alt("ecommerce", "web", "main", "1.0.0")
+        # Returns: 'ecommerce-web-main-1.0.0'
     """
     return get_prn(portfolio, app, branch, build, component, scope, delim="-")
 
@@ -1645,12 +1648,15 @@ def to_json(data: Any, pretty: int | None = None) -> str:
     Returns:
         JSON string representation of the data
 
-    Examples
-    --------
-    >>> to_json({"name": "test", "created": datetime.now()})
-    '{"name": "test", "created": "2023-01-01T12:00:00"}'
-    >>> to_json({"name": "test"}, pretty=2)
-    '{\n  "name": "test"\n}'
+    Examples:
+
+    ::
+
+        to_json({"name": "test", "created": datetime.now()})
+        # Returns: '{"name": "test", "created": "2023-01-01T12:00:00"}'
+
+        to_json({"name": "test"}, pretty=2)
+        # Returns: '{\\n  "name": "test"\\n}'
     """
     if data is None:
         return V_EMPTY  # or should we return "[]" or "{}"?
@@ -1667,8 +1673,11 @@ def write_json(data: Any, output_stream: IO, pretty: int | None = None) -> None:
         pretty: Pretty print indent level.
 
     Examples:
-        >>> with open('output.json', 'w') as f:
-        ...     write_json({"name": "test"}, f, pretty=2)
+
+    ::
+
+        with open('output.json', 'w') as f:
+            write_json({"name": "test"}, f, pretty=2)
     """
     json.dump(data, output_stream, indent=pretty, default=__custom_serializer)
 
@@ -1729,9 +1738,10 @@ def read_json(input_stream: IO) -> Any:
     Returns:
         JSON data with datetime objects.
 
-    Examples:
-        >>> with open('input.json', 'r') as f:
-        ...     data = read_json(f)
+    Examples::
+
+        with open('input.json', 'r') as f:
+        data = read_json(f)
     """
     return json.load(input_stream, object_hook=__iso8601_parser)
 

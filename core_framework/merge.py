@@ -36,14 +36,15 @@ def deep_copy(obj: Any) -> Any:
     Returns:
         A new object that is a deep copy of the input object.
 
-    Examples:
-        >>> original = {"a": {"b": [1, 2, 3]}}
-        >>> copied = deep_copy(original)
-        >>> copied["a"]["b"].append(4)
-        >>> print(original["a"]["b"])
-        [1, 2, 3]  # Original unchanged
-        >>> print(copied["a"]["b"])
-        [1, 2, 3, 4]  # Copy modified
+    Examples::
+
+        original = {"a": {"b": [1, 2, 3]}}
+        copied = deep_copy(original)
+        copied["a"]["b"].append(4)
+        print(original["a"]["b"])
+        # Returns: [1, 2, 3]  # Original unchanged
+        print(copied["a"]["b"])
+        # Returns: [1, 2, 3, 4]  # Copy modified
     """
     return copy.deepcopy(obj)
 
@@ -88,30 +89,31 @@ def deep_merge_in_place(
     Returns:
         The first dictionary, now containing the merged values from all inputs.
 
-    Examples:
-        >>> base = {"a": 1, "b": {"c": 2}}
-        >>> overlay = {"b": {"d": 3}, "e": 4}
-        >>> result = deep_merge_in_place(base, overlay)
-        >>> print(result)
-        {"a": 1, "b": {"c": 2, "d": 3}, "e": 4}
-        >>> print(base is result)
-        True  # base was modified in-place
+    Examples::
 
-        >>> # List merging behavior
-        >>> base = {"items": [1, 2]}
-        >>> overlay = {"items": [3, 4]}
-        >>> deep_merge_in_place(base, overlay, merge_lists=True)
-        >>> print(base["items"])
-        [1, 2, 3, 4]  # Lists concatenated
+        base = {"a": 1, "b": {"c": 2}}
+        overlay = {"b": {"d": 3}, "e": 4}
+        result = deep_merge_in_place(base, overlay)
+        print(result)
+        # Returns: {"a": 1, "b": {"c": 2, "d": 3}, "e": 4}
+        print(base is result)
+        # Returns: True  # base was modified in-place
 
-        >>> # Conditional merging
-        >>> def skip_protected(key: str) -> bool:
-        ...     return not key.startswith("_")
-        >>> base = {"public": 1, "_private": 2}
-        >>> overlay = {"public": 10, "_private": 20}
-        >>> deep_merge_in_place(base, overlay, should_merge=skip_protected)
-        >>> print(base)
-        {"public": 10, "_private": 2}  # Private key preserved
+        # List merging behavior
+        base = {"items": [1, 2]}
+        overlay = {"items": [3, 4]}
+        deep_merge_in_place(base, overlay, merge_lists=True)
+        print(base["items"])
+        # Returns: [1, 2, 3, 4]  # Lists concatenated
+
+        # Conditional merging
+        def skip_protected(key: str) -> bool:
+        return not key.startswith("_")
+        base = {"public": 1, "_private": 2}
+        overlay = {"public": 10, "_private": 20}
+        deep_merge_in_place(base, overlay, should_merge=skip_protected)
+        print(base)
+        # Returns: {"public": 10, "_private": 2}  # Private key preserved
     """
     merged_dict = dicts[0]
     for d in dicts[1:]:
@@ -145,27 +147,28 @@ def deep_merge(
     Returns:
         A new dictionary containing the merged values from all inputs.
 
-    Examples:
-        >>> config_base = {"timeout": 30, "retries": 3}
-        >>> config_env = {"timeout": 60, "debug": True}
-        >>> merged = deep_merge(config_base, config_env)
-        >>> print(merged)
-        {"timeout": 60, "retries": 3, "debug": True}
-        >>> print(config_base)
-        {"timeout": 30, "retries": 3}  # Original unchanged
+    Examples::
 
-        >>> # Empty input handling
-        >>> result = deep_merge()
-        >>> print(result)
-        {}
+        config_base = {"timeout": 30, "retries": 3}
+        config_env = {"timeout": 60, "debug": True}
+        merged = deep_merge(config_base, config_env)
+        print(merged)
+        # Returns: {"timeout": 60, "retries": 3, "debug": True}
+        print(config_base)
+        # Returns: {"timeout": 30, "retries": 3}  # Original unchanged
 
-        >>> # Multiple dictionary merging
-        >>> base = {"a": 1}
-        >>> env1 = {"b": 2}
-        >>> env2 = {"c": 3}
-        >>> result = deep_merge(base, env1, env2)
-        >>> print(result)
-        {"a": 1, "b": 2, "c": 3}
+        # Empty input handling
+        result = deep_merge()
+        print(result)
+        # Returns: {}
+
+        # Multiple dictionary merging
+        base = {"a": 1}
+        env1 = {"b": 2}
+        env2 = {"c": 3}
+        result = deep_merge(base, env1, env2)
+        print(result)
+        # Returns: {"a": 1, "b": 2, "c": 3}
     """
     if not dicts:
         return {}
@@ -239,28 +242,29 @@ def set_nested(dic: dict, keys: list[str], value: Any) -> None:
         IndexError: If keys list is empty.
         TypeError: If intermediate path elements cannot be treated as dictionaries.
 
-    Examples:
-        >>> config = {}
-        >>> set_nested(config, ["database", "connection", "host"], "localhost")
-        >>> print(config)
-        {"database": {"connection": {"host": "localhost"}}}
+    Examples::
 
-        >>> # Extending existing structure
-        >>> set_nested(config, ["database", "connection", "port"], 5432)
-        >>> set_nested(config, ["database", "pool_size"], 10)
-        >>> print(config)
-        {
-            "database": {
-                "connection": {"host": "localhost", "port": 5432},
-                "pool_size": 10
-            }
-        }
+        config = {}
+        set_nested(config, ["database", "connection", "host"], "localhost")
+        print(config)
+        # Returns: {"database": {"connection": {"host": "localhost"}}}
 
-        >>> # Single-level setting
-        >>> data = {}
-        >>> set_nested(data, ["name"], "test")
-        >>> print(data)
-        {"name": "test"}
+        # Extending existing structure
+        set_nested(config, ["database", "connection", "port"], 5432)
+        set_nested(config, ["database", "pool_size"], 10)
+        print(config)
+        # Returns: {
+        # Returns: "database": {
+        # Returns: "connection": {"host": "localhost", "port": 5432},
+        # Returns: "pool_size": 10
+        # Returns: }
+        # Returns: }
+
+        # Single-level setting
+        data = {}
+        set_nested(data, ["name"], "test")
+        print(data)
+        # Returns: {"name": "test"}
 
     Usage Patterns:
         Common for dynamic configuration building:

@@ -20,32 +20,33 @@ Storage Modes:
     - **Local Mode (V_LOCAL)**: Development workflow using local filesystem storage
     - **Service Mode (V_SERVICE)**: Production deployment using AWS S3 bucket storage
 
-Examples:
-    >>> from core_framework.models import FileDetails
+Examples::
 
-    >>> # S3 storage configuration
-    >>> s3_file = FileDetails(
-    ...     client="acme-corp",
-    ...     bucket_name="deployment-artifacts",
-    ...     bucket_region="us-east-1",
-    ...     key="packages/web-app/v1.0.0/deployment.zip",
-    ...     mode="service",
-    ...     content_type="application/zip"
-    ... )
+    from core_framework.models import FileDetails
 
-    >>> # Local filesystem configuration
-    >>> local_file = FileDetails(
-    ...     client="dev-client",
-    ...     bucket_name="/var/deployments",
-    ...     key="packages/web-app/v1.0.0/deployment.zip",
-    ...     mode="local",
-    ...     content_type="application/zip"
-    ... )
+    # S3 storage configuration
+    s3_file = FileDetails(
+    client="acme-corp",
+    bucket_name="deployment-artifacts",
+    bucket_region="us-east-1",
+    key="packages/web-app/v1.0.0/deployment.zip",
+    mode="service",
+    content_type="application/zip"
+    )
 
-    >>> # Path operations
-    >>> print(s3_file.get_name())  # "deployment.zip"
-    >>> print(s3_file.get_full_path())  # "s3://deployment-artifacts/packages/web-app/v1.0.0/deployment.zip"
-    >>> print(local_file.get_full_path())  # "/var/data/var/deployments/packages/web-app/v1.0.0/deployment.zip"
+    # Local filesystem configuration
+    local_file = FileDetails(
+    client="dev-client",
+    bucket_name="/var/deployments",
+    key="packages/web-app/v1.0.0/deployment.zip",
+    mode="local",
+    content_type="application/zip"
+    )
+
+    # Path operations
+    print(s3_file.get_name())  # "deployment.zip"
+    print(s3_file.get_full_path())  # "s3://deployment-artifacts/packages/web-app/v1.0.0/deployment.zip"
+    print(local_file.get_full_path())  # "/var/data/var/deployments/packages/web-app/v1.0.0/deployment.zip"
 
 Related Classes:
     - ActionDetails: Extends FileDetails for action specification files
@@ -102,32 +103,33 @@ class FileDetails(BaseModel):
         data_path (str): Base storage volume path from framework configuration.
         temp_dir (str): Temporary directory path for file processing operations.
 
-    Examples:
-        >>> # Complete S3 file configuration
-        >>> s3_file = FileDetails(
-        ...     client="acme-corp",
-        ...     bucket_name="prod-deployments",
-        ...     bucket_region="us-east-1",
-        ...     key="artifacts/web-frontend/v2.1.0/bundle.zip",
-        ...     mode="service",
-        ...     content_type="application/zip",
-        ...     version_id="abc123def456"
-        ... )
+    Examples::
 
-        >>> # Local development file configuration
-        >>> local_file = FileDetails(
-        ...     client="dev-client",
-        ...     bucket_name="/home/dev/projects",
-        ...     key="artifacts/web-frontend/v2.1.0/bundle.zip",
-        ...     mode="local",
-        ...     content_type="application/zip"
-        ... )
+        # Complete S3 file configuration
+        s3_file = FileDetails(
+        client="acme-corp",
+        bucket_name="prod-deployments",
+        bucket_region="us-east-1",
+        key="artifacts/web-frontend/v2.1.0/bundle.zip",
+        mode="service",
+        content_type="application/zip",
+        version_id="abc123def456"
+        )
 
-        >>> # Minimal configuration with intelligent defaults
-        >>> file_details = FileDetails(
-        ...     key="config/application.yaml"
-        ...     # client, bucket_name, bucket_region, mode auto-populated
-        ... )
+        # Local development file configuration
+        local_file = FileDetails(
+        client="dev-client",
+        bucket_name="/home/dev/projects",
+        key="artifacts/web-frontend/v2.1.0/bundle.zip",
+        mode="local",
+        content_type="application/zip"
+        )
+
+        # Minimal configuration with intelligent defaults
+        file_details = FileDetails(
+        key="config/application.yaml"
+        # client, bucket_name, bucket_region, mode auto-populated
+        )
 
     Validation Rules:
         - **Mode**: Must be either "local" or "service"
@@ -197,18 +199,19 @@ class FileDetails(BaseModel):
         Returns:
             str: The validated and normalized key path with leading slashes removed.
 
-        Examples:
-            >>> FileDetails.validate_key("/path/to/file.txt")
-            "path/to/file.txt"
+        Examples::
 
-            >>> FileDetails.validate_key("\\\\windows\\\\path\\\\file.txt")
-            "windows\\\\path\\\\file.txt"
+            FileDetails.validate_key("/path/to/file.txt")
+            # Returns: "path/to/file.txt"
 
-            >>> FileDetails.validate_key("already/normalized/path.txt")
-            "already/normalized/path.txt"
+            FileDetails.validate_key("\\\\windows\\\\path\\\\file.txt")
+            # Returns: "windows\\\\path\\\\file.txt"
 
-            >>> FileDetails.validate_key("")
-            ""
+            FileDetails.validate_key("already/normalized/path.txt")
+            # Returns: "already/normalized/path.txt"
+
+            FileDetails.validate_key("")
+            # Returns: ""
 
         Notes:
             - Leading forward slashes and backslashes are removed for consistency
@@ -239,19 +242,20 @@ class FileDetails(BaseModel):
         Args:
             key (str): The new key path to set. Will be validated and normalized.
 
-        Examples:
-            >>> file_details = FileDetails(
-            ...     bucket_name="test-bucket",
-            ...     mode="local"
-            ... )
-            >>> file_details.set_key("packages/app/main/package.zip")
-            >>> print(file_details.key)
-            "packages/app/main/package.zip"
+        Examples::
 
-            >>> # Leading slashes are automatically removed
-            >>> file_details.set_key("/artifacts/config.yaml")
-            >>> print(file_details.key)
-            "artifacts/config.yaml"
+            file_details = FileDetails(
+            bucket_name="test-bucket",
+            mode="local"
+            )
+            file_details.set_key("packages/app/main/package.zip")
+            print(file_details.key)
+            # Returns: "packages/app/main/package.zip"
+
+            # Leading slashes are automatically removed
+            file_details.set_key("/artifacts/config.yaml")
+            print(file_details.key)
+            # Returns: "artifacts/config.yaml"
 
         Side Effects:
             Updates the instance's key attribute in-place after validation.
@@ -282,18 +286,19 @@ class FileDetails(BaseModel):
         Raises:
             ValueError: If mode is not 'local' or 'service'.
 
-        Examples:
-            >>> FileDetails.validate_mode("local")
-            "local"
+        Examples::
 
-            >>> FileDetails.validate_mode("service")
-            "service"
+            FileDetails.validate_mode("local")
+            # Returns: "local"
 
-            >>> try:
-            ...     FileDetails.validate_mode("invalid")
-            ... except ValueError as e:
-            ...     print(e)
-            "Mode must be 'local' or 'service', got 'invalid'"
+            FileDetails.validate_mode("service")
+            # Returns: "service"
+
+            try:
+            FileDetails.validate_mode("invalid")
+            except ValueError as e:
+            print(e)
+            # Returns: "Mode must be 'local' or 'service', got 'invalid'"
 
         Supported Modes:
             - **"local"**: Local filesystem storage for development workflows
@@ -332,21 +337,22 @@ class FileDetails(BaseModel):
         Raises:
             ValueError: If content_type is not in the list of supported MIME types.
 
-        Examples:
-            >>> FileDetails.validate_content_type("application/zip")
-            "application/zip"
+        Examples::
 
-            >>> FileDetails.validate_content_type("application/json")
-            "application/json"
+            FileDetails.validate_content_type("application/zip")
+            # Returns: "application/zip"
 
-            >>> FileDetails.validate_content_type("application/yaml")
-            "application/yaml"
+            FileDetails.validate_content_type("application/json")
+            # Returns: "application/json"
 
-            >>> try:
-            ...     FileDetails.validate_content_type("invalid/type")
-            ... except ValueError as e:
-            ...     print(e)
-            "ContentType must be one of [...], got: invalid/type"
+            FileDetails.validate_content_type("application/yaml")
+            # Returns: "application/yaml"
+
+            try:
+            FileDetails.validate_content_type("invalid/type")
+            except ValueError as e:
+            print(e)
+            # Returns: "ContentType must be one of [...], got: invalid/type"
 
         Supported MIME Types:
             Common supported types include:
@@ -386,20 +392,21 @@ class FileDetails(BaseModel):
                           - bucket_name: Generated from client and region if not provided
                           - mode: Determined from framework settings if not provided
 
-        Examples:
-            >>> # Minimal input with intelligent defaults
-            >>> values = {"key": "packages/app/package.zip"}
-            >>> result = FileDetails.validate_before(values)
-            >>> # Result includes populated client, bucket_region, bucket_name, mode
+        Examples::
 
-            >>> # Mixed case parameter compatibility
-            >>> values = {
-            ...     "Client": "test-client",
-            ...     "bucket_region": "us-west-2",
-            ...     "Key": "artifacts/config.yaml"
-            ... }
-            >>> result = FileDetails.validate_before(values)
-            >>> # Normalizes parameter names and applies remaining defaults
+            # Minimal input with intelligent defaults
+            values = {"key": "packages/app/package.zip"}
+            result = FileDetails.validate_before(values)
+            # Result includes populated client, bucket_region, bucket_name, mode
+
+            # Mixed case parameter compatibility
+            values = {
+            "Client": "test-client",
+            "bucket_region": "us-west-2",
+            "Key": "artifacts/config.yaml"
+            }
+            result = FileDetails.validate_before(values)
+            # Normalizes parameter names and applies remaining defaults
 
         Default Population Logic:
             **Client**: Retrieved from framework configuration (util.get_client())
@@ -453,14 +460,15 @@ class FileDetails(BaseModel):
         Returns:
             str: The base storage volume path from framework configuration.
 
-        Examples:
-            >>> file_details = FileDetails(mode="local")
-            >>> print(file_details.data_path)
-            "/var/data"  # or configured volume path
+        Examples::
 
-            >>> file_details = FileDetails(mode="service")
-            >>> print(file_details.data_path)
-            "/var/data"  # same base path, mode affects full_path generation
+            file_details = FileDetails(mode="local")
+            print(file_details.data_path)
+            # Returns: "/var/data"  # or configured volume path
+
+            file_details = FileDetails(mode="service")
+            print(file_details.data_path)
+            # Returns: "/var/data"  # same base path, mode affects full_path generation
         """
         return util.get_storage_volume()
 
@@ -474,14 +482,15 @@ class FileDetails(BaseModel):
         Returns:
             str: The temporary directory path from framework configuration.
 
-        Examples:
-            >>> file_details = FileDetails()
-            >>> print(file_details.temp_dir)
-            "/tmp"  # or configured temporary directory
+        Examples::
 
-            >>> # Usage in file processing
-            >>> temp_path = os.path.join(file_details.temp_dir, "processing")
-            >>> os.makedirs(temp_path, exist_ok=True)
+            file_details = FileDetails()
+            print(file_details.temp_dir)
+            # Returns: "/tmp"  # or configured temporary directory
+
+            # Usage in file processing
+            temp_path = os.path.join(file_details.temp_dir, "processing")
+            os.makedirs(temp_path, exist_ok=True)
         """
         return util.get_temp_dir()
 
@@ -495,29 +504,30 @@ class FileDetails(BaseModel):
         Returns:
             str: The filename from the key path, or empty string if no key is set.
 
-        Examples:
-            >>> file_details = FileDetails(
-            ...     key="artifacts/ecommerce/web-app/v1.0.0/deployment.zip"
-            ... )
-            >>> print(file_details.get_name())
-            "deployment.zip"
+        Examples::
 
-            >>> # Windows-style paths
-            >>> file_details = FileDetails(
-            ...     key="packages\\\\app\\\\release.zip"
-            ... )
-            >>> print(file_details.get_name())
-            "release.zip"
+            file_details = FileDetails(
+            key="artifacts/ecommerce/web-app/v1.0.0/deployment.zip"
+            )
+            print(file_details.get_name())
+            # Returns: "deployment.zip"
 
-            >>> # Single filename without path
-            >>> file_details = FileDetails(key="config.yaml")
-            >>> print(file_details.get_name())
-            "config.yaml"
+            # Windows-style paths
+            file_details = FileDetails(
+            key="packages\\\\app\\\\release.zip"
+            )
+            print(file_details.get_name())
+            # Returns: "release.zip"
 
-            >>> # Empty key
-            >>> file_details = FileDetails(key="")
-            >>> print(file_details.get_name())
-            ""
+            # Single filename without path
+            file_details = FileDetails(key="config.yaml")
+            print(file_details.get_name())
+            # Returns: "config.yaml"
+
+            # Empty key
+            file_details = FileDetails(key="")
+            print(file_details.get_name())
+            # Returns: ""
 
         Path Separator Handling:
             - Handles both forward slashes (/) and OS-specific separators
@@ -547,30 +557,31 @@ class FileDetails(BaseModel):
             str: The complete path to the file with appropriate storage prefix.
                 Returns empty string if bucket_name or key is not set.
 
-        Examples:
-            >>> # Local filesystem mode
-            >>> local_file = FileDetails(
-            ...     bucket_name="deployments",
-            ...     key="packages/web-app/v1.0.0/app.zip",
-            ...     mode="local"
-            ... )
-            >>> print(local_file.get_full_path())
-            "/var/data/deployments/packages/web-app/v1.0.0/app.zip"  # Unix
-            "C:\\var\\data\\deployments\\packages\\web-app\\v1.0.0\\app.zip"  # Windows
+        Examples::
 
-            >>> # S3 service mode
-            >>> s3_file = FileDetails(
-            ...     bucket_name="prod-deployments",
-            ...     key="packages/web-app/v1.0.0/app.zip",
-            ...     mode="service"
-            ... )
-            >>> print(s3_file.get_full_path())
-            "s3://prod-deployments/packages/web-app/v1.0.0/app.zip"
+            # Local filesystem mode
+            local_file = FileDetails(
+            bucket_name="deployments",
+            key="packages/web-app/v1.0.0/app.zip",
+            mode="local"
+            )
+            print(local_file.get_full_path())
+            # Returns: "/var/data/deployments/packages/web-app/v1.0.0/app.zip"  # Unix
+            # Returns: "C:\\var\\data\\deployments\\packages\\web-app\\v1.0.0\\app.zip"  # Windows
 
-            >>> # Missing required fields
-            >>> incomplete_file = FileDetails(bucket_name="", key="test.txt")
-            >>> print(incomplete_file.get_full_path())
-            ""
+            # S3 service mode
+            s3_file = FileDetails(
+            bucket_name="prod-deployments",
+            key="packages/web-app/v1.0.0/app.zip",
+            mode="service"
+            )
+            print(s3_file.get_full_path())
+            # Returns: "s3://prod-deployments/packages/web-app/v1.0.0/app.zip"
+
+            # Missing required fields
+            incomplete_file = FileDetails(bucket_name="", key="test.txt")
+            print(incomplete_file.get_full_path())
+            # Returns: ""
 
         Path Format by Mode:
             **Local Mode**: {data_path}{sep}{bucket_name}{sep}{key}
@@ -606,22 +617,23 @@ class FileDetails(BaseModel):
         Returns:
             bool: True if mode is local, False if mode is service.
 
-        Examples:
-            >>> local_file = FileDetails(mode="local")
-            >>> print(local_file.is_local_mode())
-            True
+        Examples::
 
-            >>> s3_file = FileDetails(mode="service")
-            >>> print(s3_file.is_local_mode())
-            False
+            local_file = FileDetails(mode="local")
+            print(local_file.is_local_mode())
+            # Returns: True
 
-            >>> # Conditional file operations
-            >>> if file_details.is_local_mode():
-            ...     with open(file_details.get_full_path(), 'r') as f:
-            ...         content = f.read()
-            ... else:
-            ...     # Use S3 client
-            ...     content = s3_client.get_object(...)['Body'].read()
+            s3_file = FileDetails(mode="service")
+            print(s3_file.is_local_mode())
+            # Returns: False
+
+            # Conditional file operations
+            if file_details.is_local_mode():
+            with open(file_details.get_full_path(), 'r') as f:
+            content = f.read()
+            else:
+            # Use S3 client
+            content = s3_client.get_object(...)['Body'].read()
         """
         return self.mode == V_LOCAL
 
@@ -631,22 +643,23 @@ class FileDetails(BaseModel):
         Returns:
             bool: True if mode is service, False if mode is local.
 
-        Examples:
-            >>> s3_file = FileDetails(mode="service")
-            >>> print(s3_file.is_service_mode())
-            True
+        Examples::
 
-            >>> local_file = FileDetails(mode="local")
-            >>> print(s3_file.is_service_mode())
-            False
+            s3_file = FileDetails(mode="service")
+            print(s3_file.is_service_mode())
+            # Returns: True
 
-            >>> # Mode-specific operations
-            >>> if file_details.is_service_mode():
-            ...     # Configure S3 client
-            ...     s3_client = boto3.client('s3', region_name=file_details.bucket_region)
-            ... else:
-            ...     # Use local file operations
-            ...     os.makedirs(os.path.dirname(file_details.get_full_path()), exist_ok=True)
+            local_file = FileDetails(mode="local")
+            print(s3_file.is_service_mode())
+            # Returns: False
+
+            # Mode-specific operations
+            if file_details.is_service_mode():
+            # Configure S3 client
+            s3_client = boto3.client('s3', region_name=file_details.bucket_region)
+            else:
+            # Use local file operations
+            os.makedirs(os.path.dirname(file_details.get_full_path()), exist_ok=True)
         """
         return self.mode == V_SERVICE
 
@@ -668,26 +681,27 @@ class FileDetails(BaseModel):
         Returns:
             dict: Dictionary representation with None values excluded by default.
 
-        Examples:
-            >>> file_details = FileDetails(
-            ...     client="test-client",
-            ...     bucket_name="test-bucket",
-            ...     key="test-file.txt",
-            ...     version_id=None  # This will be excluded
-            ... )
-            >>> result = file_details.model_dump()
-            >>> print("version_id" in result)
-            False  # Excluded because it's None
+        Examples::
 
-            >>> # Include None values explicitly
-            >>> result = file_details.model_dump(exclude_none=False)
-            >>> print("version_id" in result)
-            True  # Now included with null value
+            file_details = FileDetails(
+            client="test-client",
+            bucket_name="test-bucket",
+            key="test-file.txt",
+            version_id=None  # This will be excluded
+            )
+            result = file_details.model_dump()
+            print("version_id" in result)
+            # Returns: False  # Excluded because it's None
 
-            >>> # Use original field names instead of aliases
-            >>> result = file_details.model_dump(by_alias=False)
-            >>> print("client" in result)
-            True  # snake_case instead of "Client"
+            # Include None values explicitly
+            result = file_details.model_dump(exclude_none=False)
+            print("version_id" in result)
+            # Returns: True  # Now included with null value
+
+            # Use original field names instead of aliases
+            result = file_details.model_dump(by_alias=False)
+            print("client" in result)
+            # Returns: True  # snake_case instead of "Client"
 
         Default Behavior:
             - **exclude_none=True**: Removes clutter from serialized output
