@@ -41,44 +41,44 @@ Common Usage Patterns:
 
 **Basic Configuration:**
 
-    >>> import core_framework as cf
-    >>>
-    >>> # Get current environment configuration
-    >>> env = cf.get_environment()
-    >>> region = cf.get_region()
-    >>> account = cf.get_automation_account()
+     import core_framework as cf
+    
+     # Get current environment configuration
+     env = cf.get_environment()
+     region = cf.get_region()
+     account = cf.get_automation_account()
 
 **Data Model Usage:**
 
-    >>> # Generate deployment artifacts
-    >>> task_payload = cf.generate_task_payload(
-    ...     action_resource=action,
-    ...     deployment_id="deploy-123"
-    ... )
-    >>>
-    >>> # Work with paths and artifacts
-    >>> artifacts_path = cf.get_artefacts_path("portfolio", "app")
-    >>> artifact_key = cf.get_artefact_key("deploy-123", "outputs.json")
+     # Generate deployment artifacts
+     task_payload = cf.generate_task_payload(
+         action_resource=action,
+         deployment_id="deploy-123"
+     )
+    
+     # Work with paths and artifacts
+     artifacts_path = cf.get_artefacts_path("portfolio", "app")
+     artifact_key = cf.get_artefact_key("deploy-123", "outputs.json")
 
 **PRN Operations:**
 
-    >>> # Generate Portfolio Resource Names
-    >>> portfolio_prn = cf.generate_portfolio_prn("my-portfolio")
-    >>> app_prn = cf.generate_app_prn("my-portfolio", "my-app")
-    >>>
-    >>> # Validate and extract PRN components
-    >>> is_valid = cf.validate_app_prn(app_prn)
-    >>> portfolio = cf.extract_portfolio(app_prn)
+     # Generate Portfolio Resource Names
+     portfolio_prn = cf.generate_portfolio_prn("my-portfolio")
+     app_prn = cf.generate_app_prn("my-portfolio", "my-app")
+    
+     # Validate and extract PRN components
+     is_valid = cf.validate_app_prn(app_prn)
+     portfolio = cf.extract_portfolio(app_prn)
 
 **YAML/JSON Processing:**
 
-    >>> # CloudFormation template processing
-    >>> template = cf.load_yaml_file("template.yaml")
-    >>> clean_yaml = cf.to_yaml(template)
-    >>>
-    >>> # Configuration file handling
-    >>> config = cf.from_json(json_string)
-    >>> cf.write_yaml(config, output_stream)
+     # CloudFormation template processing
+     template = cf.load_yaml_file("template.yaml")
+     clean_yaml = cf.to_yaml(template)
+    
+     # Configuration file handling
+     config = cf.from_json(json_string)
+     cf.write_yaml(config, output_stream)
 
 Module Categories:
 
@@ -106,47 +106,50 @@ Integration with Core Automation:
     - **core-db**: Database operations with model persistence
     - **core-cli**: Command-line interface with configuration functions
 
-Examples::
+Examples:
 
-    # Returns: Complete workflow example:
+    Complete workflow example:
 
-    import core_framework as cf
-    # Returns: >>>
-    # 1. Get environment configuration
-    env = cf.get_environment()
-    account = cf.get_automation_account()
-    region = cf.get_region()
-    # Returns: >>>
-    # 2. Generate PRNs for resources
-    portfolio = "my-portfolio"
-    app = "web-app"
-    branch = "feature-auth"
-    # Returns: >>>
-    portfolio_prn = cf.generate_portfolio_prn(portfolio)
-    app_prn = cf.generate_app_prn(portfolio, app)
-    branch_prn = cf.generate_branch_prn(portfolio, app, branch)
-    # Returns: >>>
-    # 3. Create deployment specification
-    action = ActionResource(
-    name="deploy-infrastructure",
-    kind="AWS::CreateStack",
-    params={
-    "account": account,
-    "region": region,
-    "stack_name": f"{cf.branch_short_name(branch)}-infrastructure"
-    }
-    )
-    # Returns: >>>
-    # 4. Generate task payload for execution
-    payload = cf.generate_task_payload(
-    action_resource=action,
-    deployment_id=f"deploy-{cf.get_current_timestamp_short()}"
-    )
-    # Returns: >>>
-    # 5. Process and serialize
-    yaml_output = cf.to_yaml(payload.model_dump())
+    ..code: python
+
+        import core_framework as cf
+         
+        # 1. Get environment configuration
+        env = cf.get_environment()
+        account = cf.get_automation_account()
+        region = cf.get_region()
+         
+        # 2. Generate PRNs for resources
+        portfolio = "my-portfolio"
+        app = "web-app"
+        branch = "feature-auth"
+         
+        portfolio_prn = cf.generate_portfolio_prn(portfolio)
+        app_prn = cf.generate_app_prn(portfolio, app)
+        branch_prn = cf.generate_branch_prn(portfolio, app, branch)
+         
+        # 3. Create deployment specification
+        action = ActionResource(
+            name="deploy-infrastructure",
+            kind="AWS::CreateStack",
+            params={
+                "account": account,
+                "region": region,
+                "stack_name": f"{cf.branch_short_name(branch)}-infrastructure"
+            }
+        )
+         
+        # 4. Generate task payload for execution
+        payload = cf.generate_task_payload(
+            action_resource=action,
+            deployment_id=f"deploy-{cf.get_current_timestamp_short()}"
+        )
+         
+        # 5. Process and serialize
+        yaml_output = cf.to_yaml(payload.model_dump())
 
 Error Handling:
+
     All functions include proper error handling and validation:
 
     - Configuration functions return None or defaults for missing values
@@ -155,6 +158,7 @@ Error Handling:
     - Path functions validate existence and permissions where applicable
 
 Version: 0.0.11-pre.8+11ddda5
+
 """
 
 from .merge import deep_copy, deep_merge_in_place, deep_merge, set_nested
@@ -527,21 +531,21 @@ def get_function_categories() -> dict[str, list[str]]:
     Returns:
         Dictionary mapping category names to lists of function names.
 
-    Examples::
+    Examples:
 
         categories = get_function_categories()
         print(categories["configuration"])
-        # Returns: ['get_environment', 'get_region', 'get_automation_account', ...]
+         ['get_environment', 'get_region', 'get_automation_account', ]
 
         # Check what PRN functions are available
         prn_functions = categories["prn_system"]
         print("generate_app_prn" in prn_functions)
-        # Returns: True
+         True
 
         # Explore AWS resource functions
         aws_funcs = categories["aws_resources"]
         print(len(aws_funcs))
-        # Returns: 8
+         8
     """
     return {
         "data_utilities": DATA_UTILITIES,
@@ -565,9 +569,9 @@ def get_version_info() -> dict[str, str]:
 
         version_info = get_version_info()
         print(version_info["version"])
-        # Returns: '0.0.11-pre.8+11ddda5'
+         '0.0.11-pre.8+11ddda5'
         print(version_info["is_prerelease"])
-        # Returns: True
+         True
     """
     import re
 
@@ -611,11 +615,11 @@ def get_framework_info() -> dict[str, any]:
 
         info = get_framework_info()
         print(info["name"])
-        # Returns: 'Core Automation Framework'
+         'Core Automation Framework'
         print(len(info["capabilities"]))
-        # Returns: 8
+         8
         print(info["function_count"])
-        # Returns: 85
+         85
     """
     categories = get_function_categories()
     version_info = get_version_info()

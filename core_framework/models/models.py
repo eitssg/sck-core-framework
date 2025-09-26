@@ -55,17 +55,17 @@ def get_artefact_key(
         dd = DeploymentDetails(portfolio="ecom", app="web", branch="main", build="1.0")
         key = get_artefact_key(dd)
         print(key)
-        # Returns: 'artefacts/ecom/web/main/1.0'
+         'artefacts/ecom/web/main/1.0'
 
         # Get specific file key
         key = get_artefact_key(dd, "deploy.yaml")
         print(key)
-        # Returns: 'artefacts/ecom/web/main/1.0/deploy.yaml'
+         'artefacts/ecom/web/main/1.0/deploy.yaml'
 
         # Override scope to app level
         key = get_artefact_key(dd, "app-config.yaml", scope="app")
         print(key)
-        # Returns: 'artefacts/ecom/web/app-config.yaml'
+         'artefacts/ecom/web/app-config.yaml'
 
     Notes:
         This function is a convenience wrapper around get_artefacts_path() with s3=True.
@@ -102,17 +102,17 @@ def get_artefacts_path(
         # Get local filesystem path
         path = get_artefacts_path(dd, "deploy.yaml")
         print(path)
-        # Returns: 'artefacts/ecom/web/main/1.0/deploy.yaml'  # or with backslashes on Windows
+         'artefacts/ecom/web/main/1.0/deploy.yaml'  # or with backslashes on Windows
 
         # Get S3-compatible path
         path = get_artefacts_path(dd, "deploy.yaml", s3=True)
         print(path)
-        # Returns: 'artefacts/ecom/web/main/1.0/deploy.yaml'
+         'artefacts/ecom/web/main/1.0/deploy.yaml'
 
         # Override scope to portfolio level
         path = get_artefacts_path(dd, "config.yaml", scope="portfolio")
         print(path)
-        # Returns: 'artefacts/ecom/config.yaml'
+         'artefacts/ecom/config.yaml'
 
     Notes:
         This function delegates to the deployment_details.get_object_key() method
@@ -149,17 +149,17 @@ def get_packages_path(
         # Get packages directory path
         path = get_packages_path(dd)
         print(path)
-        # Returns: 'packages/ecom/web/main/1.0'
+         'packages/ecom/web/main/1.0'
 
         # Get specific package path
         path = get_packages_path(dd, "app-package.zip")
         print(path)
-        # Returns: 'packages/ecom/web/main/1.0/app-package.zip'
+         'packages/ecom/web/main/1.0/app-package.zip'
 
         # Get S3-compatible path
         path = get_packages_path(dd, "package.zip", s3=True)
         print(path)
-        # Returns: 'packages/ecom/web/main/1.0/package.zip'
+         'packages/ecom/web/main/1.0/package.zip'
 
     Notes:
         This function delegates to the deployment_details.get_object_key() method
@@ -196,17 +196,17 @@ def get_files_path(
         # Get files directory path
         path = get_files_path(dd)
         print(path)
-        # Returns: 'files/ecom/web/main/1.0'
+         'files/ecom/web/main/1.0'
 
         # Get specific file path
         path = get_files_path(dd, "config.json")
         print(path)
-        # Returns: 'files/ecom/web/main/1.0/config.json'
+         'files/ecom/web/main/1.0/config.json'
 
         # Override scope to app level
         path = get_files_path(dd, "app-config.json", scope="app")
         print(path)
-        # Returns: 'files/ecom/web/app-config.json'
+         'files/ecom/web/app-config.json'
 
     Notes:
         This function delegates to the deployment_details.get_object_key() method
@@ -222,55 +222,28 @@ def generate_task_payload(**kwargs) -> TaskPayload:
     from keyword arguments typically derived from command line input.
 
     Args:
-        **kwargs: Keyword arguments containing task payload parameters. These are typically
-                 derived from command line arguments and can include:
-                 - **Core Parameters**:
-                     - client (str): Client identifier
-                     - task (str): Task name (required)
-                     - force (bool): Force execution flag
-                     - dry_run (bool): Dry run mode flag
-                 - **Deployment Context**:
-                     - portfolio (str): Portfolio name
-                     - app (str): Application name
-                     - branch (str): Branch name
-                     - build (str): Build identifier
-                     - component (str): Component name
-                 - **Additional Parameters**: Any other parameters supported by TaskPayload.from_arguments()
+        **kwargs: Task parameters including:
+            - task (str): Task name (required)
+            - client (str): Client identifier
+            - portfolio (str): Portfolio name
+            - app (str): Application name
+            - branch (str): Branch name
+            - build (str): Build identifier
+            - force (bool): Force execution flag
+            - dry_run (bool): Dry run mode flag
 
     Returns:
-        A TaskPayload object initialized with the provided arguments.
+        TaskPayload: Configured task payload object with deployment details.
 
-    Examples::
-
-        # Create task payload from command line args
-        args = {
-        "client": "my-client",
-        "portfolio": "ecommerce",
-        "app": "web-app",
-        "task": "deploy"
-        }
-        payload = generate_task_payload(**args)
-        print(payload.task)
-        # Returns: 'deploy'
-
-        # Create with minimal arguments
-        payload = generate_task_payload(task="build", portfolio="ecommerce")
-        print(payload.deployment_details.portfolio)
-        # Returns: 'ecommerce'
-
-        # Create with force flag
-        payload = generate_task_payload(
-        task="deploy",
-        portfolio="ecommerce",
-        app="web",
-        force=True
-        )
-        print(payload.force)
-        # Returns: True
-
-    Notes:
-        This function delegates to TaskPayload.from_arguments() for the actual
-        object creation and validation.
+    Example:
+        >>> payload = generate_task_payload(
+        ...     task="deploy",
+        ...     client="my-client",
+        ...     portfolio="web-services",
+        ...     app="frontend"
+        ... )
+        >>> payload.task
+        'deploy'
     """
     return TaskPayload.from_arguments(**kwargs)
 
@@ -282,125 +255,62 @@ def generate_package_details(deployment_details: DeploymentDetails, **kwargs) ->
     and metadata based on the deployment context.
 
     Args:
-        deployment_details: The deployment details object that provides the deployment context.
-        **kwargs: Additional keyword arguments for package details. These can include:
-                 - **Package Parameters**:
-                     - package_file (str): Name of the package file
-                     - compile_mode (str): Compilation mode ('full' or 'incremental')
-                     - deployspec: Deployment specification object or data
-                 - **Storage Parameters**:
-                     - bucket_name (str): S3 bucket name override
-                     - bucket_region (str): S3 bucket region override
-                     - key (str): Direct S3 key specification
-                     - mode (str): Storage mode ('local' or 'service')
-                 - **Additional Parameters**: Any other parameters supported by PackageDetails.from_arguments()
+        deployment_details (DeploymentDetails): The deployment details object that
+            provides the deployment context.
+        **kwargs: Additional keyword arguments for package details including:
+            - package_file (str): Name of the package file
+            - compile_mode (str): Compilation mode ('full' or 'incremental')
+            - bucket_name (str): S3 bucket name override
+            - bucket_region (str): S3 bucket region override
+            - mode (str): Storage mode ('local' or 'service')
 
     Returns:
-        A PackageDetails object initialized with the deployment context and additional parameters.
+        PackageDetails: Package details object with S3 location and metadata.
 
-    Examples::
-
-        dd = DeploymentDetails(portfolio="ecom", app="web", build="1.0")
-        # Create package details with default settings
-        pkg = generate_package_details(dd)
-        print("package.zip" in pkg.key)
-        # Returns: True
-
-        # Create with custom package file
-        pkg = generate_package_details(dd, package_file="web-app.zip")
-        print("web-app.zip" in pkg.key)
-        # Returns: True
-
-        # Create with compile mode
-        pkg = generate_package_details(dd, compile_mode="incremental")
-        print(pkg.compile_mode)
-        # Returns: 'incremental'
-
-        # Create with storage override
-        pkg = generate_package_details(
-        dd,
-        bucket_name="custom-bucket",
-        mode="service"
-        )
-        print(pkg.bucket_name)
-        # Returns: 'custom-bucket'
-
-    Notes:
-        The deployment_details parameter is automatically added to the kwargs
-        before calling PackageDetails.from_arguments().
+    Example:
+        >>> dd = DeploymentDetails(portfolio="web", app="frontend", build="1.0")
+        >>> pkg = generate_package_details(dd, package_file="app.zip")
+        >>> "app.zip" in pkg.key
+        True
     """
     kwargs["deployment_details"] = deployment_details
     return PackageDetails.from_arguments(**kwargs)
 
 
 def generate_deployment_details_from_stack(**kwargs) -> list[DeploymentDetails]:
-    """Generate multiple DeploymentDetails objects from stack configuration.
+    """Generate DeploymentDetails objects from multi-stack configuration.
 
-    This function creates DeploymentDetails objects based on stack configuration
+    This function creates multiple DeploymentDetails objects from a configuration
     that specifies multiple stacks and regions. It's useful for multi-region
     or multi-stack deployments.
 
     Args:
         **kwargs: Keyword arguments that must include:
-                 - **Stack Configuration**:
-                     - stacks (list): List of stack configurations, each containing:
-                         - stack_name (str): Name of the stack
-                         - regions (list): List of regions for the stack
-                         - stack_file (str): CloudFormation template file
-                 - **Deployment Parameters**:
-                     - client (str): Client identifier
-                     - portfolio (str): Portfolio name
-                     - build (str): Build identifier
-                     - Any other deployment parameters
+            - stacks (list): List of stack configurations, each containing:
+                - stack_name (str): Name of the stack
+                - regions (list): List of regions for the stack
+                - stack_file (str): CloudFormation template file
+            - client (str): Client identifier
+            - portfolio (str): Portfolio name
+            - build (str): Build identifier
+            - Any other deployment parameters
 
     Returns:
-        A list of DeploymentDetails objects, one for each stack/region combination.
-        If no stacks are provided, returns a single DeploymentDetails object.
+        list[DeploymentDetails]: List of DeploymentDetails objects, one for each
+            stack/region combination. If no stacks are provided, returns a single
+            DeploymentDetails object.
 
-    Examples::
-
-        # Generate from stack configuration
-        stacks_config = {
-        "client": "my-client",
-        "portfolio": "ecommerce",
-        "stacks": [
-        {
-        "stack_name": "web-app",
-        "regions": ["us-east-1", "us-west-2"],
-        "stack_file": "web-app.yaml"
-        },
-        {
-        "stack_name": "database",
-        "regions": ["us-east-1"],
-        "stack_file": "database.yaml"
-        }
-        ]
-        }
-        deployments = generate_deployment_details_from_stack(**stacks_config)
-        print(len(deployments))
-        # Returns: 3  # web-app in 2 regions + database in 1 region
-
-        # Handle case with no stacks
-        deployments = generate_deployment_details_from_stack(
-        client="my-client",
-        portfolio="ecommerce"
-        )
-        print(len(deployments))
-        # Returns: 1
-
-        # Access individual deployment details
-        web_east = deployments[0]
-        print(web_east.app)
-        # Returns: 'web-app'
-        print(web_east.branch)
-        # Returns: 'us-east-1'
-
-    Notes:
-        - Each stack/region combination creates a separate DeploymentDetails object
-        - The stack_name is used as the app name in the resulting DeploymentDetails
-        - The region is used as the branch name in the resulting DeploymentDetails
-        - If no stacks are provided, a single DeploymentDetails object is created
-        - The stack_file is preserved in the DeploymentDetails for template reference
+    Example:
+        >>> config = {
+        ...     "client": "web-team",
+        ...     "portfolio": "ecommerce",
+        ...     "stacks": [
+        ...         {"stack_name": "frontend", "regions": ["us-east-1"], "stack_file": "web.yaml"}
+        ...     ]
+        ... }
+        >>> deployments = generate_deployment_details_from_stack(**config)
+        >>> len(deployments)
+        1
     """
     result = []
     stacks = kwargs.get("stacks")
@@ -430,72 +340,38 @@ def generate_deployment_details(**kwargs) -> DeploymentDetails:
     from keyword arguments typically derived from command line input.
 
     Args:
-        **kwargs: Keyword arguments containing deployment details parameters. These can include:
-                 - **Core Identifiers**:
-                     - client (str): Client identifier
-                     - prn (str): Complete PRN to parse (overrides other parameters)
-                     - portfolio (str): Portfolio name
-                     - app (str): Application name
-                     - branch (str): Branch name
-                     - build (str): Build identifier or instance
-                     - component (str): Component name
-                 - **Environment Details**:
-                     - environment (str): Environment name
-                     - data_center (str): Data center location
-                     - scope (str): Deployment scope override
-                 - **Metadata**:
-                     - tags (dict): Resource tags
-                     - stack_file (str): CloudFormation template file
-                     - delivered_by (str): Delivery person or system
-                 - **Additional Parameters**: Any other parameters supported by DeploymentDetails.from_arguments()
+        **kwargs: Keyword arguments containing deployment details parameters including:
+            - client (str): Client identifier
+            - prn (str): Complete PRN to parse (overrides other parameters)
+            - portfolio (str): Portfolio name
+            - app (str): Application name
+            - branch (str): Branch name
+            - build (str): Build identifier or instance
+            - component (str): Component name
+            - environment (str): Environment name
+            - data_center (str): Data center location
+            - scope (str): Deployment scope override
+            - tags (dict): Resource tags
+            - stack_file (str): CloudFormation template file
+            - delivered_by (str): Delivery person or system
 
     Returns:
-        A DeploymentDetails object initialized with the provided arguments.
+        DeploymentDetails: A DeploymentDetails object initialized with the provided arguments.
 
-    Examples::
+    Note:
+        If a PRN is provided, it overrides all other deployment hierarchy parameters.
+        Missing parameters are populated with defaults from the utility functions.
 
-        # Create from individual parameters
-        dd = generate_deployment_details(
-        client="my-client",
-        portfolio="ecommerce",
-        app="web-app",
-        branch="main",
-        build="1.2.3"
-        )
-        print(dd.portfolio)
-        # Returns: 'ecommerce'
-
-        # Create from PRN (overrides other values)
-        dd = generate_deployment_details(
-        client="my-client",
-        prn="prn:ecommerce:web-app:main:1.2.3"
-        )
-        print(dd.app)
-        # Returns: 'web-app'
-
-        # Create with minimal arguments
-        dd = generate_deployment_details(
-        portfolio="ecommerce",
-        app="web-app"
-        )
-        print(dd.branch)
-        # Returns: 'main'  # default value
-
-        # Create with environment and tags
-        dd = generate_deployment_details(
-        portfolio="ecommerce",
-        app="web-app",
-        environment="production",
-        tags={"team": "web", "cost-center": "engineering"}
-        )
-        print(dd.environment)
-        # Returns: 'production'
-
-    Notes:
-        - If a PRN is provided, it overrides all other deployment hierarchy parameters
-        - Missing parameters are populated with defaults from the utility functions
-        - This function delegates to DeploymentDetails.from_arguments() for object creation
-        - The client parameter defaults to util.get_client() if not provided
+    Example:
+        >>> dd = generate_deployment_details(
+        ...     client="web-team",
+        ...     portfolio="ecommerce",
+        ...     app="frontend",
+        ...     branch="main",
+        ...     build="v1.2.0"
+        ... )
+        >>> dd.portfolio
+        'ecommerce'
     """
     return DeploymentDetails.from_arguments(**kwargs)
 
@@ -530,17 +406,17 @@ def generate_action_details(deployment_details: DeploymentDetails, **kwargs) -> 
         # Create action details from task name
         action = generate_action_details(dd, task="deploy")
         print("deploy.actions" in action.key)
-        # Returns: True
+         True
 
         # Create with explicit action file
         action = generate_action_details(dd, action_file="custom.actions")
         print("custom.actions" in action.key)
-        # Returns: True
+         True
 
         # Create with direct key specification
         action = generate_action_details(dd, key="custom/path/actions.yaml")
         print(action.key)
-        # Returns: 'custom/path/actions.yaml'
+         'custom/path/actions.yaml'
 
         # Create with storage mode override
         action = generate_action_details(
@@ -550,7 +426,7 @@ def generate_action_details(deployment_details: DeploymentDetails, **kwargs) -> 
         bucket_name="/var/automation"
         )
         print(action.mode)
-        # Returns: 'local'
+         'local'
 
     Notes:
         The deployment_details parameter is automatically added to the kwargs
@@ -590,22 +466,22 @@ def generate_state_details(deployment_details: DeploymentDetails, **kwargs) -> S
         # Create state details with default settings
         state = generate_state_details(dd)
         print("artefacts" in state.key)
-        # Returns: True
+         True
 
         # Create with task name for state file
         state = generate_state_details(dd, task="deploy")
         print("deploy.state" in state.key)
-        # Returns: True
+         True
 
         # Create with custom state file
         state = generate_state_details(dd, state_file="custom-state.json")
         print("custom-state.json" in state.key)
-        # Returns: True
+         True
 
         # Create with direct key specification
         state = generate_state_details(dd, key="custom/path/state.json")
         print(state.key)
-        # Returns: 'custom/path/state.json'
+         'custom/path/state.json'
 
         # Create with storage parameters
         state = generate_state_details(
@@ -615,7 +491,7 @@ def generate_state_details(deployment_details: DeploymentDetails, **kwargs) -> S
         bucket_name="deployment-bucket"
         )
         print(state.mode)
-        # Returns: 'service'
+         'service'
 
     Notes:
         The deployment_details parameter is automatically added to the kwargs

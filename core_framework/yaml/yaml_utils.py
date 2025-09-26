@@ -451,15 +451,18 @@ def create_yaml_parser() -> YAML:
         - **Unicode support**: Full UTF-8 encoding with unicode characters
         - **Clean formatting**: Consistent indentation and block-style output
 
-    Examples::
+    Examples::::::::::::::::
 
-        parser = create_yaml_parser()
+
+
+
+        # Returns: parser = create_yaml_parser()
         # Returns: >>>
         # Parse CloudFormation template
-        template = parser.load(open("template.yaml"))
+        # Returns: template = parser.load(open("template.yaml"))
         # Returns: >>>
         # Generate clean YAML output
-        output = parser.dump(data, stream)
+        # Returns: output = parser.dump(data, stream)
 
     Parser Settings:
         - **Type**: Round-trip ('rt') for comment/formatting preservation
@@ -538,20 +541,23 @@ def load_yaml_file(file_path: str, yaml_parser: YAML = None) -> Any:
         ConstructorError: If included files are not found or cannot be parsed.
         ValueError: If the YAML content is invalid.
 
-    Examples::
+    Examples::::::::::::::::
+
+
+
 
         # Load a CloudFormation template with includes
-        template = load_yaml_file("infrastructure/main.yaml")
+        # Returns: template = load_yaml_file("infrastructure/main.yaml")
         # Returns: >>>
         # Load with custom parser
-        parser = create_yaml_parser()
-        config = load_yaml_file("config.yaml", parser)
+        # Returns: parser = create_yaml_parser()
+        # Returns: config = load_yaml_file("config.yaml", parser)
 
         # Template composition example
         # main.yaml contains:
         # Resources: !Include resources/ec2.yaml
         # Parameters: !Include config/parameters.yaml
-        template = load_yaml_file("main.yaml")
+        # Returns: template = load_yaml_file("main.yaml")
         # All includes are automatically resolved
 
     File Resolution:
@@ -787,26 +793,29 @@ def strip_root_indent(stream: str, indent_size: int = 2) -> str:
     Returns:
         Processed YAML string with root indentation removed.
 
-    Examples::
+    Examples::::::::::::::::
+
+
+
 
         # Input with root indentation
-        indented = '''  - name: item1
-        value: test1
-        - name: item2
-        value: test2'''
+        # Returns: indented = '''  - name: item1
+        # Returns: value: test1
+        # Returns: - name: item2
+        # Returns: value: test2'''
         # Returns: >>>
         # Remove 2-space root indent
-        clean = strip_root_indent(indented, 2)
-        print(clean)
+        # Returns: clean = strip_root_indent(indented, 2)
+        # Returns: print(clean)
         # Returns: - name: item1
         # Returns: value: test1
         # Returns: - name: item2
         # Returns: value: test2
 
         # Custom indent size
-        four_space = "    key: value\\n    list:\\n      - item"
-        clean = strip_root_indent(four_space, 4)
-        print(clean)
+        # Returns: four_space = "    key: value\\n    list:\\n      - item"
+        # Returns: clean = strip_root_indent(four_space, 4)
+        # Returns: print(clean)
         # Returns: key: value
         # Returns: list:
         # Returns: - item

@@ -46,12 +46,14 @@ def get_valid_tasks() -> List[str]:
     Returns:
         List of valid task names that can be used in TaskPayload.
 
-    Examples:
-        >>> valid_tasks = get_valid_tasks()
-        >>> print(valid_tasks)
-        ['package', 'upload', 'compile', 'plan', 'deploy', 'apply', 'release', 'teardown']
-        >>> 'deploy' in valid_tasks
-        True
+    Examples::
+
+        valid_tasks = get_valid_tasks()
+        print(valid_tasks)
+        # Output: ['package', 'upload', 'compile', 'plan', 'deploy', 'apply', 'release', 'teardown']
+
+        'deploy' in valid_tasks
+        # Output: True
     """
     return [
         "package",

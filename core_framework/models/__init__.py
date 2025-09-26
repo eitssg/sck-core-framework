@@ -38,49 +38,53 @@ Model Categories:
     - Artifact key generation for unique identification
     - Model factory functions for consistent object creation
 
-Examples::::
+Examples::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
-    # Returns: Basic model usage:
 
-    # Returns: from core_framework.models import ActionResource, DeploySpec
-    # Returns: >>>
+
+
+
+    Basic model usage:
+
+    from core_framework.models import ActionResource, DeploySpec
+    
     # Create an action specification
-    # Returns: action = ActionResource(
-    # Returns: name="deploy-app",
-    # Returns: kind="AWS::CreateStack",
-    # Returns: params={
-    # Returns: "stack_name": "my-application",
-    # Returns: "template": "templates/app.yaml"
-    # Returns: }
-    # Returns: )
+    action = ActionResource(
+    name="deploy-app",
+    kind="AWS::CreateStack",
+    params={
+    "stack_name": "my-application",
+    "template": "templates/app.yaml"
+    }
+    )
 
     # Create deployment specification
-    # Returns: deploy_spec = DeploySpec(actions=[action])
-    # Returns: print(len(deploy_spec))
-    # Returns: 1
+    deploy_spec = DeploySpec(actions=[action])
+    print(len(deploy_spec))
+    1
 
-    # Returns: Using generator functions:
+    Using generator functions:
 
-    # Returns: from core_framework.models import generate_task_payload
-    # Returns: >>>
+    from core_framework.models import generate_task_payload
+    
     # Generate complete task payload
-    # Returns: payload = generate_task_payload(
-    # Returns: action_resource=action,
-    # Returns: deployment_id="deploy-123",
-    # Returns: account="123456789012",
-    # Returns: region="us-east-1"
-    # Returns: )
+    payload = generate_task_payload(
+    action_resource=action,
+    deployment_id="deploy-123",
+    account="123456789012",
+    region="us-east-1"
+    )
 
-    # Returns: Path and artifact utilities:
+    Path and artifact utilities:
 
-    # Returns: from core_framework.models import get_artefacts_path, get_artefact_key
-    # Returns: >>>
+    from core_framework.models import get_artefacts_path, get_artefact_key
+    
     # Resolve artifact paths
-    # Returns: artifacts_path = get_artefacts_path("my-portfolio", "my-app")
-    # Returns: >>>
+    artifacts_path = get_artefacts_path("my-portfolio", "my-app")
+    
     # Generate unique artifact keys
-    # Returns: key = get_artefact_key("deploy-123", "stack-outputs.json")
+    key = get_artefact_key("deploy-123", "stack-outputs.json")
 
 Integration Points:
     These models integrate with all Core Automation components:
@@ -101,17 +105,19 @@ Design Principles:
 Imports:
     All models and utilities are available through this module:
 
-    >>> from core_framework.models import (
-    ...     # Core Models
-    ...     TaskPayload, DeploymentDetails, PackageDetails,
-    ...     ActionDetails, StateDetails,
-    ...
-    ...     # Specification Models
-    ...     DeploySpec, ActionResource, ActionSpec,
-    ...
-    ...     # Utility Functions
-    ...     get_artefacts_path, generate_task_payload
-    ... )
+    ..code: python
+    
+        from core_framework.models import (
+            # Core Models
+            TaskPayload, DeploymentDetails, PackageDetails,
+            ActionDetails, StateDetails,
+        
+            # Specification Models
+            DeploySpec, ActionResource, ActionSpec,
+        
+            # Utility Functions
+            get_artefacts_path, generate_task_payload
+        )
 """
 
 from .task_payload import TaskPayload
@@ -211,12 +217,12 @@ def get_model_categories() -> dict[str, list[str]]:
 
         categories = get_model_categories()
         print(categories["core_models"])
-        # Returns: ['TaskPayload', 'DeploymentDetails', 'PackageDetails', ...]
+        ['TaskPayload', 'DeploymentDetails', 'PackageDetails', ]
 
         # Check what specification models are available
         spec_models = categories["specification_models"]
         print("DeploySpec" in spec_models)
-        # Returns: True
+        True
     """
     return {
         "core_models": CORE_MODELS,
@@ -236,9 +242,9 @@ def get_all_models() -> list[str]:
 
         models = get_all_models()
         print(len(models))
-        # Returns: 8
+        8
         print("ActionResource" in models)
-        # Returns: True
+        True
     """
     return CORE_MODELS + SPECIFICATION_MODELS
 
@@ -253,8 +259,8 @@ def get_all_functions() -> list[str]:
 
         functions = get_all_functions()
         print("generate_task_payload" in functions)
-        # Returns: True
+        True
         print("get_artefacts_path" in functions)
-        # Returns: True
+        True
     """
     return UTILITY_FUNCTIONS + GENERATOR_FUNCTIONS
