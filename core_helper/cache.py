@@ -403,8 +403,7 @@ class InMemoryCache:
             return self.store_session("session", session, ttl)
 
         if role_arn:
-            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
-            key = self._generate_user_key(f"role-{role_name}")
+            key = self._generate_user_key(f"role-{role_arn}")
         else:
             key = self._generate_user_key("session")
 
@@ -419,8 +418,7 @@ class InMemoryCache:
             return self.retrieve_session("session")
 
         if role_arn:
-            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
-            key = self._generate_user_key(f"role-{role_name}")
+            key = self._generate_user_key(f"role-{role_arn}")
         else:
             key = self._generate_user_key("session")
 
@@ -432,11 +430,10 @@ class InMemoryCache:
         context = self.get_user_context()
         if not context:
             # Fall back to regular credential storage
-            return self.store_data("credentials", credentials, ttl)
+            return self.store_data(role_arn, credentials, ttl)
 
         if role_arn:
-            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
-            key = self._generate_user_key(f"creds-{role_name}")
+            key = self._generate_user_key(f"creds-{role_arn}")
         else:
             key = self._generate_user_key("creds")
 
@@ -445,16 +442,42 @@ class InMemoryCache:
 
     def retrieve_user_credentials(self, role_arn: str = None) -> Dict[str, Any] | None:
         """Retrieve AWS credentials for the current user using existing TTL logic."""
+
         context = self.get_user_context()
         if not context:
             # Fall back to regular credential retrieval
-            return self.retrieve_data("credentials")
+            return self.retrieve_data(role_arn)
+
+        user_id = context.get("user_id")
 
         if role_arn:
-            role_name = role_arn.split("/")[-1] if "/" in role_arn else role_arn
-            key = self._generate_user_key(f"creds-{role_name}")
+            key = self._generate_user_key(f"creds-{role_arn}", user_id=user_id)
         else:
-            key = self._generate_user_key("creds")
+            key = self._generate_user_key("creds", user_id=user_id)
 
         # Use existing retrieve_data method (preserves sliding TTL)
         return self.retrieve_data(key)
+
+    def clear_user_credentials(self, role_arn: str = None) -> None:
+        """Clear cached AWS credentials for the current user."""
+        context = self.get_user_context()
+        if not context:
+            # Fall back to regular credential clearing
+            self.clear_data(role_arn)
+            return
+
+        user_id = context.get("user_id")
+
+        if role_arn:
+            key = self._generate_user_key(f"creds-{role_arn}", user_id=user_id)
+        else:
+            key = self._generate_user_key("creds", user_id=user_id)
+
+        self.clear_data(key)
+
+    def reset(self) -> None:
+        """Clear all cached data immediately."""
+        with self._lock:
+            self._storage.clear()
+            if hasattr(self._thread_local, "user_context"):
+                self._thread_local.user_context = None

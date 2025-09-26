@@ -115,13 +115,13 @@ def test_get_identity_client_error(mock_session):
 
 def test_get_session(mock_session):
 
-    creds = aws.get_session_credentials()
+    creds: aws.AwsCredentials = aws.get_session_credentials()
     if not creds:
         assert False, "Credentials are None"
 
-    assert creds["AccessKeyId"] == "mock_access_key"
-    assert creds["SecretAccessKey"] == "mock_secret_key"
-    assert creds["SessionToken"] == "mock_session_token"
+    assert creds.access_key_id == "mock_access_key"
+    assert creds.secret_access_key == "mock_secret_key"
+    assert creds.session_token == "mock_session_token"
 
     session = aws.get_session()
 

@@ -40,6 +40,13 @@ class ActionMetadata(BaseModel):
     description: Optional[str] = Field(None, description="Human-readable description", alias="Description")
     save_outputs: Optional[bool] = Field(None, description="Override save_outputs behavior", alias="SaveOutputs")
 
+    @property
+    def label(self) -> str:
+        """Get full action name including namespace if present."""
+        if self.namespace:
+            return f"{self.namespace}:action/{self.name}"
+        return self.name
+
     @field_validator("name", mode="before")
     @classmethod
     def validate_name(cls, value: str) -> str:
@@ -225,14 +232,14 @@ class ActionResource(BaseModel):
     @property
     def output_namespace(self) -> str | None:
         """Calculate output namespace for organizing action results."""
-        if self.save_outputs is False or not self.name:
+        if self.save_outputs is False:
             return None
 
         if self.metadata:
             if self.metadata.namespace:
                 return f"{self.metadata.namespace}:output"
             else:
-                return f"{self.action_name}:output"
+                return f"output"
 
         # Get the namespace for the action, defaults to name
         namespace_part = self.action_name.split("/")[0]
@@ -282,13 +289,14 @@ class ActionResource(BaseModel):
                 raise ValueError(f"Conflicting type='{type_value}' and kind='{kind_value}'")
 
         if name_value:
+            warnings.warn("The 'name' field is deprecated. Use 'metadata.name' instead.", DeprecationWarning, stacklevel=2)
             parts = name_value.split("/")
             if len(parts) > 1:
-                namespace = parts[0]
+                namespace = parts[0].replace(":action", "")
                 name = "/".join(parts[1:])
             else:
                 namespace = None
-                name = parts[0]
+                name = parts[0].replace(":action", "")
         else:
             namespace = None
             name = None
@@ -302,7 +310,7 @@ class ActionResource(BaseModel):
                 raise ValueError("Action must have a name via metadata.name or the deprecated name field")
 
         if isinstance(metadata, dict):
-            metadata = ActionMetadata(**metadata)
+            metadata = ActionMetadata.model_validate(metadata)
 
         if isinstance(metadata, ActionMetadata):
             if name and not metadata.name:
@@ -310,9 +318,19 @@ class ActionResource(BaseModel):
             if namespace and not metadata.namespace:
                 metadata.namespace = namespace
 
+        if not name_value:
+            name_value = metadata.label
+
         values["metadata"] = metadata
         values["name"] = name_value  # Keep for backward compatibility (for how long?)
         values["kind"] = kind_value
+
+        spec = values.pop("spec", None) or values.pop("Spec", None)
+        if isinstance(spec, dict):
+            values["spec"] = spec
+        elif isinstance(spec, ActionSpec):
+            values["spec"] = spec.model_dump()
+
         return values
 
     @model_validator(mode="after")
@@ -447,7 +465,7 @@ class ActionResource(BaseModel):
     def label(self) -> str:
         """DEPRECATED: Use 'name' instead."""
         warnings.warn("Use 'name' instead of deprecated 'label'", DeprecationWarning, stacklevel=2)
-        return self.name
+        return f"{self.metadata.namespace or ''}:action/{self.metadata.name}" if self.metadata else self.name
 
     @property
     def type(self) -> str:
