@@ -533,6 +533,8 @@ class CoreLogJsonFormatter(CoreLogFormatter):
         if not isinstance(record.args, tuple):
             record.args = (record.args,)
 
+        data = OrderedDict()
+
         correlation_id = getattr(record, "correlation_id", None)
         if correlation_id and correlation_id != "-":
             data["correlation_id"] = correlation_id
@@ -556,7 +558,7 @@ class CoreLogJsonFormatter(CoreLogFormatter):
         timestamp = datetime.fromtimestamp(record.created)
         json_timestamp = timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
-        data: dict = OrderedDict([("@timestamp", json_timestamp)])
+        data["@timestamp"] = json_timestamp
 
         self.set_element(data, record, "log.logger", "name")
         self.set_element(data, record, "log.level", "levelname")
