@@ -48,7 +48,7 @@ Examples::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     Basic model usage:
 
     from core_framework.models import ActionResource, DeploySpec
-    
+
     # Create an action specification
     action = ActionResource(
     name="deploy-app",
@@ -67,7 +67,7 @@ Examples::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     Using generator functions:
 
     from core_framework.models import generate_task_payload
-    
+
     # Generate complete task payload
     payload = generate_task_payload(
     action_resource=action,
@@ -79,10 +79,10 @@ Examples::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     Path and artifact utilities:
 
     from core_framework.models import get_artefacts_path, get_artefact_key
-    
+
     # Resolve artifact paths
     artifacts_path = get_artefacts_path("my-portfolio", "my-app")
-    
+
     # Generate unique artifact keys
     key = get_artefact_key("deploy-123", "stack-outputs.json")
 
@@ -106,15 +106,15 @@ Imports:
     All models and utilities are available through this module:
 
     ..code: python
-    
+
         from core_framework.models import (
             # Core Models
             TaskPayload, DeploymentDetails, PackageDetails,
             ActionDetails, StateDetails,
-        
+
             # Specification Models
             DeploySpec, ActionResource, ActionSpec,
-        
+
             # Utility Functions
             get_artefacts_path, generate_task_payload
         )

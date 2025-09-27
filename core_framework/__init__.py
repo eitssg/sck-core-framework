@@ -42,7 +42,7 @@ Common Usage Patterns:
 **Basic Configuration:**
 
      import core_framework as cf
-    
+
      # Get current environment configuration
      env = cf.get_environment()
      region = cf.get_region()
@@ -55,7 +55,7 @@ Common Usage Patterns:
          action_resource=action,
          deployment_id="deploy-123"
      )
-    
+
      # Work with paths and artifacts
      artifacts_path = cf.get_artefacts_path("portfolio", "app")
      artifact_key = cf.get_artefact_key("deploy-123", "outputs.json")
@@ -65,7 +65,7 @@ Common Usage Patterns:
      # Generate Portfolio Resource Names
      portfolio_prn = cf.generate_portfolio_prn("my-portfolio")
      app_prn = cf.generate_app_prn("my-portfolio", "my-app")
-    
+
      # Validate and extract PRN components
      is_valid = cf.validate_app_prn(app_prn)
      portfolio = cf.extract_portfolio(app_prn)
@@ -75,7 +75,7 @@ Common Usage Patterns:
      # CloudFormation template processing
      template = cf.load_yaml_file("template.yaml")
      clean_yaml = cf.to_yaml(template)
-    
+
      # Configuration file handling
      config = cf.from_json(json_string)
      cf.write_yaml(config, output_stream)
@@ -113,21 +113,21 @@ Examples:
     ..code: python
 
         import core_framework as cf
-         
+
         # 1. Get environment configuration
         env = cf.get_environment()
         account = cf.get_automation_account()
         region = cf.get_region()
-         
+
         # 2. Generate PRNs for resources
         portfolio = "my-portfolio"
         app = "web-app"
         branch = "feature-auth"
-         
+
         portfolio_prn = cf.generate_portfolio_prn(portfolio)
         app_prn = cf.generate_app_prn(portfolio, app)
         branch_prn = cf.generate_branch_prn(portfolio, app, branch)
-         
+
         # 3. Create deployment specification
         action = ActionResource(
             name="deploy-infrastructure",
@@ -138,13 +138,13 @@ Examples:
                 "stack_name": f"{cf.branch_short_name(branch)}-infrastructure"
             }
         )
-         
+
         # 4. Generate task payload for execution
         payload = cf.generate_task_payload(
             action_resource=action,
             deployment_id=f"deploy-{cf.get_current_timestamp_short()}"
         )
-         
+
         # 5. Process and serialize
         yaml_output = cf.to_yaml(payload.model_dump())
 
