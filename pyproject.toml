@@ -56,13 +56,26 @@ substitution = { files = ["core_framework/__init__.py"] }
 line-length = 132
 target-version = ["py311"]
 skip-string-normalization = true
-extend-exclude = ''' /(.venv|build|dist|htmlcov)/ '''
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.pytest_cache
+  | build
+  | dist
+  | venv
+  | \.venv
+)/
+'''
+extend-exclude = '''
+/(
+    tests
+)/
+'''
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [dependency-groups]
-dev = [
-    "black (>=25.9.0,<26.0.0)"
-]
+dev = ["black (>=25.9.0,<26.0.0)"]
