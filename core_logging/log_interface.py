@@ -329,7 +329,7 @@ def clear_correlation_id() -> None:
         _thread_local.correlation_id = None
 
 
-def get_logger_identity(**kwargs: dict) -> str:
+def get_logger_identity(**kwargs) -> str:
     """Extract or determine the logger identity from various sources.
 
     Attempts to find an appropriate identity for logging by checking
@@ -493,12 +493,12 @@ def __get_caller_info():
         identity generation and source location tracking.
     """
     frame = inspect.currentframe()
-    caller_frame = frame.f_back.f_back  # Go back two frames to get the caller
+    caller_frame = frame.f_back.f_back  # Go back two frames to get the caller  # type: ignore
     module = inspect.getmodule(caller_frame)
     module_name = module.__name__ if module else "Unknown"
-    function_name = caller_frame.f_code.co_name
-    filename = caller_frame.f_code.co_filename
-    lineno = caller_frame.f_lineno
+    function_name = caller_frame.f_code.co_name  # type: ignore
+    filename = caller_frame.f_code.co_filename  # type: ignore
+    lineno = caller_frame.f_lineno  # type: ignore
     return module_name, function_name, filename, lineno
 
 

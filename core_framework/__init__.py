@@ -161,6 +161,7 @@ Version: 0.0.11-pre.8+11ddda5
 
 """
 
+from typing import Any
 from .merge import deep_copy, deep_merge_in_place, deep_merge, set_nested
 from .models import (
     get_artefacts_path,
@@ -345,6 +346,8 @@ __all__ = [
     "get_organization_name",
     "get_organization_account",
     "get_organization_email",
+    "get_cdk_default_account",
+    "get_cdk_default_region",
     # Name and Resource Generation
     "generate_branch_short_name",
     "generate_bucket_name",
@@ -387,6 +390,7 @@ __all__ = [
     "get_bizapp",
     "get_console_mode",
     "get_current_timestamp",
+    "get_current_timestamp_short",
     # Validation and Type Checking
     "get_valid_mimetypes",
     "is_local_mode",
@@ -583,35 +587,35 @@ def get_version_info() -> dict[str, str]:
     if version_match:
         major, minor, patch, prerelease, build = version_match.groups()
         return {
-            "version": version,
-            "major": major,
-            "minor": minor,
-            "patch": patch,
-            "prerelease": prerelease.lstrip("-") if prerelease else None,
-            "build": build.lstrip("+") if build else None,
-            "is_prerelease": bool(prerelease),
-            "is_development": bool(build),
+            "version": str(version),
+            "major": str(major),
+            "minor": str(minor),
+            "patch": str(patch),
+            "prerelease": str(prerelease.lstrip("-") if prerelease else ""),
+            "build": str(build.lstrip("+") if build else ""),
+            "is_prerelease": str(bool(prerelease)),
+            "is_development": str(bool(build)),
         }
     else:
         return {
-            "version": version,
-            "major": None,
-            "minor": None,
-            "patch": None,
-            "prerelease": None,
-            "build": None,
-            "is_prerelease": False,
-            "is_development": False,
+            "version": str(version),
+            "major": "",
+            "minor": "",
+            "patch": "",
+            "prerelease": "",
+            "build": "",
+            "is_prerelease": str(False),
+            "is_development": str(False),
         }
 
 
-def get_framework_info() -> dict[str, any]:
+def get_framework_info() -> dict[str, Any]:
     """Get comprehensive information about the Core Automation Framework.
 
     Returns:
         Dictionary containing framework metadata, capabilities, and configuration.
 
-    Examples::
+    Examples:
 
         info = get_framework_info()
         print(info["name"])

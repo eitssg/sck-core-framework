@@ -9,7 +9,7 @@ Classes:
     ActionResource: Complete action specification with validation and execution metadata.
 """
 
-from typing import Any, Optional, Dict
+from typing import Any, Dict
 import re
 import warnings
 from collections import OrderedDict
@@ -30,22 +30,22 @@ class ActionMetadata(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True, extra="allow")
 
-    name: str = Field(None, description="Action name", alias="Name")
+    name: str | None = Field(description="Action name", alias="Name", default=None)
 
-    namespace: Optional[str] = Field(None, description="Action namespace", alias="Namespace")
-    labels: Optional[Dict[str, str]] = Field(None, description="Key-value labels", alias="Labels")
-    annotations: Optional[Dict[str, str]] = Field(None, description="Additional annotations", alias="Annotations")
+    namespace: str | None = Field(description="Action namespace", alias="Namespace", default=None)
+    labels: Dict[str, str] | None = Field(description="Key-value labels", alias="Labels", default=None)
+    annotations: Dict[str, str] | None = Field(description="Additional annotations", alias="Annotations", default=None)
 
     # SCK-specific extensions
-    description: Optional[str] = Field(None, description="Human-readable description", alias="Description")
-    save_outputs: Optional[bool] = Field(None, description="Override save_outputs behavior", alias="SaveOutputs")
+    description: str | None = Field(description="Human-readable description", alias="Description", default=None)
+    save_outputs: bool | None = Field(description="Override save_outputs behavior", alias="SaveOutputs", default=None)
 
     @property
     def label(self) -> str:
         """Get full action name including namespace if present."""
         if self.namespace:
             return f"{self.namespace}:action/{self.name}"
-        return self.name
+        return self.name or "unnamed-action"
 
     @field_validator("name", mode="before")
     @classmethod
@@ -240,7 +240,7 @@ class ActionResource(BaseModel):
             if self.metadata.namespace:
                 return f"{self.metadata.namespace}:output"
             else:
-                return f"output"
+                return "output"
 
         # Get the namespace for the action, defaults to name
         namespace_part = self.action_name.split("/")[0]
@@ -262,7 +262,7 @@ class ActionResource(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_model_before(cls, values: Any) -> Any:
+    def validate_model_before(cls, values: Any) -> Any:  # noqa: C901
         """Handle metadata creation and deprecated field migration."""
         if not isinstance(values, dict):
             return values
@@ -306,7 +306,7 @@ class ActionResource(BaseModel):
         metadata = values.pop("metadata", None) or values.pop("Metadata", None)
         if not metadata:
             if name:
-                metadata = ActionMetadata(name=name, namespace=namespace)
+                metadata = ActionMetadata(Name=name, Namespace=namespace)
             else:
                 raise ValueError("Action must have a name via metadata.name or the deprecated name field")
 
@@ -381,7 +381,7 @@ class ActionResource(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name_format(cls, value: str) -> str:
+    def validate_name_format(cls, value: str) -> str:  # noqa: C901
         """Validate name format for hierarchical namespaces."""
         if value is None:
             return value
@@ -466,7 +466,11 @@ class ActionResource(BaseModel):
     def label(self) -> str:
         """DEPRECATED: Use 'name' instead."""
         warnings.warn("Use 'name' instead of deprecated 'label'", DeprecationWarning, stacklevel=2)
-        return f"{self.metadata.namespace or ''}:action/{self.metadata.name}" if self.metadata else self.name
+        return (
+            f"{self.metadata.namespace or ''}:action/{self.metadata.name or ''}"
+            if self.metadata
+            else self.name or "unnamed:action/unnamed-action"
+        )
 
     @property
     def type(self) -> str:
@@ -522,7 +526,7 @@ class ActionResource(BaseModel):
 
             # Handle nested models
             if hasattr(value, "model_dump"):
-                value = value.model_dump(exclude_none=exclude_none, by_alias=by_alias)
+                value = value.model_dump(exclude_none=exclude_none, by_alias=by_alias)  # type: ignore
             elif isinstance(value, list) and value and hasattr(value[0], "model_dump"):
                 value = [item.model_dump(exclude_none=exclude_none, by_alias=by_alias) for item in value]
 

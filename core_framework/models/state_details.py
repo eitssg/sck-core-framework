@@ -256,7 +256,7 @@ class StateDetails(FileDetails):
             - **Task**: 'deploy' if not specified
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(key1: str, key2: str, default: Any | None, can_be_empty: bool = False) -> Any:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
 
@@ -298,13 +298,13 @@ class StateDetails(FileDetails):
         version_id = _get("version_id", "VersionId", None)
 
         return cls(
-            client=client,
-            bucket_name=bucket_name,
-            bucket_region=bucket_region,
-            key=key,
-            version_id=version_id,
-            content_type=content_type,
-            mode=mode,
+            Client=client,
+            BucketName=bucket_name,
+            BucketRegion=bucket_region,
+            Key=key,
+            VersionId=version_id,
+            ContentType=content_type,
+            Mode=mode,
         )
 
     def __str__(self) -> str:

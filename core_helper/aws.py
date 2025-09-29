@@ -34,10 +34,13 @@ Integration:
 """
 
 from typing import Any, Dict
+
 import os
+
 import boto3
 from boto3.session import Session
 from botocore.config import Config
+from botocore.credentials import Credentials
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 
@@ -180,7 +183,7 @@ def clear_user_context() -> None:
     log.debug("Cleared user context")
 
 
-def get_session(
+def get_session(  # noqa: C901
     *,
     aws_access_key_id=None,
     aws_secret_access_key=None,
@@ -217,11 +220,11 @@ def get_session(
     user_context = get_user_context()
 
     if user_context:
-        credentials: Dict[str, str] = user_context.get("credentials")
-        if not aws_access_key_id and credentials:
-            aws_access_key_id = credentials.get("AccessKeyId")
-            aws_secret_access_key = credentials.get("SecretAccessKey")
-            aws_session_token = credentials.get("SessionToken")
+        supplied_credentials: Dict[str, str] | None = user_context.get("credentials")
+        if not aws_access_key_id and isinstance(supplied_credentials, dict):
+            aws_access_key_id = supplied_credentials.get("AccessKeyId")
+            aws_secret_access_key = supplied_credentials.get("SecretAccessKey")
+            aws_session_token = supplied_credentials.get("SessionToken")
 
     def gen_key() -> str:
         key_parts = [
@@ -249,16 +252,22 @@ def get_session(
         aws_session_token=aws_session_token,
         region_name=region_name,
         profile_name=profile_name,
-        aws_account_id=aws_account_id,
     )
 
     if not aws_access_key_id:
-        credentials = session.get_credentials()
-        if credentials:
-            frozen_creds = credentials.get_frozen_credentials()
+        session_credentials: Credentials | None = session.get_credentials()
+        if session_credentials:
+            frozen_creds = session_credentials.get_frozen_credentials()
             aws_access_key_id = frozen_creds.access_key
             aws_secret_access_key = frozen_creds.secret_key
             aws_session_token = frozen_creds.token
+
+    if not aws_access_key_id or not aws_secret_access_key:
+        log.warning(
+            "Creating session without explicit credentials - relying on instance/task role or environment",
+            details={"key": key},
+        )
+        raise Exception("No AWS credentials available for session")
 
     if not user_context or user_context.get("user_id") is None:
         store.set_user_context(
@@ -339,11 +348,11 @@ def __get_client_config() -> Config:
         proxies=proxy_definition,
         connect_timeout=15,
         read_timeout=15,
-        retries=RETRY_CONFIG,
+        retries=RETRY_CONFIG,  # type: ignore
     )
 
 
-def assume_role(*, role_arn: str = None, **kwargs) -> AwsCredentials:
+def assume_role(*, role_arn: str | None = None, **kwargs) -> AwsCredentials | None:
     """Assume an IAM role and return temporary credentials. Fallback to return session credentials."""
 
     if not role_arn:
@@ -361,7 +370,7 @@ def assume_role(*, role_arn: str = None, **kwargs) -> AwsCredentials:
             return AwsCredentials.model_validate(cached_credentials)
 
     try:
-        session = get_session(**kwargs)
+        session: Session = get_session(**kwargs)
         session_name = f"Pipeline-{util.get_current_timestamp()}"
 
         # get_session will set a user_context.
@@ -407,16 +416,16 @@ def get_identity(role_arn: str | None = None, **kwargs) -> dict[str, Any] | None
         and the corresponding credentials, or None on failure.
     """
     try:
-        credentials = assume_role(role_arn=role_arn, **kwargs)
+        credentials: AwsCredentials | None = assume_role(role_arn=role_arn, **kwargs)
 
         if not credentials:
             log.error("Could not retrieve credentials for get_identity.")
             return None
 
         client = sts_client(
-            aws_access_key_id=credentials.get("AccessKeyId"),
-            aws_secret_access_key=credentials.get("SecretAccessKey"),
-            aws_session_token=credentials.get("SessionToken"),
+            aws_access_key_id=credentials.access_key_id,
+            aws_secret_access_key=credentials.secret_access_key,
+            aws_session_token=credentials.session_token,
             config=__get_client_config(),
         )
         identity = client.get_caller_identity()
@@ -427,10 +436,10 @@ def get_identity(role_arn: str | None = None, **kwargs) -> dict[str, Any] | None
             "UserId": identity.get("UserId"),
             "Account": identity.get("Account"),
             "Arn": identity.get("Arn"),
-            "AccessKeyId": credentials.get("AccessKeyId"),
-            "SecretAccessKey": credentials.get("SecretAccessKey"),
-            "SessionToken": credentials.get("SessionToken"),
-            "Expiration": credentials.get("Expiration"),
+            "AccessKeyId": credentials.access_key_id,
+            "SecretAccessKey": credentials.secret_access_key,
+            "SessionToken": credentials.session_token,
+            "Expiration": credentials.expiration,
         }
 
         return response
@@ -517,6 +526,9 @@ def get_client(service_name: str, *, role_arn: str | None = None, **kwargs) -> A
 
         credentials = assume_role(role_arn=role_arn, **kwargs)
 
+        if not credentials:
+            raise Exception(f"Could not assume role {role_arn} to create client {service_name}")
+
         # Remove any direct credentials from kwargs to avoid conflicts.  We've assumed a role!
         if "aws_access_key_id" in kwargs:
             del kwargs["aws_access_key_id"]
@@ -537,7 +549,7 @@ def get_client(service_name: str, *, role_arn: str | None = None, **kwargs) -> A
         session = get_session(**kwargs)
 
     # Get the session for the current user and his credentials else create a new one
-    return session.client(service_name, config=__get_client_config())
+    return session.client(service_name, config=__get_client_config())  # type: ignore
 
 
 # Convenience functions for creating specific clients
@@ -768,6 +780,9 @@ def get_resource(service_name: str, *, role_arn: str | None, **kwargs) -> Any:
         # These credentials should be cached.  Assume role will check cache first.
         credentials = assume_role(role_arn=role_arn, **kwargs)
 
+        if not credentials:
+            raise Exception(f"Could not assume role {role_arn} to create resource {service_name}")
+
         if "aws_access_key_id" in kwargs:
             del kwargs["aws_access_key_id"]
         if "aws_secret_access_key" in kwargs:
@@ -786,7 +801,7 @@ def get_resource(service_name: str, *, role_arn: str | None, **kwargs) -> Any:
         # No role to assume, use base session
         session = get_session(**kwargs)
 
-    return session.resource(service_name, config=__get_client_config())
+    return session.resource(service_name, config=__get_client_config())  # type: ignore
 
 
 def s3_resource(**kwargs) -> Any:
@@ -843,10 +858,9 @@ def invoke_lambda(arn: str, request_payload: dict[str, Any], **kwargs) -> dict[s
     try:
         response: Dict[str, Any] = client.invoke(FunctionName=arn, Payload=util.to_json(request_payload))
 
-        payload_stream: StreamingBody = response.get("Payload")
-        payload_bytes = payload_stream.read()
-
-        response_payload = util.from_json(payload_bytes.decode("utf-8"))
+        payload_stream: StreamingBody | None = response.get("Payload")
+        if payload_stream is not None:
+            response_payload = util.read_json(payload_stream)
 
         status_code = response.get("StatusCode", 0)
         function_error = response.get("FunctionError")

@@ -63,7 +63,8 @@ import netaddr
 from datetime import date
 
 from jinja2 import pass_context
-from jinja2.environment import Context, Environment
+from jinja2.runtime import Context
+from jinja2.environment import Environment
 
 import core_framework as util
 
@@ -217,6 +218,9 @@ def filter_ebs_encrypt(ebs_spec: list[dict] | None) -> list:
     """
     # Work on a copy to avoid side effects
     spec_copy = copy.deepcopy(ebs_spec)
+    if spec_copy is None:
+        return []
+
     for bdm in spec_copy:
 
         if "Ebs" in bdm:
@@ -547,7 +551,7 @@ def filter_ip_rules(  # noqa C901
 
             if security_source in security_aliases:
                 # Source is an alias in facts
-                sources = [o for o in security_aliases.get(security_source, None) if isinstance(o, dict)]
+                sources = [o for o in security_aliases.get(security_source, []) if isinstance(o, dict)]
             elif security_source in app:
                 # Source is component
                 sources = [
@@ -641,7 +645,7 @@ def filter_lookup(render_context: Context, path: str, default: str = "_error_") 
     return value
 
 
-def _navigate_path(data: Any, path: str) -> Any:
+def _navigate_path(data: Any, path: str) -> Any:  # noqa C901
     """Recursively navigate through nested data using dot-separated path.
 
     Internal helper function that handles the complex logic of path navigation
@@ -792,7 +796,7 @@ def filter_output_name(render_context: Context, o: dict) -> str | None:
     raise NotImplementedError("Filter_output_name: Only build scope supported at this time. Add 'release' scope later.")
 
 
-def filter_parse_port_spec(port_spec: str) -> dict:
+def filter_parse_port_spec(port_spec: str) -> dict:  # noqa C901
     """Parse a port specification string into a dictionary with Protocol, FromPort, and ToPort.
 
     Converts human-readable port specifications into AWS security group rule format.
@@ -1507,18 +1511,23 @@ def filter_read_file(render_context: Context, file_path: str) -> str:
     # Handle relative paths from the template directory
     if hasattr(filter_read_file, "_template_path") and filter_read_file._template_path:
         full_path = os.path.join(filter_read_file._template_path, file_path)
-    else:
+    elif facts is not None:
         full_path = __file_url(facts, {"Fn::Pipeline::FileUrl": {"Path": file_path}})
 
+    if not full_path or not isinstance(full_path, str):
+        raise jinja2.exceptions.UndefinedError("Invalid file path specified: {}".format(file_path))
+
     try:
+
         with open(full_path, "r", encoding="utf-8") as f:
             return f.read()
+
     except FileNotFoundError:
         raise FileNotFoundError(f"Template file not found: {file_path}")
     except Exception as e:
         raise Exception(f"Error reading template file {file_path}: {str(e)}")
 
-    raise jinja2.exceptions.UndefinedError("Error reading file '{}': {}".format(file_path, str(e))) from e
+    raise jinja2.exceptions.UndefinedError("Error reading file '{}'".format(file_path))
 
 
 def __file_url(facts: dict, pipeline_file_spec: dict) -> Any:
@@ -1542,7 +1551,7 @@ def __file_url(facts: dict, pipeline_file_spec: dict) -> Any:
     """
     pipeline_file_url: dict | None = pipeline_file_spec.get("Fn::Pipeline::FileUrl", None)
 
-    if pipeline_file_url:
+    if isinstance(pipeline_file_url, dict):
 
         name = pipeline_file_url.get("Path", "unspecified")
         scope = pipeline_file_url.get("Scope", SCOPE_BUILD)
@@ -1649,8 +1658,9 @@ def load_filters(environment: Environment) -> None:
         in Jinja2 templates for Core Automation rendering.
     """
 
-    if hasattr(environment.loader, "searchpath") and environment.loader.searchpath:
-        filter_read_file._template_path = environment.loader.searchpath[0]
+    search_path = getattr(environment.loader, "searchpath", None)
+    if search_path:
+        filter_read_file._template_path = search_path[0] if isinstance(search_path, list) else search_path
 
     # Filters
     environment.filters["aws_tags"] = filter_aws_tags

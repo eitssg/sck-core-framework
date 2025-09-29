@@ -76,7 +76,7 @@ class FileStreamingBody:
         self._file = None
         self._closed = False
 
-    def read(self, amt: int = None) -> bytes:
+    def read(self, amt: int | None = None) -> bytes:
         """Read up to amt bytes from the stream.
 
         Opens the file lazily on first read and reads the requested amount
@@ -785,7 +785,7 @@ class MagicS3Client(BaseModel):
         return MagicBucket(Bucket=bucket_name, DataPath=self.data_path)
 
     @staticmethod
-    def get_bucket(Region: str, BucketName: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
+    def get_bucket(Region: str, BucketName: str, RoleArn: str | None = None, DataPath: str | None = None) -> Any:
         """Get a Bucket object, either real S3 or MagicBucket based on configuration.
 
         Provides transparent switching between real S3 and local storage based
@@ -819,7 +819,7 @@ class MagicS3Client(BaseModel):
         return bucket
 
     @staticmethod
-    def get_client(Region: str, RoleArn: str = None, DataPath: str | None = None) -> Any:
+    def get_client(Region: str, RoleArn: str | None = None, DataPath: str | None = None) -> Any:
         """Get an S3 client, either real boto3 or MagicS3Client based on configuration.
 
         Provides transparent switching between real S3 and local storage based

@@ -64,10 +64,11 @@ Note:
     to override default behavior when needed.
 """
 
+from typing import Any
 from pydantic import model_validator
 
 import core_framework as util
-from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
+from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE
 from .deployment_details import DeploymentDetails
 from .file_details import FileDetails
 
@@ -352,13 +353,13 @@ class ActionDetails(FileDetails):
             ```
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(key1: str, key2: str, default: Any) -> Any:
             """Extract parameter with fallback and default handling."""
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
-            return value if value or can_be_empty else default
+            return value if value else default
 
         # Extract all parameters with intelligent defaults
-        client = _get("client", "Client", util.get_client())
+        client = _get("client", "Client", util.get_client()) or "core"
 
         # Handle key generation from task/action_file
         key = _get("key", "Key", None)
@@ -371,8 +372,9 @@ class ActionDetails(FileDetails):
                 action_file = f"{task}.actions"
 
             dd = _get("deployment_details", "DeploymentDetails", None)
+
             if isinstance(dd, dict):
-                dd = DeploymentDetails(**dd)
+                dd = DeploymentDetails.model_validate(dd)
             elif not isinstance(dd, DeploymentDetails):
                 dd = DeploymentDetails.from_arguments(**kwargs)
 
@@ -396,13 +398,13 @@ class ActionDetails(FileDetails):
         version_id = _get("version_id", "VersionId", None)
 
         return cls(
-            client=client,
-            bucket_name=bucket_name,
-            bucket_region=bucket_region,
-            key=key,
-            version_id=version_id,
-            content_type=content_type,
-            mode=mode,
+            Client=client,
+            BucketName=bucket_name,
+            BucketRegion=bucket_region,
+            Key=key,
+            VersionId=version_id,
+            ContentType=content_type,
+            Mode=mode,
         )
 
     def __str__(self) -> str:

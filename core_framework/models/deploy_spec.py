@@ -44,10 +44,10 @@ Examples::
 """
 
 from typing import Self, Any, TextIO
-import warnings
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import core_framework as util
+from core_framework.common import SupportsRead
 
 from .action_resource import ActionResource
 
@@ -160,6 +160,11 @@ class DeploySpec(BaseModel):
             - Defaults to "default" if no account/region specified
             - Supports both CamelCase and snake_case parameter names
         """
+        self.validate_actions()
+
+        return self
+
+    def validate_actions(self) -> bool:
         # Track unique identifiers to prevent duplicates
         names = []
 
@@ -200,7 +205,7 @@ class DeploySpec(BaseModel):
                         raise ValueError(f"Duplicate stack name: {name}")
                     names.append(name)
 
-        return self
+        return True
 
     def to_yaml(self) -> str:
         """Convert the DeploySpec to YAML format.
@@ -356,7 +361,7 @@ class DeploySpec(BaseModel):
             raise ValueError(f"Failed to load DeploySpec from YAML: {e}")
 
     @classmethod
-    def from_json(cls, stream: TextIO | str) -> "DeploySpec":
+    def from_json(cls, input: SupportsRead | str) -> "DeploySpec":
         """Load a DeploySpec from a JSON stream or string.
 
         Args:
@@ -397,12 +402,15 @@ class DeploySpec(BaseModel):
             to help identify JSON syntax or structure issues.
         """
         try:
-            data = util.read_json(stream)
-            return cls(**data)
+            if isinstance(input, str):
+                data = util.from_json(input)
+            else:
+                data = util.read_json(input)
+            return cls.model_validate(data)
         except Exception as e:
             raise ValueError(f"Failed to load DeploySpec from JSON: {e}")
 
-    def add_action(self, action: ActionResource) -> None:
+    def add_action(self, action: ActionResource) -> bool:
         """Add an ActionResource to the deployment specification.
 
         Args:
@@ -441,12 +449,15 @@ class DeploySpec(BaseModel):
 
         # Create temporary copy to test validation
         temp_actions = self.actions + [action]
-        temp_spec = DeploySpec(actions=temp_actions)
-        # This will raise ValueError if there are duplicates
-        temp_spec.validate_deployspecs()
+
+        try:
+            DeploySpec(Actions=temp_actions)
+        except ValueError:
+            return False
 
         # If validation passes, add the action
         self.actions.append(action)
+        return True
 
     def remove_action(self, name: str) -> bool:
         """Remove an action by name from the deployment specification.
@@ -697,8 +708,8 @@ class DeploySpec(BaseModel):
         """
         if not self.actions:
             return "DeploySpec(empty)"
-        action_names = [action.name for action in self.actions]
-        return f"DeploySpec({len(self.actions)} actions: {', '.join(action_names)})"
+        names: list[str] = [name.action_name for name in self.actions]
+        return f"DeploySpec({len(self.actions)} actions: {', '.join(names)})"
 
     def __repr__(self) -> str:
         """Return a detailed string representation for debugging.

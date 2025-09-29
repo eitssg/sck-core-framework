@@ -5,10 +5,8 @@ other very common tasks.
 
 """
 
-from pydoc import cli
 import warnings
-from typing import Any, IO, Dict
-import uuid
+from typing import Any, Dict, TextIO, TypeVar, runtime_checkable, Protocol
 import tempfile
 import json
 import datetime
@@ -99,6 +97,13 @@ from .constants import (
     CORE_AUTOMATION_API_WRITE_ROLE,
     CORE_AUTOMATION_API_READ_ROLE,
 )
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+
+@runtime_checkable
+class SupportsRead(Protocol[_T_co]):
+    def read(self, __n: int = ...) -> _T_co: ...  # noqa: E704
 
 
 def generate_branch_short_name(branch: str | None) -> str | None:
@@ -570,7 +575,7 @@ def get_provisioning_role_arn(account: str | None = None) -> str:
     return "arn:aws:iam::{}:role/{}{}".format(account, scope_prefix, CORE_AUTOMATION_PIPELINE_PROVISIONING_ROLE)
 
 
-def get_automation_api_role_arn(account: str | None = None, write: bool = False) -> str:
+def get_automation_api_role_arn(account: str | None = None, write: bool = False) -> str | None:
     """Get automation API role ARN.
 
     Args:
@@ -767,7 +772,7 @@ def get_console_mode() -> str:
     'interactive'
     """
     mode = os.getenv(ENV_CONSOLE, "")
-    return mode if mode == V_INTERACTIVE else None
+    return mode if mode == V_INTERACTIVE else V_EMPTY
 
 
 def is_use_s3() -> bool:
@@ -1008,7 +1013,7 @@ def get_aws_profile() -> str:
     >>> get_aws_profile()
     'myclient'
     """
-    profile = os.getenv(ENV_AWS_PROFILE, "") or get_client()
+    profile = os.getenv(ENV_AWS_PROFILE, "") or get_client() or "default"
 
     try:
         # if the profile is not in the boto3.session credentials, then return "default"
@@ -1228,7 +1233,7 @@ def get_step_function_arn() -> str:
     )
 
 
-def get_invoker_lambda_name(client: str = None) -> str:
+def get_invoker_lambda_name(client: str | None = None) -> str:
     """Get invoker lambda name from INVOKER_LAMBDA_NAME environment variable.
 
     Returns
@@ -1246,7 +1251,7 @@ def get_invoker_lambda_name(client: str = None) -> str:
     return os.getenv(ENV_INVOKER_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-invoker")
 
 
-def get_auth_lambda_name(client: str = None) -> str:
+def get_auth_lambda_name(client: str | None = None) -> str:
     """Get Auth lambda name from AUTH_LAMBDA_NAME environment variable.
 
     Returns
@@ -1264,7 +1269,7 @@ def get_auth_lambda_name(client: str = None) -> str:
     return os.getenv(ENV_AUTH_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-auth")
 
 
-def get_api_lambda_name(client: str = None) -> str:
+def get_api_lambda_name(client: str | None = None) -> str:
     """Get API lambda name from API_LAMBDA_NAME environment variable.
 
     Returns
@@ -1282,7 +1287,7 @@ def get_api_lambda_name(client: str = None) -> str:
     return os.getenv(ENV_API_LAMBDA_NAME, f"{client}-{V_CORE_AUTOMATION}-api")
 
 
-def get_auth_lambda_arn(client: str = None) -> str:
+def get_auth_lambda_arn(client: str | None = None) -> str | None:
     region = get_region()
     account = get_automation_account()
     name = get_auth_lambda_name(client)
@@ -1292,7 +1297,7 @@ def get_auth_lambda_arn(client: str = None) -> str:
     )
 
 
-def get_api_lambda_arn(client: str = None) -> str:
+def get_api_lambda_arn(client: str | None = None) -> str | None:
     """Get API lambda ARN from API_LAMBDA_ARN environment variable.
 
     Returns
@@ -1330,7 +1335,7 @@ def get_api_host_url() -> str | None:
     return os.getenv(ENV_API_HOST_URL, None)
 
 
-def get_invoker_lambda_arn(client: str = None) -> str:
+def get_invoker_lambda_arn(client: str | None = None) -> str:
     """Get invoker lambda ARN from INVOKER_LAMBDA_ARN environment variable.
 
     Returns
@@ -1352,7 +1357,7 @@ def get_invoker_lambda_arn(client: str = None) -> str:
     )
 
 
-def get_execute_lambda_arn(client: str = None) -> str:
+def get_execute_lambda_arn(client: str | None = None) -> str | None:
     """Get execute lambda ARN from EXECUTE_LAMBDA_ARN environment variable.
 
     Returns
@@ -1375,7 +1380,7 @@ def get_execute_lambda_arn(client: str = None) -> str:
     )
 
 
-def get_start_runner_lambda_arn(client: str = None) -> str:
+def get_start_runner_lambda_arn(client: str | None = None) -> str | None:
     """Get start runner lambda ARN from START_RUNNER_LAMBDA_ARN environment variable.
 
     Returns
@@ -1430,7 +1435,7 @@ def get_bizapp() -> str | None:
     return os.getenv(ENV_BIZAPP, None)
 
 
-def get_deployspec_compiler_lambda_arn(client: str = None) -> str:
+def get_deployspec_compiler_lambda_arn(client: str | None = None) -> str | None:
     """Get deployspec compiler lambda ARN.
 
     Returns
@@ -1453,7 +1458,7 @@ def get_deployspec_compiler_lambda_arn(client: str = None) -> str:
     )
 
 
-def get_component_compiler_lambda_arn(client: str = None) -> str:
+def get_component_compiler_lambda_arn(client: str | None = None) -> str | None:
     """Get component compiler lambda ARN.
 
     Returns
@@ -1664,7 +1669,7 @@ def to_json(data: Any, pretty: int | None = None) -> str:
     return json.dumps(data, indent=pretty, default=__custom_serializer)
 
 
-def write_json(data: Any, output_stream: IO, pretty: int | None = None) -> None:
+def write_json(data: Any, output_stream: TextIO, pretty: int | None = None) -> None:
     """Write JSON data to output stream.
 
     Args:
@@ -1729,7 +1734,7 @@ def from_json(data: str) -> Any:
     return json.loads(data, object_hook=__iso8601_parser)
 
 
-def read_json(input_stream: IO) -> Any:
+def read_json(stream: SupportsRead) -> Any:
     """Load JSON data from input stream with datetime parsing.
 
     Args:
@@ -1738,12 +1743,13 @@ def read_json(input_stream: IO) -> Any:
     Returns:
         JSON data with datetime objects.
 
-    Examples::
+    Examples:
 
         with open('input.json', 'r') as f:
         data = read_json(f)
+
     """
-    return json.load(input_stream, object_hook=__iso8601_parser)
+    return json.load(stream, object_hook=__iso8601_parser)
 
 
 def get_current_timestamp() -> str:
@@ -1762,7 +1768,7 @@ def get_current_timestamp() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
-def get_cognito_endpoint(default: str = None) -> str | None:
+def get_cognito_endpoint(default: str | None = None) -> str | None:
     """Get Cognito endpoint URL from COGNITO_ENDPOINT environment variable.
 
     Returns

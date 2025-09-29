@@ -344,7 +344,7 @@ class CoreLogTextFormatter(CoreLogFormatter):
             record.correlation_id = "-"
 
         if record.levelno == STATUS and hasattr(record, "status") and hasattr(record, "reason"):
-            record.msg = f"{record.status} {record.reason}"
+            record.msg = f"{record.status} {record.reason}"  # type: ignore
 
         # The user can send a list of replacement values if the "msg" contains "{}"
         # place_holders.
@@ -362,7 +362,7 @@ class CoreLogTextFormatter(CoreLogFormatter):
         data = super().format(record)
 
         if hasattr(record, L_DETAILS):
-            details = getattr(record, L_DETAILS)
+            details: dict = getattr(record, L_DETAILS)
             if details and (isinstance(details, dict) or isinstance(details, OrderedDict) or isinstance(details, list)):
                 data = data + "\n" + self._indent_yaml(details)
 
@@ -540,7 +540,7 @@ class CoreLogJsonFormatter(CoreLogFormatter):
             data["correlation_id"] = correlation_id
 
         if record.levelno == STATUS and hasattr(record, "status") and hasattr(record, "reason"):
-            record.msg = f"{record.status} {record.reason}"
+            record.msg = f"{record.status} {record.reason}"  # type: ignore
 
         # The user can send a list of replacement values if the "msg" contains "{}"
         # place_holders.

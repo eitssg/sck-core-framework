@@ -65,7 +65,7 @@ Note:
     and prevents invalid deployment configurations.
 """
 
-from typing import Self
+from typing import Any, Self
 import os
 
 from pydantic import BaseModel, Field, model_validator, ConfigDict
@@ -184,7 +184,7 @@ class DeploymentDetails(BaseModel):
     client: str = Field(
         alias="Client",
         description="Client identifier for multi-tenant deployments and billing isolation",
-        default_factory=lambda: util.get_client(),
+        default_factory=lambda: util.get_client() or "core",
     )
 
     portfolio: str = Field(
@@ -755,12 +755,12 @@ class DeploymentDetails(BaseModel):
             ```
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(key1: str, key2: str, default: Any, can_be_empty: bool = False) -> Any:
             """Extract parameter with fallback and default handling."""
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
 
-        client = _get("client", "Client", util.get_client())
+        client: str = _get("client", "Client", util.get_client() or "core")
 
         prn = kwargs.get("prn", None)
         if prn is not None:
@@ -768,38 +768,38 @@ class DeploymentDetails(BaseModel):
 
         else:
             # You cannot set portfolio to None or empty string.  It must be provided.
-            portfolio = _get("portfolio", "Portfolio", util.get_portfolio())
+            portfolio: str | None = _get("portfolio", "Portfolio", util.get_portfolio())
 
             # You are allowed to set app to None or empty string.  Only call for default if not provided.
-            app = _get("app", "App", util.get_app(), True)
+            app: str | None = _get("app", "App", util.get_app(), True)
 
             # You are allowed to set branch to None or empty string.  Only call for default if not provided.
-            branch = _get("branch", "Branch", util.get_branch(), True)
+            branch: str | None = _get("branch", "Branch", util.get_branch(), True)
 
             # If supplied a branch short name, use it.  Otherwise, generate from branch.
-            branch_short_name = _get("branch_short_name", "BranchShortName", util.branch_short_name(branch))
+            branch_short_name: str | None = _get("branch_short_name", "BranchShortName", util.branch_short_name(branch))
 
             # You are allow to set build to None or empty string.  Only call for default if not provided.
-            build = _get("build", "Build", util.get_build(), True)
+            build: str | None = _get("build", "Build", util.get_build(), True)
 
-            component = _get("component", "Component", None)
+            component: str | None = _get("component", "Component", None)
 
         scope = _get("scope", "Scope", cls.get_scope_from(portfolio, app, branch, build))
 
         return cls(
-            client=client,
-            portfolio=portfolio,
-            app=app,
-            branch=branch,
-            branch_short_name=branch_short_name,
-            build=build,
-            component=component,
-            scope=scope,
-            environment=_get("environment", "Environment", None),
-            data_center=_get("data_center", "DataCenter", None),
-            tags=_get("tags", "Tags", None),
-            stack_file=_get("stack_file", "StackFile", None),
-            delivered_by=_get("delivered_by", "DeliveredBy", None),
+            Client=client,
+            Portfolio=portfolio or "",
+            App=app,
+            Branch=branch,
+            BranchShortName=branch_short_name,
+            Build=build,
+            Component=component,
+            Scope=scope,
+            Environment=_get("environment", "Environment", None),
+            DataCenter=_get("data_center", "DataCenter", None),
+            Tags=_get("tags", "Tags", None),
+            StackFile=_get("stack_file", "StackFile", None),
+            DeliveredBy=_get("delivered_by", "DeliveredBy", None),
         )
 
     def model_dump(self, **kwargs) -> dict:

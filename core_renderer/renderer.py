@@ -76,14 +76,14 @@ class Jinja2Renderer:
             Exactly one of template_path or dictionary must be provided. The renderer
             cannot be initialized with both or neither source types.
         """
-        self.template_path = template_path
-        self.dictionary = dictionary
+        self.template_path = template_path or ''
+        self.dictionary = dictionary or {}
 
         loader: jinja2.BaseLoader
         if template_path is not None:
-            loader = jinja2.FileSystemLoader(template_path)
+            loader = jinja2.FileSystemLoader(self.template_path)
         else:
-            loader = jinja2.DictLoader(dictionary)
+            loader = jinja2.DictLoader(self.dictionary)
 
         self.env = jinja2.Environment(
             loader=loader,
@@ -114,7 +114,7 @@ class Jinja2Renderer:
         """
         return self.env.from_string(string).render(context)
 
-    def render_object(self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]) -> list[Any] | dict[str, Any] | str:
+    def render_object(self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]) -> Any:
         """Render a Python object (list, dict, or string) using the provided context.
 
         Recursively processes complex data structures to render embedded template
@@ -149,14 +149,17 @@ class Jinja2Renderer:
                 elif isinstance(item, dict):
                     result.append(self.render_object(item, context))
             return result
+
         elif isinstance(data, dict):
-            json_data = json.dumps(data, indent=2)
-            rendered_json = self.render_json(json_data, context)
-            return json.loads(rendered_json)
+            rendered_json: dict | None = self.render_json(data, context)
+            if rendered_json is not None:
+                return rendered_json
+            return {}
+
         else:
             raise TypeError("Unsupported data type for rendering: {}".format(type(data)))
 
-    def render_json(self, json_data: str, context: dict[str, Any]) -> dict | None:
+    def render_json(self, json_data: str | dict, context: dict[str, Any]) -> dict | None:
         """Render a JSON string using the Jinja2 environment.
 
         Processes JSON strings that may contain Jinja2 template syntax by
@@ -173,7 +176,11 @@ class Jinja2Renderer:
             after template rendering.
         """
         try:
-            return json.loads(self.render_string(json.dumps(json_data), context))
+            if json_data is None:
+                return None
+            if isinstance(json_data, dict):
+                json_data = json.dumps(json_data, indent=2)
+            return json.loads(self.render_string(json_data, context))
         except json.JSONDecodeError:
             return None
 

@@ -121,10 +121,10 @@ class TaskPayload(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
-    correlation_id: str = Field(
-        None,
+    correlation_id: str | None = Field(
         alias="CorrelationId",
         description="Unique identifier for tracking the request",
+        default=None,
     )
     client: str = Field(
         alias="Client",
@@ -253,25 +253,26 @@ class TaskPayload(BaseModel):
             else:
                 values["correlation_id"] = correlation_id
 
-            client = values.get("Client") or values.get("client") or util.get_client()
+            client = values.get("Client") or values.get("client") or util.get_client() or "core"
+            portfolio = values.get("Portfolio") or values.get("portfolio") or ""
 
             dd = values.get("DeploymentDetails", None) or values.get("deployment_details", None)
 
             if isinstance(dd, dict):
                 dd = DeploymentDetails(**dd)
             elif not isinstance(dd, DeploymentDetails):
-                dd = DeploymentDetails(client=client)
+                dd = DeploymentDetails(Client=client, Portfolio=portfolio)
 
             # If we supplied a client, then push it to deployment details
             dd.client = client
 
             # These lines are ESSENTIAL - they ensure client is passed to nested objects
             if not (values.get("Package") or values.get("package")):
-                values["package"] = PackageDetails(client=client)
+                values["package"] = PackageDetails(Client=client)
             if not (values.get("Actions") or values.get("actions")):
-                values["actions"] = ActionDetails(client=client)
+                values["actions"] = ActionDetails(Client=client)
             if not (values.get("State") or values.get("state")):
-                values["state"] = StateDetails(client=client)
+                values["state"] = StateDetails(Client=client)
 
             fc = values.get("FlowControl", values.get("flow_control"))
             if fc and fc not in FLOW_CONTROLS:
@@ -357,7 +358,7 @@ class TaskPayload(BaseModel):
                 self.state.set_key(self.deployment_details, self.task + ".state")
 
     @staticmethod
-    def from_arguments(**kwargs: Any) -> "TaskPayload":
+    def from_arguments(**kwargs: Any) -> "TaskPayload":  # noqa: C901
         """Create TaskPayload from command line arguments or flat parameters.
 
         Constructs a TaskPayload from flat keyword arguments, automatically
@@ -474,17 +475,17 @@ class TaskPayload(BaseModel):
         flow_control = _get("flow_control", "FlowControl", None)
 
         return TaskPayload(
-            client=dd.client,
-            task=task,
-            force=force,
-            dry_run=dry_run,
-            identity=identity,
-            type=typ,
-            flow_control=flow_control,
-            deployment_details=dd,
-            package=pkg,
-            actions=act,
-            state=st,
+            Client=dd.client,
+            Task=task,
+            Force=force,
+            DryRun=dry_run,
+            Identity=identity,
+            Type=typ,
+            FlowControl=flow_control,
+            DeploymentDetails=dd,
+            Package=pkg,
+            Actions=act,
+            State=st,
         )
 
     def model_dump(self, **kwargs: Any) -> dict:

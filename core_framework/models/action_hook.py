@@ -16,9 +16,9 @@ class HookResourceParameters(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    on_running: Optional[dict] = Field(None, description="Message when running", alias="OnRunning")
-    on_complete: Optional[dict] = Field(None, description="Message when complete", alias="OnComplete")
-    on_failed: Optional[dict] = Field(None, description="Message when failed", alias="OnFailed")
+    on_running: Optional[dict] = Field(description="Message when running", alias="OnRunning", default=None)
+    on_complete: Optional[dict] = Field(description="Message when complete", alias="OnComplete", default=None)
+    on_failed: Optional[dict] = Field(description="Message when failed", alias="OnFailed", default=None)
 
     def get_parameters(self, state: str) -> dict[str, Any]:
         """Return parameters for the given state.

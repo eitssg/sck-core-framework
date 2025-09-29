@@ -384,7 +384,7 @@ class InMemoryCache:
         if hasattr(self._thread_local, "user_context"):
             self._thread_local.user_context = None
 
-    def _generate_user_key(self, base_key: str, user_id: str = None) -> str:
+    def _generate_user_key(self, base_key: str, user_id: str | None = None) -> str:
         """Generate a user-specific cache key."""
         if not user_id:
             context = self.get_user_context()
@@ -395,7 +395,7 @@ class InMemoryCache:
 
         return f"user-{user_id}-{base_key}"
 
-    def store_user_session(self, session: boto3.Session, role_arn: str = None, ttl: int = DEFAULT_TTL) -> str:
+    def store_user_session(self, session: boto3.Session, role_arn: str | None = None, ttl: int = DEFAULT_TTL) -> str:
         """Store a Boto3 session for the current user using existing TTL logic."""
         context = self.get_user_context()
         if not context:
@@ -410,7 +410,7 @@ class InMemoryCache:
         # Use existing store method (preserves TTL and purge logic)
         return self.store_session(key, session, ttl)
 
-    def retrieve_user_session(self, role_arn: str = None) -> boto3.Session | None:
+    def retrieve_user_session(self, role_arn: str | None = None) -> boto3.Session | None:
         """Retrieve a Boto3 session for the current user using existing TTL logic."""
         context = self.get_user_context()
         if not context:
@@ -425,7 +425,7 @@ class InMemoryCache:
         # Use existing retrieve method (preserves sliding TTL)
         return self.retrieve_session(key)
 
-    def store_user_credentials(self, credentials: Dict[str, Any], role_arn: str = None, ttl: int = DEFAULT_TTL) -> str:
+    def store_user_credentials(self, credentials: Dict[str, Any], role_arn: str, ttl: int = DEFAULT_TTL) -> str:
         """Store AWS credentials for the current user using existing TTL logic."""
         context = self.get_user_context()
         if not context:
@@ -440,7 +440,7 @@ class InMemoryCache:
         # Use existing store_data method (preserves TTL and purge logic)
         return self.store_data(key, credentials, ttl)
 
-    def retrieve_user_credentials(self, role_arn: str = None) -> Dict[str, Any] | None:
+    def retrieve_user_credentials(self, role_arn: str) -> Dict[str, Any] | None:
         """Retrieve AWS credentials for the current user using existing TTL logic."""
 
         context = self.get_user_context()
@@ -458,7 +458,7 @@ class InMemoryCache:
         # Use existing retrieve_data method (preserves sliding TTL)
         return self.retrieve_data(key)
 
-    def clear_user_credentials(self, role_arn: str = None) -> None:
+    def clear_user_credentials(self, role_arn: str) -> None:
         """Clear cached AWS credentials for the current user."""
         context = self.get_user_context()
         if not context:

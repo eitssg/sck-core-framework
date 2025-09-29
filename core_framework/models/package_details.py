@@ -23,6 +23,7 @@ Common Use Cases:
     - Build artifact management
 """
 
+from typing import Any
 from pydantic import Field, field_validator, model_validator
 
 import core_framework as util
@@ -136,9 +137,7 @@ class PackageDetails(FileDetails):
     )
 
     actions: list[ActionResource] | None = Field(
-        None,
-        alias="Actions",
-        description="Deployment specification containing action definitions and metadata",
+        alias="Actions", description="Deployment specification containing action definitions and metadata", default=None
     )
 
     @field_validator("compile_mode")
@@ -350,20 +349,20 @@ class PackageDetails(FileDetails):
             - **None**: Creates empty DeploySpec with no actions
         """
 
-        def _get(key1: str, key2: str, default: str | None, can_be_empty: bool = False) -> str:
+        def _get(key1: str, key2: str, default: Any) -> Any:
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
-            return value if value or can_be_empty else default
+            return value if value else default
 
         # Get core parameters with fallbacks
-        client = _get("client", "Client", util.get_client())
+        client = _get("client", "Client", util.get_client() or "core")
         package_file = _get("package_file", "PackageFile", V_PACKAGE_ZIP)
         key = _get("key", "Key", V_EMPTY)
 
         # Generate key from deployment details if not provided
         if not key:
-            dd = _get("deployment_details", "DeploymentDetails", None)
+            dd = _get("deployment_details", "DeploymentDetails", {})
             if isinstance(dd, dict):
-                dd = DeploymentDetails(**dd)
+                dd = DeploymentDetails.model_validate(dd)
             elif not isinstance(dd, DeploymentDetails):
                 dd = DeploymentDetails.from_arguments(**kwargs)
 
@@ -383,18 +382,16 @@ class PackageDetails(FileDetails):
 
         # Get package-specific parameters
         compile_mode = _get("compile_mode", "CompileMode", V_FULL)
-        deployspec = _get("deployspec", "DeploySpec", None)
 
         return cls(
-            client=client,
-            bucket_name=bucket_name,
-            bucket_region=bucket_region,
-            key=key,
-            version_id=version_id,
-            content_type=content_type,
-            mode=mode,
-            compile_mode=compile_mode,
-            deployspec=deployspec,
+            Client=client,
+            BucketName=bucket_name,
+            BucketRegion=bucket_region,
+            Key=key,
+            VersionId=version_id,
+            ContentType=content_type,
+            Mode=mode,
+            CompileMode=compile_mode,
         )
 
     def __str__(self) -> str:

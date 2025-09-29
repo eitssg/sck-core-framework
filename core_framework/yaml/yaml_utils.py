@@ -62,18 +62,18 @@ Constants:
     aws_tags: List of supported AWS CloudFormation intrinsic function tags
 """
 
-from typing import IO, Any, Union
+from typing import Any, Union, TextIO
 import io
-from ruamel.yaml import YAML
-from ruamel.yaml.emitter import RoundTripEmitter
+
+from ruamel.yaml import YAML, CommentedMap
 from ruamel.yaml.constructor import ConstructorError, RoundTripConstructor
-from ruamel.yaml.representer import RoundTripRepresenter
-from ruamel.yaml.dumper import RoundTripDumper
 from ruamel.yaml.nodes import ScalarNode, MappingNode, SequenceNode
+
 from pathlib import Path
 from datetime import datetime, date, time
 from decimal import Decimal
-import copy
+
+StreamTextType = Union[str, TextIO]
 
 # A list of all the CloudFormation intrinsic function tags
 aws_tags = [
@@ -376,7 +376,7 @@ class CfnYamlConstructor(RoundTripConstructor):
         if isinstance(node, ScalarNode):
             return {function_name: self.construct_scalar(node)}
         elif isinstance(node, MappingNode):
-            return {function_name: self.construct_mapping(node)}
+            return {function_name: self.construct_mapping(node, CommentedMap)}
         elif isinstance(node, SequenceNode):
             return {function_name: self.construct_sequence(node)}
         return None
@@ -523,7 +523,7 @@ def create_yaml_parser() -> YAML:
     return yaml
 
 
-def load_yaml_file(file_path: str, yaml_parser: YAML = None) -> Any:
+def load_yaml_file(file_path: str, yaml_parser: YAML | None = None) -> Any:
     """Load YAML file with !Include support and proper path resolution.
 
     Loads a YAML file and configures the parser to handle !Include tags
@@ -579,17 +579,17 @@ def load_yaml_file(file_path: str, yaml_parser: YAML = None) -> Any:
         yaml_parser = create_yaml_parser()
 
     # Convert the file path to a Path object
-    file_path = Path(file_path)
+    fp: Path = Path(file_path)
 
     # Set the root path to the directory of the file being loaded
     # This allows !Include to resolve relative paths correctly.
-    yaml_parser.constructor.root_path = file_path.parent
+    yaml_parser.constructor.root_path = fp.parent
 
-    with file_path.open("r") as f:
+    with fp.open("r") as f:
         return read_yaml(f, yaml_parser)
 
 
-def read_yaml(stream: IO, yaml_parser: YAML = None) -> Any:
+def read_yaml(stream: StreamTextType, yaml_parser: YAML | None = None) -> Any:
     """Parse YAML data from an input stream.
 
     Reads and parses YAML content from any file-like object or stream,
@@ -644,7 +644,7 @@ def read_yaml(stream: IO, yaml_parser: YAML = None) -> Any:
     return yaml_parser.load(stream)
 
 
-def from_yaml(yaml_data: str, yaml_parser: YAML = None) -> Any:
+def from_yaml(yaml_data: str, yaml_parser: YAML | None = None) -> Any:
     """Parse YAML content from a string.
 
     Converts a YAML string into Python data structures using the configured
@@ -713,7 +713,7 @@ def from_yaml(yaml_data: str, yaml_parser: YAML = None) -> Any:
     return read_yaml(stream, yaml_parser)
 
 
-def write_yaml(data: Any, stream: IO, yaml_parser: YAML = None) -> None:
+def write_yaml(data: Any, stream: TextIO, yaml_parser: YAML | None = None) -> None:
     """Write Python data to a YAML stream with formatting optimization.
 
     Serializes Python data structures to YAML format with intelligent
@@ -779,14 +779,14 @@ def write_yaml(data: Any, stream: IO, yaml_parser: YAML = None) -> None:
         yaml_parser.dump(data, stream)
 
 
-def strip_root_indent(stream: str, indent_size: int = 2) -> str:
+def strip_root_indent(data: str, indent_size: int = 2) -> str:
     """Remove root-level indentation from YAML string content.
 
     Processes YAML string content to remove leading indentation from all lines,
     creating cleaner output for root-level list items and other content.
 
     Args:
-        stream: YAML content string to process.
+        data: YAML content string to process.
         indent_size: Number of spaces to remove from the beginning of each line.
                     Defaults to 2 for standard YAML indentation.
 
@@ -837,7 +837,7 @@ def strip_root_indent(stream: str, indent_size: int = 2) -> str:
         Only removes indentation that exactly matches the specified size.
         Lines with different indentation levels are preserved unchanged.
     """
-    lines = stream.splitlines(True)
+    lines = data.splitlines(True)
     stripped_lines = []
     for line in lines:
         if line.startswith(" " * indent_size):
@@ -847,7 +847,7 @@ def strip_root_indent(stream: str, indent_size: int = 2) -> str:
     return "".join(stripped_lines)
 
 
-def to_yaml(data: Any, yaml_parser: YAML = None) -> str:
+def to_yaml(data: Any, yaml_parser: YAML | None = None) -> str:
     """Convert Python data to a YAML string with optimized formatting.
 
     Serializes Python data structures to a YAML string using the configured
