@@ -142,38 +142,30 @@ def test_deployment_details_model(runtime_arguments):
 
 def test_package_details_model(runtime_arguments):
 
-    try:
-        package_details = PackageDetails.from_arguments(**runtime_arguments)
+    package_details = PackageDetails.from_arguments(**runtime_arguments)
 
-        assert package_details is not None
+    assert package_details is not None
 
-        assert package_details.bucket_name == f"my-client-{V_CORE_AUTOMATION}-specified_region"
+    assert package_details.bucket_name == f"my-client-{V_CORE_AUTOMATION}-specified_region"
 
-        assert package_details.bucket_region == "specified_region"
+    assert package_details.bucket_region == "specified_region"
 
-        # The scope is "portfolio"
+    # The scope is "portfolio"
 
-        assert package_details.key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
-
-    except ValidationError as e:
-        print(e.erros())
-        assert False, str(e)
-    except Exception as e:
-        print(e)
-        assert False, str(e)
+    assert package_details.key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
 
 
 def test_deploy_spec_model(deployspec_sample):
 
-    action_resource = ActionResource(**deployspec_sample[0])
+    action_resource = ActionResource.model_validate(deployspec_sample[0])
 
     assert action_resource is not None
 
-    assert action_resource.label == "test1-create-user"
+    assert action_resource.label == ":action/test1-create-user"
 
     assert action_resource.type == "create_user"
 
-    deploy_spec = DeploySpec(actions=deployspec_sample)
+    deploy_spec = DeploySpec(Actions=deployspec_sample)
 
     assert deploy_spec is not None
 
@@ -181,7 +173,7 @@ def test_deploy_spec_model(deployspec_sample):
 
     assert len(deploy_spec.actions) == 6
 
-    assert deploy_spec.actions[5].label == "test1-delete-change-set"
+    assert deploy_spec.actions[5].label == ":action/test1-delete-change-set"
 
     data = deploy_spec.model_dump()
 

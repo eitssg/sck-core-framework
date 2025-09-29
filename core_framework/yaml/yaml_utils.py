@@ -73,6 +73,8 @@ from pathlib import Path
 from datetime import datetime, date, time
 from decimal import Decimal
 
+from core_framework.common import SupportsRead
+
 StreamTextType = Union[str, TextIO]
 
 # A list of all the CloudFormation intrinsic function tags
@@ -589,7 +591,7 @@ def load_yaml_file(file_path: str, yaml_parser: YAML | None = None) -> Any:
         return read_yaml(f, yaml_parser)
 
 
-def read_yaml(stream: StreamTextType, yaml_parser: YAML | None = None) -> Any:
+def read_yaml(stream: SupportsRead, yaml_parser: YAML | None = None) -> Any:
     """Parse YAML data from an input stream.
 
     Reads and parses YAML content from any file-like object or stream,

@@ -1,13 +1,16 @@
 from datetime import datetime, timedelta, timezone
 import json
+from botocore.config import Config
+from botocore.credentials import Credentials
 import pytest
 from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
 import core_helper.aws as aws
 import os
 import io
-
+from core_helper.aws import RETRY_CONFIG
 from core_framework.constants import TR_RESPONSE, TR_STATUS
+from core_helper.aws_models import AwsCredentials
 
 
 @pytest.fixture
@@ -115,7 +118,7 @@ def test_get_identity_client_error(mock_session):
 
 def test_get_session(mock_session):
 
-    creds: aws.AwsCredentials = aws.get_session_credentials()
+    creds: AwsCredentials | None = aws.get_session_credentials()
     if not creds:
         assert False, "Credentials are None"
 
@@ -128,12 +131,16 @@ def test_get_session(mock_session):
     assert session is not None
     assert mock_session.called
 
-    assert session.get_credentials().get_frozen_credentials().access_key == "mock_access_key"
-    assert session.get_credentials().get_frozen_credentials().secret_key == "mock_secret_key"
-    assert session.get_credentials().get_frozen_credentials().token == "mock_session_token"
+    session_creds: Credentials | None = session.get_credentials()
+
+    assert session_creds is not None
+
+    assert session_creds.get_frozen_credentials().access_key == "mock_access_key"
+    assert session_creds.get_frozen_credentials().secret_key == "mock_secret_key"
+    assert session_creds.get_frozen_credentials().token == "mock_session_token"
 
 
-def get_invoke_response():
+def get_invoke_response() -> io.BytesIO:
 
     data = json.dumps(
         {
@@ -177,19 +184,20 @@ def test_invoke_lambda(mock_session):
 
 def test_get_session_credentials(mock_session):
 
-    credentials = aws.get_session_credentials()
+    credentials: aws.AwsCredentials | None = aws.get_session_credentials()
 
     if not credentials:
         assert False, "Credentials are None"
 
-    assert credentials["AccessKeyId"] == "mock_access_key"
-    assert credentials["SecretAccessKey"] == "mock_secret_key"
-    assert credentials["SessionToken"] == "mock_session_token"
+    assert credentials.access_key_id == "mock_access_key"
+    assert credentials.secret_access_key == "mock_secret_key"
+    assert credentials.session_token == "mock_session_token"
 
 
 def test_get_session_credentials_client_error(mock_session):
 
-    session = aws.get_session()
+    session: MagicMock = aws.get_session()  # type: ignore
+
     # Change the value of the MagicMock mock_session get_credentials to return None
     session.get_credentials.return_value = None
 
@@ -199,10 +207,10 @@ def test_get_session_credentials_client_error(mock_session):
 def test_assume_role(mock_session):
 
     role = "arn:aws:iam::123456789012:role/mock-role"
-    credentials = aws.assume_role(role_arn=role)
+    credentials: aws.AwsCredentials | None = aws.assume_role(role_arn=role)
 
     assert credentials is not None, "Credentials are None"
-    assert credentials["AccessKeyId"] == "mock_access_key"
+    assert credentials.access_key_id == "mock_access_key"
 
     mock_response = {
         "Credentials": {
@@ -223,34 +231,33 @@ def test_assume_role(mock_session):
 
     # Replicate the call so that we can determine if a new role credentials
     # are returned or if they are pulled from the cache
-    creds2 = aws.assume_role(role_arn=role)
+    creds2: aws.AwsCredentials | None = aws.assume_role(role_arn=role)
 
     assert creds2 is not None, "Credentials are None.  Should have come from store"
 
     # Check the credentials returned from the assume_role call and verify they are cached version
-    assert creds2["AccessKeyId"] == "mock_access_key"
-    assert creds2["SecretAccessKey"] == "mock_secret_key"
-    assert creds2["SessionToken"] == "mock_session_token"
+    assert creds2.access_key_id == "mock_access_key"
+    assert creds2.secret_access_key == "mock_secret_key"
+    assert creds2.session_token == "mock_session_token"
 
     # This is a simle call to see if the credentials are cached
 
-    creds3 = aws.get_role_credentials(role)
+    creds3: aws.AwsCredentials | None = aws.get_role_credentials(role)
 
     assert creds3 is not None, "Credentials should be cached"
 
-    assert creds3["AccessKeyId"] == "mock_access_key"
-    assert creds3["SecretAccessKey"] == "mock_secret_key"
-    assert creds3["SessionToken"] == "mock_session_token"
+    assert creds3.access_key_id == "mock_access_key"
+    assert creds3.secret_access_key == "mock_secret_key"
+    assert creds3.session_token == "mock_session_token"
 
     # Remove the credentials from the cache
     aws.clear_role_credentials(role)
 
-    creds4 = aws.get_role_credentials(role)
+    creds4: aws.AwsCredentials | None = aws.get_role_credentials(role)
     assert creds4 is None, "Credentials should not be cached after clear"
 
 
 def test_get_client__config():
-    from core_helper.aws import __get_client_config, RETRY_CONFIG
 
     one = "http://proxy.example.com:8080"
     two = "https://proxy.example.com:8080"
@@ -261,15 +268,19 @@ def test_get_client__config():
     # Clear any existing environment variables to ensure test isolation
 
     def do_the_test(p1, p2):
-        config = aws.__get_client_config()
+        config: Config = aws.__get_client_config()
 
         assert config is not None
 
         # Check default values
-        assert config.proxies == {"http": p1, "https": p2}
-        assert config.read_timeout == 15
-        assert config.connect_timeout == 15
-        assert config.retries == RETRY_CONFIG
+        proxies = getattr(config, "proxies", None)
+        assert proxies == {"http": p1, "https": p2}
+        read_timeout = getattr(config, "read_timeout", None)
+        assert read_timeout == 15
+        connect_timeout = getattr(config, "connect_timeout", None)
+        assert connect_timeout == 15
+        retries = getattr(config, "retries", None)
+        assert retries == RETRY_CONFIG
 
     do_the_test(one, two)
 
@@ -287,11 +298,14 @@ def test_get_client__config():
 
     config = aws.__get_client_config()
 
-    assert config is not None
-    assert config.proxies == None
-    assert config.read_timeout == 15
-    assert config.connect_timeout == 15
-    assert config.retries == RETRY_CONFIG
+    proxies = getattr(config, "proxies", None)
+    assert proxies is None
+    read_timeout = getattr(config, "read_timeout", None)
+    assert read_timeout == 15
+    connect_timeout = getattr(config, "connect_timeout", None)
+    assert connect_timeout == 15
+    retries = getattr(config, "retries", None)
+    assert retries == RETRY_CONFIG
 
 
 def test_get_client(mock_session):

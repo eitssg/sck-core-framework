@@ -299,7 +299,7 @@ def reset_identity() -> None:
     _thread_local.identity = get_default_identity()
 
 
-def set_correlation_id(correlation_id: str) -> None:
+def set_correlation_id(correlation_id: str | None) -> None:
     """Set the correlation ID for the current thread/HTTP transaction.
 
     This makes all subsequent log calls in this thread automatically include
@@ -308,7 +308,11 @@ def set_correlation_id(correlation_id: str) -> None:
     Args:
         correlation_id: The correlation ID for the current HTTP request/transaction
     """
-    _thread_local.correlation_id = correlation_id
+    if correlation_id is None:
+        if hasattr(_thread_local, "correlation_id"):
+            del _thread_local.correlation_id
+    else:
+        _thread_local.correlation_id = correlation_id
 
 
 def get_correlation_id() -> str | None:

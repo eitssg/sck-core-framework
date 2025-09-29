@@ -147,10 +147,10 @@ class ActionResource(BaseModel):
     )
 
     name: str | None = Field(
-        None,
         alias="Name",
         description="DEPRECATED: Use metadata.name instead",
         deprecated=True,
+        default=None,
     )
 
     kind: str = Field(
@@ -161,15 +161,15 @@ class ActionResource(BaseModel):
     )
 
     metadata: ActionMetadata | None = Field(
-        None,
         description="Action metadata and documentation",
         alias="Metadata",
+        default=None,
     )
 
     depends_on: list[str] = Field(
-        default=[],
         alias="DependsOn",
         description="Actions that must complete successfully before this action",
+        default=[],
     )
 
     spec: dict[str, Any] = Field(
@@ -185,33 +185,33 @@ class ActionResource(BaseModel):
     )
 
     condition: str | None = Field(
-        None,
         alias="Condition",
         description="Python expression for conditional execution",
+        default=None,
     )
 
     before: list[str] | None = Field(
-        None,
         alias="Before",
         description="Actions that should execute after this action (soft ordering)",
+        default=None,
     )
 
     after: list[str] | None = Field(
-        None,
         alias="After",
         description="Actions that should execute before this action (soft ordering)",
+        default=None,
     )
 
     save_outputs: bool | None = Field(
-        None,
         alias="SaveOutputs",
         description="Save action outputs to state system for other actions",
+        default=None,
     )
 
     lifecycle_hooks: list[HookResource] | None = Field(
-        None,
         alias="LifecycleHooks",
         description="Additional hooks actions to execute at lifecycle points",
+        default=None,
     )
 
     @property

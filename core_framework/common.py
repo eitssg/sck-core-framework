@@ -760,7 +760,7 @@ def get_cdk_default_region() -> str | None:
     return os.getenv(ENV_CDK_DEFAULT_REGION, None)
 
 
-def get_console_mode() -> str:
+def get_console_mode() -> str | None:
     """Get console mode from CONSOLE environment variable.
 
     Returns:
@@ -772,7 +772,7 @@ def get_console_mode() -> str:
     'interactive'
     """
     mode = os.getenv(ENV_CONSOLE, "")
-    return mode if mode == V_INTERACTIVE else V_EMPTY
+    return mode if mode == V_INTERACTIVE else None
 
 
 def is_use_s3() -> bool:

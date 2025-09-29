@@ -12,7 +12,7 @@
                     {
                         "L": [
                             {
-                                "S": "jbarwick@me.com"
+                                "S": "jbarwick@eits.com.sg"
                             },
                             {
                                 "S": "James Barwick"
@@ -31,7 +31,7 @@
                 "S": "XYZ123"
             },
             "owner": {
-                "S": "James Barwick <jbarwick@me.com>"
+                "S": "James Barwick <jbarwick@eits.com.sg>"
             },
             "jira-code": {
                 "S": "SCK"
@@ -41,7 +41,7 @@
                     {
                         "L": [
                             {
-                                "S": "jbarwick@me.com"
+                                "S": "jbarwick@eits.com.sg"
                             },
                             {
                                 "S": "primary"

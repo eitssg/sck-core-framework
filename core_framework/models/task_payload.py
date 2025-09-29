@@ -115,7 +115,7 @@ class TaskPayload(BaseModel):
 
         >>> # Lambda function usage
         >>> def lambda_handler(event, context):
-        ...     payload = TaskPayload(**event)
+        ...     payload = TaskPayload.model_validate(event)
         ...     return process_task(payload)
     """
 

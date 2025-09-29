@@ -323,7 +323,10 @@ def get_role_credentials(role_arn: str) -> AwsCredentials | None:
     Returns:
         A dictionary containing the cached credentials, or None if not found.
     """
-    return AwsCredentials.model_validate(store.retrieve_user_credentials(role_arn))
+    cred = store.retrieve_user_credentials(role_arn)
+    if cred is None:
+        return None
+    return AwsCredentials.model_validate(cred)
 
 
 def __get_client_config() -> Config:

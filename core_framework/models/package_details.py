@@ -360,7 +360,7 @@ class PackageDetails(FileDetails):
 
         # Generate key from deployment details if not provided
         if not key:
-            dd = _get("deployment_details", "DeploymentDetails", {})
+            dd = _get("deployment_details", "DeploymentDetails", None)
             if isinstance(dd, dict):
                 dd = DeploymentDetails.model_validate(dd)
             elif not isinstance(dd, DeploymentDetails):
