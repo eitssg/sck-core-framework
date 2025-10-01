@@ -9,6 +9,7 @@ Classes:
     ActionResource: Complete action specification with validation and execution metadata.
 """
 
+from os import name
 from typing import Any, Dict
 import re
 import warnings
@@ -425,8 +426,9 @@ class ActionResource(BaseModel):
                 raise ValueError(f"Name part '{part}' cannot start/end with hyphen")
 
         # Length limit for AWS compatibility
-        if len(value) > 63:
-            raise ValueError(f"Name '{value}' exceeds 63 character limit")
+        name_only = parts[-1]
+        if len(name_only) > 63:
+            raise ValueError(f"Name '{name_only}' exceeds 63 character limit")
 
         return value
 

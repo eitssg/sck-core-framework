@@ -87,9 +87,9 @@ Thread Safety:
     environments including serverless functions and container deployments.
 """
 
-from .renderer import Jinja2Renderer
+from .renderer import Jinja2Renderer, TemplateError
 
-__all__ = ["Jinja2Renderer"]
+__all__ = ["Jinja2Renderer", "TemplateError"]
 
 # Package metadata for documentation and introspection
 __version__ = "1.0.0"

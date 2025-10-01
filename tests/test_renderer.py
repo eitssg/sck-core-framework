@@ -100,10 +100,12 @@ async def test_render(contexts):
         # This catches specific Jinja2 errors (Syntax, Undefined variable, etc.)
         # and provides much more context than a generic exception.
         error_details = f"Jinja2 Template Error: {e.__class__.__name__}\n"
-        if hasattr(e, "name") and e.name:
-            error_details += f"  File: {e.name}\n"
-        if hasattr(e, "lineno"):
-            error_details += f"  Line: {e.lineno}\n"
+        name = getattr(e, "name", None)
+        if name:
+            error_details += f"  File: {name}\n"
+        line_no = getattr(e, "lineno", None)
+        if line_no:
+            error_details += f"  Line: {line_no}\n"
         error_details += f"  Message: {e.message}"
         assert False, error_details
     except Exception as e:

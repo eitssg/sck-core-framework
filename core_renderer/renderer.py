@@ -27,6 +27,8 @@ import json
 
 from .filters import load_filters
 
+from jinja2 import TemplateError
+
 
 class Jinja2Renderer:
     """Jinja2 template renderer with Core Automation integration.
@@ -79,7 +81,7 @@ class Jinja2Renderer:
         self.template_path = template_path or ''
         self.dictionary = dictionary or {}
 
-        loader: jinja2.BaseLoader
+        loader: jinja2.BaseLoader = None
         if template_path is not None:
             loader = jinja2.FileSystemLoader(self.template_path)
         else:
