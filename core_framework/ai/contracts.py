@@ -108,10 +108,10 @@ class CompletionItem(AIBaseModel):
 
     text: str
     kind: CompletionItemKind = CompletionItemKind.snippet
-    label: Optional[str] = None
-    detail: Optional[str] = None
-    documentation: Optional[str] = None
-    confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Heuristic confidence score")
+    label: Optional[str] = Field(default=None, description="Short label")
+    detail: Optional[str] = Field(default=None, description="Short description")
+    documentation: Optional[str] = Field(default=None, description="Markdown or plaintext docs")
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Heuristic confidence score")
 
 
 class SearchHitType(str, Enum):

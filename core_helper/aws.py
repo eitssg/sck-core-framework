@@ -48,12 +48,9 @@ from botocore.response import StreamingBody
 import core_framework as util
 
 import core_logging as log
-from .cache import InMemoryCache
 from .aws_models import AwsCredentials
 
-# This cache is instantiated at the module level, so it persists across
-# Lambda invocations within the same execution environment.
-store = InMemoryCache()
+from .store import store
 
 RETRY_CONFIG: dict[str, Any] = {"max_attempts": 10}
 LAMBDA_FUNCTION_NAME_REGEX = r"(arn:(aws[a-zA-Z-]*)?:lambda:)?([a-z]{2}(-gov)?-[a-z]+-\d{1}:)?(\d{12}:)?(function:)?([a-zA-Z0-9-_\.]+)(:(\$LATEST|[a-zA-Z0-9-_]+))?"

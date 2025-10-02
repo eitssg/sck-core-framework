@@ -166,6 +166,9 @@ from .magic import (
     SeekableStreamWrapper,
 )
 
+from .store import store
+
+
 __all__ = [
     # AWS Session and Credential Management
     "get_session",
@@ -218,6 +221,8 @@ __all__ = [
     "MagicBucket",
     "MagicS3Client",
     "SeekableStreamWrapper",
+    # In Memory Cache Instance
+    "store",
 ]
 
 # Categorized function lists for documentation and IDE assistance
