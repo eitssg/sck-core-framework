@@ -1,5 +1,10 @@
 # Copilot Instructions (Submodule: sck-core-framework)
 
+## Plan → Approval → Execute (Inherited from Root – Mandatory)
+All non-trivial actions (code edits, file creation/deletion, running build/test/lint, multi-file searches that guide changes) require a prior plan and explicit maintainer approval before execution. See root instructions for full workflow, exceptions (trivial Q&A, explicit skip), and reporting requirements.
+
+This section overrides any earlier proactive-execution wording. When in doubt: propose plan first.
+
 - Tech: Python package (framework base).
 - Precedence: Use local first; fallback to root `../../.github/...`.
 - Conventions: Reference `../sck-core-ui/docs/backend-code-style.md` for shared backend rules.

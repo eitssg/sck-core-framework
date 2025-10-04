@@ -262,6 +262,20 @@ class FileDetails(BaseModel):
         """
         self.key = self.validate_key(key)
 
+        # Set the content type field
+        if self.key.endswith(".zip"):
+            self.content_type = "application/zip"
+        elif self.key.endswith((".json", ".json.j2", ".actions.json", ".actions.json.j2")):
+            self.content_type = "application/json"
+        elif self.key.endswith(
+            (".yaml", ".yml", ".yaml.j2", ".yml.j2", ".actions.yaml", ".actions.yaml.j2", ".actions.yml", ".actions.yml.j2")
+        ):
+            self.content_type = "application/yaml"
+        elif self.key.endswith(".txt"):
+            self.content_type = "text/plain"
+        else:
+            self.content_type = "application/octet-stream"
+
     mode: str = Field(
         alias="Mode",
         description="Storage mode: 'local' for filesystem or 'service' for S3",

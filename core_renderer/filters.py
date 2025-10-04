@@ -111,6 +111,16 @@ from core_framework.constants import (
 )
 
 
+def __generate_security_group_name(context: dict[str, Any], name: str, typ: str) -> str:
+    """Generate a standardized security group name based on context and name."""
+
+    portfolio = context.get(DD_PORTFOLIO, "")
+    app = context.get(DD_APP, "")
+    branch = context.get(DD_BRANCH_SHORT_NAME, "")
+
+    return f"{portfolio}-{app}-{branch}-{name}-{typ}"
+
+
 @pass_context
 def filter_aws_tags(render_context: Context, scope: str, component_name: str | None = None) -> list[dict]:
     """Create a list of AWS tags from the render context and scope.
@@ -330,10 +340,6 @@ def filter_iam_rules(render_context: Context, resource: dict) -> list:
     if facts is None or app is None:
         return []
 
-    portfolio = facts.get(DD_PORTFOLIO, "")
-    app_name = facts.get(DD_APP, "")
-    branch_short_name = facts.get(DD_BRANCH_SHORT_NAME, "")
-
     security_rules: list[dict] = []
     for security_rule in resource.get("Pipeline::Security", {}):
 
@@ -343,6 +349,9 @@ def filter_iam_rules(render_context: Context, resource: dict) -> list:
         security_rule_sources = filter_ensure_list(security_rule.get("Source", []))
 
         for source in security_rule_sources:
+
+            if source == "internet":  # Skip internet sources for IAM rules.  This is a bucket policy statement, not an IAM role.
+                continue
 
             if not isinstance(source, str):
                 raise jinja2.exceptions.FilterArgumentError(
@@ -367,27 +376,11 @@ def filter_iam_rules(render_context: Context, resource: dict) -> list:
             security_rules.append(
                 {
                     "Type": "component",
-                    "Value": "-".join(
-                        [
-                            portfolio,
-                            app_name,
-                            branch_short_name,
-                            source,
-                            "security:RoleName",
-                        ]
-                    ),
+                    "Value": __generate_security_group_name(facts, source, "security:RoleName"),
                     "Description": f"Component {source}",
                     "Allow": filter_ensure_list(security_rule.get("Allow", [])),
                     "SourceType": app_source.get("Type", ""),
-                    "SecurityGroupId": "-".join(
-                        [
-                            portfolio,
-                            app_name,
-                            branch_short_name,
-                            source,
-                            "security:SecurityGroupId",
-                        ]
-                    ),
+                    "SecurityGroupId": __generate_security_group_name(facts, source, "security:SecurityGroupId"),
                 }
             )
 
@@ -534,6 +527,7 @@ def filter_ip_rules(  # noqa C901
         return []
 
     security_aliases: dict = facts.get("SecurityAliases", {})
+
     portfolio = facts.get(DD_PORTFOLIO, "")
     branch_short_name = facts.get(DD_BRANCH_SHORT_NAME, "")
     app_name = facts.get(DD_APP, "")
@@ -552,20 +546,13 @@ def filter_ip_rules(  # noqa C901
             if security_source in security_aliases:
                 # Source is an alias in facts
                 sources = [o for o in security_aliases.get(security_source, []) if isinstance(o, dict)]
+
             elif security_source in app:
                 # Source is component
                 sources = [
                     {
                         "Type": ST_COMPONENT,
-                        "Value": "-".join(
-                            [
-                                portfolio,
-                                app_name,
-                                branch_short_name,
-                                security_source,
-                                "security:SecurityGroupId",
-                            ]
-                        ),
+                        "Value": __generate_security_group_name(facts, security_source, "security:SecurityGroupId"),
                         "Description": "Component {}".format(security_source),
                     }
                 ]
@@ -986,7 +973,7 @@ def filter_process_cfn_init(render_context: Context, cfn_init: dict) -> dict | N
         Only the sources and files sections are processed. Other sections
         of the CloudFormation Init configuration are not modified.
     """
-    facts: dict | None = render_context.get(CTX_CONTEXT, None)
+    facts: dict[str, Any] | None = render_context.get(CTX_CONTEXT, None)
 
     if facts is None:
         return None

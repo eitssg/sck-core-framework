@@ -1,3 +1,5 @@
+from typing import Any
+
 """Core Renderer Package for Template Processing and Infrastructure as Code Generation.
 
 This package provides a comprehensive Jinja2-based template rendering system specifically
@@ -97,7 +99,7 @@ __package_name__ = "Core Renderer"
 __description__ = "Jinja2 template rendering system for infrastructure as code"
 
 
-def get_renderer_info() -> dict[str, any]:
+def get_renderer_info() -> dict[str, Any]:
     """Get comprehensive information about the Core Renderer package.
 
     Returns:

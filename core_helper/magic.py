@@ -357,10 +357,53 @@ class MagicObject(BaseModel):
             if fileobj is None:
                 raise ValueError("Fileobj is required")
 
+            if not hasattr(fileobj, "write"):
+                raise ValueError("Fileobj must be a file-like object with a write() method")
+
             if os.path.exists(key):
                 with open(key, "rb") as file:
                     fileobj.write(file.read())
                 fileobj.seek(0)
+
+            self.head_object()
+
+        except Exception as e:
+            self.error = "\n".join([self.error or "", str(e)])
+
+        return self
+
+    def download_file(self, **kwargs) -> Self:
+        """Emulate the S3 download_file() method using local filesystem.
+
+        Downloads object content to a local file by copying from the local
+        filesystem to the specified file path.
+
+        Args:
+            **kwargs: Keyword arguments.
+                Key (str): The key of the object to download.
+                Filename (str): Path to the local file to write the downloaded content to.
+
+        Returns:
+            Self with updated metadata after the download operation.
+
+        """
+        try:
+            self.key = kwargs.get("Key", self.key)
+            if not self.key:
+                raise ValueError("Key is required")
+
+            key = os.path.join(self.data_path, self.bucket_name, self.key)
+
+            filename = kwargs.get("Filename")
+            if not filename:
+                raise ValueError("Filename is required")
+
+            if not os.path.exists(key):
+                raise FileNotFoundError(f"Object {self.key} does not exist in bucket {self.bucket_name}")
+
+            if os.path.exists(key):
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
+                shutil.copy2(key, filename)  # Preserves metadata
 
             self.head_object()
 
@@ -588,6 +631,23 @@ class MagicBucket(BaseModel):
         obj = self.Object(key)
         return obj.download_fileobj(**kwargs).model_dump(exclude_none=True, by_alias=True)
 
+    def download_file(self, **kwargs) -> dict:
+        """Emulate the S3 download_file() method at bucket level.
+
+        Delegates to a MagicObject to download object content to a local file.
+
+        Args:
+            **kwargs: Keyword arguments.
+                Key (str): The key of the object to download.
+                Filename (str): Path to the local file to write the downloaded content to.
+
+        Returns:
+            None
+        """
+        key = kwargs.pop("Key", None)
+        obj = self.Object(key)
+        return obj.download_file(**kwargs).model_dump(exclude_none=True, by_alias=True)
+
     def put_object(self, **kwargs) -> MagicObject:
         """Emulate the S3 put_object() method at bucket level.
 
@@ -595,10 +655,9 @@ class MagicBucket(BaseModel):
         bucket-level access to object storage operations.
 
         Args:
-            **kwargs: Keyword arguments.
-                Key (str): The key (path) of the object within the bucket.
-                Body (IO | str | bytes): The content to store.
-                Filename (str): Alternative to Body - path to a local file to upload.
+            Key (str): The key (path) of the object within the bucket.
+            Body (IO | str | bytes): The content to store.
+            Filename (str): Alternative to Body - path to a local file to upload.
 
         Returns:
             The MagicObject instance after the put operation.
@@ -728,6 +787,25 @@ class MagicS3Client(BaseModel):
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
         return bucket.download_fileobj(**kwargs)
+
+    def download_file(self, **kwargs) -> None:
+        """Emulate the S3 client.download_file() method.
+
+        Provides client-level access to object download operations by
+        delegating to the appropriate bucket instance.
+
+        Args:
+            **kwargs: Keyword arguments.
+                Bucket (str): The name of the bucket.
+                Key (str): The key of the object to download.
+                Filename (str): Path to the local file to write the downloaded content to.
+
+        Returns:
+            None
+        """
+        bucket_name = kwargs.pop("Bucket", None)
+        bucket = self.Bucket(bucket_name)
+        return bucket.download_file(**kwargs)
 
     def put_object(self, **kwargs) -> MagicObject:
         """Emulate the S3 client.put_object() method.

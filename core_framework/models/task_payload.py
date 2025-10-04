@@ -366,22 +366,18 @@ class TaskPayload(BaseModel):
         CamelCase and snake_case parameter names for flexibility.
 
         Args:
-            **kwargs: Keyword arguments including:
-                - **Core Parameters**:
-                    - task/Task (str): Operation type (required)
-                    - client/Client (str): Client identifier
-                    - force/Force (bool): Force execution flag
-                    - dry_run/DryRun (bool): Dry run flag
-                    - identity/Identity (str): User identity
-                    - type/Type/automation_type (str): Automation type
-                    - flow_control/FlowControl (str): Flow control setting
-                - **DeploymentDetails Parameters**:
-                    - deployment_details/DeploymentDetails: Deployment context
-                    - portfolio/Portfolio (str): Portfolio name
-                    - app/App (str): Application name
-                    - build/Build (str): Build version
-                    - branch/Branch (str): Branch name
-                - **Additional Parameters**: Any parameters for nested objects
+            - client/Client (str): Client identifier
+            - task/Task (str): Operation type (required)
+            - identity/Identity (str): User identity
+            - type/Type/automation_type (str): Automation type
+            - flow_control/FlowControl (str): Flow control setting
+            - deployment_details/DeploymentDetails: Deployment context
+            - portfolio/Portfolio (str): Portfolio name
+            - app/App (str): Application name
+            - build/Build (str): Build version
+            - branch/Branch (str): Branch name
+            - force/Force (bool): Force execution flag
+            - dry_run/DryRun (bool): Dry run flag
 
         Returns:
             A new TaskPayload instance with properly initialized nested objects.

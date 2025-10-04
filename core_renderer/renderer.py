@@ -81,7 +81,7 @@ class Jinja2Renderer:
         self.template_path = template_path or ''
         self.dictionary = dictionary or {}
 
-        loader: jinja2.BaseLoader = None
+        loader: jinja2.BaseLoader | None = None
         if template_path is not None:
             loader = jinja2.FileSystemLoader(self.template_path)
         else:

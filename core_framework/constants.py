@@ -734,6 +734,9 @@ CTX_CONTEXT = "context"
 CTX_VARS = "vars"
 """Context vars field."""
 
+CTX_COMPONENT = "component"
+"""Context component field."""
+
 CTX_COMPONENT_NAME = "component_name"
 """Context component name field."""
 
@@ -776,6 +779,9 @@ ST_PREFIX = "prefix"
 
 ST_SECURITY_GROUP = "sg-attachment"
 """Security group attachment source type."""
+
+ST_SECURIITY_CIDR = "cidr"
+"""Security group CIDR source type."""
 
 # Facts
 FACTS_ACCOUNT = "AccountFacts"

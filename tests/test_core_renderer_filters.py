@@ -2,6 +2,8 @@
 Unit tests for the custom Jinja2 filters in core_renderer.filters.
 """
 
+from typing import Any
+
 import pytest
 import jinja2
 from jinja2 import Environment
@@ -455,7 +457,11 @@ def test_filter_process_cfn_init(render_context):
     Verifies it correctly prepends S3 URLs to sources and files in a cfn-init block.
     """
     cfn_init = {
+        "configSets": {"default": ["install_packages"]},
         "install_packages": {
+            "packages": ["package1", "package2"],
+            "groups": ["group1", "group2"],
+            "users": ["user1", "user2"],
             "sources": {"/etc/yum.repos.d": {"Fn::Pipeline::FileUrl": {"Path": "my.repo"}}},
             "files": {
                 "/etc/portfolio-config.conf": {
@@ -496,10 +502,18 @@ def test_filter_process_cfn_init(render_context):
                 },
                 "/tmp/content.txt": {"content": "some content"},  # should be ignored
             },
+            "commands": {
+                "01_update": {"command": "yum update -y"},
+                "02_install": {"command": "yum install -y httpd"},
+            },
+            "services": {
+                "sysvinit": {"httpd": {"enabled": "true", "ensureRunning": "true", "files": ["/etc/httpd/conf/httpd.conf"]}}
+            },
         },
-        "configSets": {"default": ["install_packages"]},
     }
-    result = filter_process_cfn_init(render_context, cfn_init)
+    result: dict[str, Any] | None = filter_process_cfn_init(render_context, cfn_init)
+
+    assert result is not None
 
     assert result["install_packages"]["sources"]["/etc/yum.repos.d"] == "eits-core-automation-ap-southeast-1/files/build/my.repo"
     assert (
