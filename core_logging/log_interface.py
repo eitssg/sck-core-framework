@@ -83,7 +83,7 @@ _log_level: int = logging._nameToLevel.get(os.getenv(ENV_LOG_LEVEL, "INFO"), INF
 
 # Override the default logger class to use our custom logger class as methods were added (e.g. trace() and msg() functions).
 logging.root = CoreLogger("root", level=_log_level)  # type: ignore
-logging.Logger.root = logging.root
+logging.Logger.root = logging.root  # type: ignore
 logging.setLoggerClass(CoreLogger)
 
 # Please note that Lambda has a time limit and when it restarts, thread local variables are reset.
