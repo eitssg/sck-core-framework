@@ -20,7 +20,6 @@ Common Use Cases:
 """
 
 from typing import Any
-from pydantic import model_validator
 
 import core_framework as util
 from core_framework.constants import OBJ_ARTEFACTS, V_LOCAL, V_SERVICE, V_EMPTY
@@ -92,34 +91,6 @@ class StateDetails(FileDetails):
         >>> print(release_state.key)
         'artefacts/portfolio/app/branch/build/release.state'
     """
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_model_before(cls, values: dict) -> dict:
-        """Validate and normalize values before model creation.
-
-        Sets default content type for state files if not provided. State files
-        typically use YAML format for human readability and structured data.
-
-        Args:
-            values: Input values for model creation.
-
-        Returns:
-            Normalized values with default content type set.
-
-        Examples::
-
-            values = {"client": "test", "bucket_name": "bucket"}
-            normalized = StateDetails.validate_model_before(values)
-            print(normalized["content_type"])
-            # Returns: 'application/yaml'
-        """
-        if isinstance(values, dict):
-            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
-            if not content_type:
-                content_type = "application/yaml"
-            values["content_type"] = content_type
-        return values
 
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """Set the key path based on deployment details and filename.

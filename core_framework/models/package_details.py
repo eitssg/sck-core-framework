@@ -167,34 +167,6 @@ class PackageDetails(FileDetails):
             raise ValueError(f"Compile mode must be '{V_FULL}' or '{V_INCREMENTAL}', got '{value}'")
         return value
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_model_before(cls, values: dict) -> dict:
-        """Validate and normalize values before model creation.
-
-        Sets default content type for package files if not provided. Package files
-        are typically ZIP archives containing deployment templates and resources.
-
-        Args:
-            values: Input values for model creation.
-
-        Returns:
-            Normalized values with default content type set.
-
-        Examples::
-
-            values = {"client": "test", "bucket_name": "bucket"}
-            normalized = PackageDetails.validate_model_before(values)
-            print(normalized["content_type"])
-            # Returns: 'application/zip'
-        """
-        if isinstance(values, dict):
-            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
-            if not content_type:
-                content_type = "application/zip"
-            values["content_type"] = content_type
-        return values
-
     def set_key(self, deployment_details: DeploymentDetails, filename: str) -> None:
         """Set the key path based on deployment details and filename.
 

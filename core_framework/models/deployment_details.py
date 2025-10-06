@@ -68,7 +68,7 @@ Note:
 from typing import Any, Self
 import os
 
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator, computed_field
 
 import core_framework as util
 
@@ -188,6 +188,7 @@ class DeploymentDetails(BaseModel):
     )
 
     portfolio: str = Field(
+        ...,
         alias="Portfolio",
         description="Portfolio name representing the business application or project group",
     )
@@ -234,11 +235,19 @@ class DeploymentDetails(BaseModel):
         default=None,
     )
 
-    scope: str | None = Field(
-        alias="Scope",
-        description="Deployment scope determining storage hierarchy level",
-        default=None,
-    )
+    @computed_field(alias="Scope", return_type=str | None)
+    def scope(self) -> str | None:
+        if not self.portfolio:
+            return None
+        if not self.app:
+            return SCOPE_PORTFOLIO
+        if not self.branch:
+            return SCOPE_APP
+        if not self.build:
+            return SCOPE_BRANCH
+        if not self.component:
+            return SCOPE_BUILD
+        return SCOPE_COMPONENT
 
     tags: dict[str, str] | None = Field(
         alias="Tags",
@@ -448,22 +457,61 @@ class DeploymentDetails(BaseModel):
         """
         if isinstance(values, dict):
             # Set client if not provided
-            client = values.pop("client", None) or values.pop("Client", None)
+            client = values.pop("client", values.pop("Client", None))
             if not client:
-                client = util.get_client()
+                client = util.get_client() or "core"
             values["client"] = client
 
-            # Generate branch_short_name from branch
-            branch = values.get("Branch", None) or values.get("branch", None)
-            branch_short_name = values.get("BranchShortName", None) or values.get("branch_short_name", None)
-            if not branch_short_name:
-                values["branch_short_name"] = util.branch_short_name(branch)
-
-            # Set delivered_by if not provided
             delivered_by = values.get("DeliveredBy", None) or values.get("delivered_by", None)
             if not delivered_by:
                 values["delivered_by"] = util.get_delivered_by()
             values["delivered_by"] = delivered_by
+
+            # Portfolio
+            portfolio = values.pop("portfolio", values.pop("Portfolio", None))
+
+            # App
+            app = values.pop("app", values.pop("App", None))
+
+            # Branch
+            branch = values.get("Branch", None) or values.get("branch", None)
+            branch_short_name = values.get("BranchShortName", None) or values.get("branch_short_name", None)
+            if not branch:
+                branch_short_name = branch
+            elif not branch_short_name:
+                branch_short_name = util.branch_short_name(branch)
+
+            # Build
+            build = values.pop("build", values.pop("Build", None))
+
+            # Component
+            component = values.pop("component", values.pop("Component", None))
+
+            # Scope
+            scope = values.pop("scope", values.pop("Scope", SCOPE_COMPONENT))
+            if scope == SCOPE_PORTFOLIO:
+                values["portfolio"] = portfolio
+            elif scope == SCOPE_APP:
+                values["portfolio"] = portfolio
+                values["app"] = app
+            elif scope == SCOPE_BRANCH:
+                values["portfolio"] = portfolio
+                values["app"] = app
+                values["branch"] = branch
+                values["branch_short_name"] = branch_short_name
+            elif scope == SCOPE_BUILD:
+                values["portfolio"] = portfolio
+                values["app"] = app
+                values["branch"] = branch
+                values["branch_short_name"] = branch_short_name
+                values["build"] = build
+            elif scope == SCOPE_COMPONENT:
+                values["portfolio"] = portfolio
+                values["app"] = app
+                values["branch"] = branch
+                values["branch_short_name"] = branch_short_name
+                values["build"] = build
+                values["component"] = component
 
         return values
 
@@ -523,91 +571,7 @@ class DeploymentDetails(BaseModel):
         if self.branch and not self.app:
             raise ValueError("App is required when Branch is provided")
 
-        # Set scope if not provided
-        if not self.scope:
-            self.scope = self.get_scope()
-
         return self
-
-    def get_scope(self) -> str:
-        """Get the deployment scope based on available fields.
-
-        Determines the deployment scope by examining the hierarchy depth and
-        returning the most specific level available. Can be overridden by
-        the ENV_SCOPE environment variable.
-
-        Returns:
-            str: Deployment scope - one of:
-                - "build": Most specific, when build is provided
-                - "branch": When branch provided but not build
-                - "app": When app provided but not branch
-                - "portfolio": When only portfolio provided
-
-        Examples::
-
-            dd = DeploymentDetails(
-            portfolio="ecommerce",
-            app="web",
-            branch="main",
-            build="v1.0"
-            )
-            print(dd.get_scope())  # "build"
-
-            dd = DeploymentDetails(portfolio="ecommerce", app="web")
-            print(dd.get_scope())  # "app"
-
-            dd = DeploymentDetails(portfolio="ecommerce")
-            print(dd.get_scope())  # "portfolio"
-
-        Environment Override:
-            The ENV_SCOPE environment variable can override automatic determination:
-            ```bash
-            export SCOPE=branch
-            ```
-        """
-        return DeploymentDetails.get_scope_from(self.portfolio, self.app, self.branch, self.build)
-
-    @staticmethod
-    def get_scope_from(portfolio: str | None, app: str | None, branch: str | None, build: str | None) -> str:
-        """Determine deployment scope from individual hierarchy components.
-
-        Static method for determining scope without requiring a DeploymentDetails instance.
-        Useful for scope calculation during instance creation or validation.
-
-        Args:
-            portfolio (str, optional): Portfolio name.
-            app (str, optional): Application name.
-            branch (str, optional): Branch name.
-            build (str, optional): Build identifier.
-
-        Returns:
-            str: Determined scope based on deepest level provided.
-
-        Examples::
-
-            scope = DeploymentDetails.get_scope_from("ecom", "web", "main", "v1.0")
-            print(scope)  # "build"
-
-            scope = DeploymentDetails.get_scope_from("ecom", "web", None, None)
-            print(scope)  # "app"
-
-            scope = DeploymentDetails.get_scope_from("ecom", None, None, None)
-            print(scope)  # "portfolio"
-
-        Environment Override:
-            The ENV_SCOPE environment variable takes precedence over automatic determination.
-        """
-        if ENV_SCOPE in os.environ:
-            return os.getenv(ENV_SCOPE, SCOPE_BUILD)
-        if build:
-            return SCOPE_BUILD
-        if branch:
-            return SCOPE_BRANCH
-        if app:
-            return SCOPE_APP
-        if portfolio:
-            return SCOPE_PORTFOLIO
-        return SCOPE_BUILD
 
     def get_identity(self) -> str:
         """Get deployment identity as a PRN with wildcards for missing fields.
@@ -784,7 +748,24 @@ class DeploymentDetails(BaseModel):
 
             component: str | None = _get("component", "Component", None)
 
-        scope = _get("scope", "Scope", cls.get_scope_from(portfolio, app, branch, build))
+            scope = _get("scope", "Scope", None)
+            if scope is not None:
+                if scope == SCOPE_PORTFOLIO:
+                    app = None
+                    branch = None
+                    branch_short_name = None
+                    build = None
+                    component = None
+                elif scope == SCOPE_APP:
+                    branch = None
+                    branch_short_name = None
+                    build = None
+                    component = None
+                elif scope == SCOPE_BRANCH:
+                    build = None
+                    component = None
+                elif scope == SCOPE_BUILD:
+                    component = None
 
         return cls(
             Client=client,
@@ -794,7 +775,6 @@ class DeploymentDetails(BaseModel):
             BranchShortName=branch_short_name,
             Build=build,
             Component=component,
-            Scope=scope,
             Environment=_get("environment", "Environment", None),
             DataCenter=_get("data_center", "DataCenter", None),
             Tags=_get("tags", "Tags", None),
@@ -916,10 +896,16 @@ class DeploymentDetails(BaseModel):
         build = self.build or V_EMPTY
         build = build.lower()
 
+        component = self.component or V_EMPTY
+        component = component.lower()
+
         if s3 is None:
             s3 = util.is_use_s3()
 
         separator = "/" if s3 else os.path.sep
+
+        if name and name.startswith(separator):
+            return name
 
         if not scope:
             scope = self.scope or SCOPE_BUILD
@@ -932,10 +918,12 @@ class DeploymentDetails(BaseModel):
             key = separator.join([object_type, portfolio, app, branch])
         elif scope == SCOPE_BUILD and portfolio and app and branch and build:
             key = separator.join([object_type, portfolio, app, branch, build])
+        elif scope == SCOPE_COMPONENT and portfolio and app and branch and build:
+            key = separator.join([object_type, portfolio, app, branch, build, component])
         else:
             key = object_type
 
-        return key if name is None else f"{key}{separator}{name}"
+        return key if name is None else separator.join([key, name])
 
     def get_artefacts_key(
         self,
@@ -1018,32 +1006,3 @@ class DeploymentDetails(BaseModel):
             >>> print(path)  # "files/data-platform/etl-pipeline/main/v1.5.2/deployment.log"
         """
         return self.get_object_key(OBJ_FILES, name, scope, s3)
-
-    def get_client_portfolio_key(self) -> str:
-        """Generate client-portfolio composite key for database operations.
-
-        Creates a composite key used for AppFactsModel retrieval and other
-        database operations that require client-portfolio identification.
-
-        Returns:
-            str: Composite key in format "client:portfolio".
-
-        Examples:
-            >>> dd = DeploymentDetails(
-            ...     client="acme-corp",
-            ...     portfolio="ecommerce"
-            ... )
-            >>> key = dd.get_client_portfolio_key()
-            >>> print(key)  # "acme-corp:ecommerce"
-
-            >>> # Use for database lookup
-            >>> app_facts = AppFactsModel.get(key, app_name)
-
-        Usage:
-            This key format is used throughout the Simple Cloud Kit for:
-            - Database record identification
-            - Multi-tenant data isolation
-            - Resource access control
-            - Billing and cost tracking
-        """
-        return f"{self.client}:{self.portfolio}"

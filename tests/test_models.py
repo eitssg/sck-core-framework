@@ -68,7 +68,7 @@ def test_action_model():
         "Scope": "build",
     }
 
-    action = ActionResource(**sample_action)
+    action = ActionResource.model_validate(sample_action)
 
     assert action is not None
 
@@ -84,7 +84,15 @@ def test_task_payload_model(runtime_arguments):
 
         assert task_payload.task == "deploy"
 
-        assert task_payload.identity == "prn:my-portfolio:my-app:my-branch:my-build"
+        assert task_payload.identity == "prn:my-portfolio:*:*:*"
+
+        assert task_payload.deployment_details.scope == "portfolio"
+
+        assert task_payload.deployment_details.client == "my-client"
+
+        assert task_payload.deployment_details.environment == "dev"
+
+        assert task_payload.deployment_details.data_center == "us-east-1"
 
         assert task_payload.actions.bucket_name == f"my-client-{V_CORE_AUTOMATION}-specified_region"
 
@@ -97,14 +105,6 @@ def test_task_payload_model(runtime_arguments):
         assert task_payload.package.bucket_region == "specified_region"
 
         assert task_payload.package.key == f"packages{os.path.sep}my-portfolio{os.path.sep}package.zip"
-
-        assert task_payload.deployment_details.client == "my-client"
-
-        assert task_payload.deployment_details.scope == "portfolio"
-
-        assert task_payload.deployment_details.environment == "dev"
-
-        assert task_payload.deployment_details.data_center == "us-east-1"
 
         assert task_payload.package.bucket_region == "specified_region"
 

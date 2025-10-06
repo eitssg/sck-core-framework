@@ -61,7 +61,7 @@ Note:
 
 from typing import Any
 import os
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator, computed_field
 
 import core_framework as util
 
@@ -158,13 +158,7 @@ class FileDetails(BaseModel):
         - "application/octet-stream": Binary files (default)
     """
 
-    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
-
-    client: str = Field(
-        alias="Client",
-        description="Client identifier for multi-tenant deployments and access control",
-        default=V_EMPTY,
-    )
+    model_config = ConfigDict(populate_by_name=True)
 
     bucket_name: str = Field(
         alias="BucketName",
@@ -183,54 +177,6 @@ class FileDetails(BaseModel):
         description="File path relative to bucket_name, normalized for storage mode",
         default=V_EMPTY,
     )
-
-    @field_validator("key")
-    @classmethod
-    def validate_key(cls, value: str) -> str:
-        """Validate and normalize the key path for consistent storage operations.
-
-        Removes leading slashes and prepares the path for storage mode normalization.
-        This ensures consistent path handling across different input sources and
-        storage backends.
-
-        Args:
-            value (str): The key path to validate and normalize.
-
-        Returns:
-            str: The validated and normalized key path with leading slashes removed.
-
-        Examples::
-
-            FileDetails.validate_key("/path/to/file.txt")
-            # Returns: "path/to/file.txt"
-
-            FileDetails.validate_key("\\\\windows\\\\path\\\\file.txt")
-            # Returns: "windows\\\\path\\\\file.txt"
-
-            FileDetails.validate_key("already/normalized/path.txt")
-            # Returns: "already/normalized/path.txt"
-
-            FileDetails.validate_key("")
-            # Returns: ""
-
-        Notes:
-            - Leading forward slashes and backslashes are removed for consistency
-            - Empty values are preserved and returned as-is
-            - Path separator normalization occurs in the model validator where mode is accessible
-            - This validator focuses on basic cleanup while preserving the path structure
-        """
-        if not value:
-            return value
-
-        # Remove leading slashes for consistency
-        if value.startswith("/"):
-            value = value.lstrip("/")
-        if value.startswith("\\"):
-            value = value.lstrip("\\")
-
-        # Note: We can't access self.mode here in a field validator
-        # So we'll normalize the path separators in the model_validator instead
-        return value
 
     def set_key(self, key: str) -> None:
         """Set the key path with validation and normalization.
@@ -260,67 +206,56 @@ class FileDetails(BaseModel):
         Side Effects:
             Updates the instance's key attribute in-place after validation.
         """
-        self.key = self.validate_key(key)
+        self.key = key
+        self.content_type = FileDetails.get_mimetype(key)
+
+    @classmethod
+    def get_mimetype(cls, key: str) -> str:
+
+        if not key:
+            return "application/octet-stream"
 
         # Set the content type field
-        if self.key.endswith(".zip"):
-            self.content_type = "application/zip"
-        elif self.key.endswith((".json", ".json.j2", ".actions.json", ".actions.json.j2")):
-            self.content_type = "application/json"
-        elif self.key.endswith(
-            (".yaml", ".yml", ".yaml.j2", ".yml.j2", ".actions.yaml", ".actions.yaml.j2", ".actions.yml", ".actions.yml.j2")
+        if key.endswith(".zip"):
+            ct = "application/zip"
+
+        elif key.endswith(
+            (
+                ".json",
+                ".json.j2",
+                ".actions.json",
+                ".actions.json.j2",
+            )
         ):
-            self.content_type = "application/yaml"
-        elif self.key.endswith(".txt"):
-            self.content_type = "text/plain"
+            ct = "application/json"
+
+        elif key.endswith(
+            (
+                ".yaml",
+                ".yml",
+                ".yaml.j2",
+                ".yml.j2",
+                ".actions.yaml",
+                ".actions.yaml.j2",
+                ".actions.yml",
+                ".actions.yml.j2",
+                ".actions",
+                ".state",
+            )
+        ):
+            ct = "application/yaml"
+
+        elif key.endswith(".txt"):
+            ct = "text/plain"
+
         else:
-            self.content_type = "application/octet-stream"
+            ct = "application/octet-stream"
 
-    mode: str = Field(
-        alias="Mode",
-        description="Storage mode: 'local' for filesystem or 'service' for S3",
-        default=V_EMPTY,
-    )
+        return ct
 
-    @field_validator("mode")
-    @classmethod
-    def validate_mode(cls, value: str) -> str:
-        """Validate that mode is a supported storage mode.
-
-        Ensures the storage mode is one of the supported values defined in the
-        framework constants. This validation prevents invalid storage configurations
-        and ensures consistent behavior.
-
-        Args:
-            value (str): The mode value to validate.
-
-        Returns:
-            str: The validated mode value.
-
-        Raises:
-            ValueError: If mode is not 'local' or 'service'.
-
-        Examples::
-
-            FileDetails.validate_mode("local")
-            # Returns: "local"
-
-            FileDetails.validate_mode("service")
-            # Returns: "service"
-
-            try:
-            FileDetails.validate_mode("invalid")
-            except ValueError as e:
-            print(e)
-            # Returns: "Mode must be 'local' or 'service', got 'invalid'"
-
-        Supported Modes:
-            - **"local"**: Local filesystem storage for development workflows
-            - **"service"**: AWS S3 storage for production deployments
-        """
-        if value not in [V_LOCAL, V_SERVICE]:
-            raise ValueError(f"Mode must be '{V_LOCAL}' or '{V_SERVICE}', got '{value}'")
-        return value
+    @computed_field(alias="Mode", return_type=str)
+    def mode(self) -> str:
+        return V_LOCAL if util.is_local_mode() else V_SERVICE
 
     version_id: str | None = Field(
         alias="VersionId",
@@ -333,58 +268,6 @@ class FileDetails(BaseModel):
         description="MIME type of the file, validated against supported types",
         default="application/octet-stream",
     )
-
-    @field_validator("content_type")
-    @classmethod
-    def validate_content_type(cls, value: str) -> str:
-        """Validate that content_type is a supported MIME type.
-
-        Checks the content type against the framework's list of supported MIME types
-        to ensure compatibility with storage operations and content handling systems.
-
-        Args:
-            value (str): The content_type value to validate.
-
-        Returns:
-            str: The validated content_type value.
-
-        Raises:
-            ValueError: If content_type is not in the list of supported MIME types.
-
-        Examples::
-
-            FileDetails.validate_content_type("application/zip")
-            # Returns: "application/zip"
-
-            FileDetails.validate_content_type("application/json")
-            # Returns: "application/json"
-
-            FileDetails.validate_content_type("application/yaml")
-            # Returns: "application/yaml"
-
-            try:
-            FileDetails.validate_content_type("invalid/type")
-            except ValueError as e:
-            print(e)
-            # Returns: "ContentType must be one of [...], got: invalid/type"
-
-        Supported MIME Types:
-            Common supported types include:
-            - application/zip: ZIP archives and compressed packages
-            - application/json: JSON configuration files
-            - application/yaml: YAML configuration files
-            - application/x-yaml: Alternative YAML MIME type
-            - text/plain: Plain text files
-            - application/octet-stream: Binary files (default)
-
-        Notes:
-            The complete list of supported MIME types is retrieved from the framework
-            configuration and may vary based on deployment environment and extensions.
-        """
-        allowed_types = util.get_valid_mimetypes()
-        if value not in allowed_types:
-            raise ValueError(f"ContentType must be one of {allowed_types}, got: {value}")
-        return value
 
     @model_validator(mode="before")
     @classmethod
@@ -461,6 +344,15 @@ class FileDetails(BaseModel):
             if not mode:
                 mode = V_LOCAL if util.is_local_mode() else V_SERVICE
             values["mode"] = mode
+
+            key = values.pop("Key", None) or values.pop("key", None)
+            content_type = values.pop("ContentType", None) or values.pop("content_type", None)
+            if key:
+                values["key"] = key
+            if content_type:
+                values["content_type"] = content_type
+            else:
+                values["content_type"] = cls.get_mimetype(key)
 
         return values
 
@@ -620,7 +512,10 @@ class FileDetails(BaseModel):
 
         if self.mode == V_LOCAL:
             sep = os.path.sep
-            return f"{self.data_path}{sep}{self.bucket_name}{sep}{self.key}"
+            if self.key.startswith(sep):
+                return self.key
+            else:
+                return f"{self.data_path}{sep}{self.bucket_name}{sep}{self.key}"
         else:
             # Service: s3:// + bucket_name + key (always forward slashes)
             return f"s3://{self.bucket_name}/{self.key}"
@@ -722,8 +617,6 @@ class FileDetails(BaseModel):
             - **by_alias=True**: Uses PascalCase field names for API compatibility
             - Maintains compatibility with external systems expecting specific formats
         """
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
-        if "by_alias" not in kwargs:
-            kwargs["by_alias"] = True
+        kwargs.setdefault("exclude_none", False)
+        kwargs.setdefault("by_alias", True)
         return super().model_dump(**kwargs)

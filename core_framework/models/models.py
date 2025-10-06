@@ -118,6 +118,8 @@ def get_artefacts_path(
         This function delegates to the deployment_details.get_object_key() method
         with the OBJ_ARTEFACTS constant.
     """
+    if not scope:
+        scope = deployment_details.scope
     return deployment_details.get_object_key(OBJ_ARTEFACTS, name, scope, s3)
 
 

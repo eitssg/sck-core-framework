@@ -291,7 +291,7 @@ def test_get_artefacts_path():
         automation_type="deployspec",
     )
 
-    path = util.get_artefacts_path(task_payload.deployment_details)
+    path = util.get_artefacts_path(task_payload.deployment_details, scope="build")
 
     # standard path separator is colon
     assert path == os.path.sep.join(
@@ -304,7 +304,7 @@ def test_get_artefacts_path():
         ]
     )
 
-    path = util.get_artefacts_path(task_payload.deployment_details, s3=True)
+    path = util.get_artefacts_path(task_payload.deployment_details, scope="build", s3=True)
 
     # S3 paths are slashes not semi-colons
     assert path == "/".join(
@@ -317,7 +317,7 @@ def test_get_artefacts_path():
         ]
     )
 
-    path = util.get_artefacts_path(task_payload.deployment_details, "bubbles", s3=False)
+    path = util.get_artefacts_path(task_payload.deployment_details, "bubbles", scope="build", s3=False)
 
     # Add another path component 'bubbles' to the end
     assert path == os.path.sep.join(
@@ -331,7 +331,7 @@ def test_get_artefacts_path():
         ]
     )
 
-    path = util.get_artefacts_path(task_payload.deployment_details, "bubbles", s3=True)
+    path = util.get_artefacts_path(task_payload.deployment_details, "bubbles", scope="build", s3=True)
 
     # Add another path component 'bubbles' to the end
     assert path == "/".join(
@@ -357,7 +357,6 @@ def test_get_packages_path():
         build="build-123",
         environment="dev",
         data_center="sin",
-        component="example_component",
         automation_type="deployspec",
     )
 
@@ -411,7 +410,6 @@ def test_get_files_path():
         build="build-123",
         environment="dev",
         data_center="sin",
-        component="example_component",
         automation_type="deployspec",
     )
 
@@ -464,13 +462,11 @@ def test_get_artefact_key():
         build="build-123",
         environment="dev",
         data_center="sin",
-        component="example_component",
     )
 
     name = "artefact_name"
 
-    deployment_details.scope = SCOPE_BUILD
-    key = util.get_artefact_key(deployment_details, name)
+    key = util.get_artefact_key(deployment_details, scope="build", name=name)
 
     assert key == "/".join(
         [
@@ -483,8 +479,7 @@ def test_get_artefact_key():
         ]
     )
 
-    deployment_details.scope = SCOPE_BRANCH
-    key = util.get_artefact_key(deployment_details, name)
+    key = util.get_artefact_key(deployment_details, scope="branch", name=name)
 
     assert key == "/".join(
         [
@@ -496,8 +491,7 @@ def test_get_artefact_key():
         ]
     )
 
-    deployment_details.scope = SCOPE_APP
-    key = util.get_artefact_key(deployment_details, name)
+    key = util.get_artefact_key(deployment_details, scope="app", name=name)
 
     assert key == "/".join(
         [
@@ -508,8 +502,7 @@ def test_get_artefact_key():
         ]
     )
 
-    deployment_details.scope = SCOPE_PORTFOLIO
-    key = util.get_artefact_key(deployment_details, name)
+    key = util.get_artefact_key(deployment_details, scope="portfolio", name=name)
 
     assert key == "/".join(
         [
