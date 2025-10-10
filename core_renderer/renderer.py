@@ -18,16 +18,20 @@ The renderer is optimized for AWS CloudFormation template generation but can be 
 for any text-based template rendering within the Core Automation framework.
 """
 
-from typing import Any
-import jinja2
-import core_logging as log
+from gettext import find
+from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Type
+from jinja2.meta import find_undeclared_variables
+from typing_extensions import NoReturn
 import os
 import pathlib
 import json
 
+import jinja2
+import core_logging as log
+
 from .filters import load_filters
 
-from jinja2 import TemplateError
+from jinja2 import TemplateError, ChainableUndefined, TemplateRuntimeError, Undefined, UndefinedError
 
 
 class Jinja2Renderer:
@@ -57,10 +61,64 @@ class Jinja2Renderer:
     # If loading from filesystem
     template_path: str | None = None
 
+    errors: List[Dict[str, str]] = []
+
+    current_template = ""
+
+    def collect_error(self, message: str) -> None:
+        """Whether to collect undefined variable errors during rendering."""
+        self.errors.append({"template": self.current_template, "message": message})
+
+    def get_collector(self) -> Type[Undefined]:
+        """Retrieve collected errors and reset the collector."""
+
+        def collect_message(message: str):
+            """
+            Collects an undefined variable error message using the parent renderer's collect_error method.
+            """
+            # Attempt to get the variable name and context for error reporting
+            message = f"Undefined variable: {message}"
+            # Try to call the parent renderer's collect_error if available
+            renderer = getattr(self, "_renderer", None)
+            if renderer is not None and hasattr(renderer, "collect_error"):
+                renderer.collect_error(message)
+
+        class CollectingUndefined(Undefined):  # type: ignore
+            __slots__ = ("errors",)
+
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.errors = []
+
+            def _fail_with_undefined_error(self, *args: Any, **kwargs: Any) -> "NoReturn":  # type: ignore
+                try:
+                    super()._fail_with_undefined_error(*args, **kwargs)
+                except self._undefined_exception as e:
+                    collect_message("Template variable error: %s", e)  # type: ignore
+                    raise e
+
+            def __getattr__(self, name):
+                self.errors.append(f"Undefined variable: {name}")
+                return super().__getattr__(name)
+
+            def __str__(self):
+                return "{{ UNDEFINED }}"
+
+            def __iter__(self) -> Iterator[Any]:
+                collect_message("<iter>")
+                return super().__iter__()  # type: ignore
+
+            def __bool__(self) -> bool:
+                collect_message("<bool>")
+                return super().__bool__()  # type: ignore
+
+        return CollectingUndefined
+
     def __init__(
         self,
         template_path: str | None = None,
-        dictionary: dict[str, str] | None = None,
+        dictionary: Dict[str, str] | None = None,
+        collect_errors: Dict[str, List[str]] | None = None,
     ):
         """Initialize the Jinja2 renderer with template source configuration.
 
@@ -78,8 +136,12 @@ class Jinja2Renderer:
             Exactly one of template_path or dictionary must be provided. The renderer
             cannot be initialized with both or neither source types.
         """
+        self.collect_errors = collect_errors
         self.template_path = template_path or ''
         self.dictionary = dictionary or {}
+
+        if collect_errors is not None:
+            self.errors = []
 
         loader: jinja2.BaseLoader | None = None
         if template_path is not None:
@@ -93,12 +155,12 @@ class Jinja2Renderer:
             keep_trailing_newline=True,
             trim_blocks=False,
             lstrip_blocks=True,
-            undefined=jinja2.StrictUndefined,
+            undefined=self.get_collector(),
         )
 
         load_filters(self.env)
 
-    def render_string(self, string: str, context: dict[str, Any]) -> str:
+    def render_string(self, string: str, context: dict[str, Any], hint: str | None = None) -> str:
         """Render a Jinja2 template string using the provided context.
 
         Processes a template string directly without loading from file system
@@ -114,7 +176,9 @@ class Jinja2Renderer:
         Returns:
             Rendered string with all template variables and expressions resolved.
         """
-        return self.env.from_string(string).render(context)
+        self.current_template = hint if hint else "<string>"
+        template = self.env.from_string(string)
+        return template.render(context)
 
     def render_object(self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]) -> Any:
         """Render a Python object (list, dict, or string) using the provided context.
@@ -206,6 +270,7 @@ class Jinja2Renderer:
         Raises:
             jinja2.TemplateNotFound: If the specified template cannot be found.
         """
+        self.current_template = filename
         template = self.env.get_template(filename)
         return template.render(context)
 
