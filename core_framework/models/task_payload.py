@@ -344,8 +344,8 @@ class TaskPayload(BaseModel):
             >>> # Keys are automatically updated for the new task
         """
         valid_tasks = get_valid_tasks()
-        if value not in valid_tasks:
-            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{value}'")
+        if task not in valid_tasks:
+            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{task}'")
 
         self.task = task
 
