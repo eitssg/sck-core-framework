@@ -150,52 +150,6 @@ class ActionDetails(FileDetails):
         - "text/yaml": Text-based YAML format
     """
 
-    @model_validator(mode="before")
-    def validate_model_before(cls, values: dict) -> dict:
-        """Validate and normalize model values before instance creation.
-
-        Performs pre-validation processing to normalize content type values from various
-        sources and apply default values where needed. Handles both direct field names
-        and capitalized variants commonly found in AWS responses.
-
-        Args:
-            values (dict): Raw field values for model creation, which may include:
-                          - content_type or ContentType: MIME type specification
-                          - Other ActionDetails fields in various formats
-
-        Returns:
-            dict: Processed and normalized field values with:
-                 - content_type: Normalized MIME type (defaults to "application/yaml")
-                 - All other fields preserved and normalized
-
-        Examples::
-
-            # Called automatically during instance creation
-            details = ActionDetails(
-            client="test",
-            bucket_name="test-bucket",
-            ContentType="application/json"  # Gets normalized to content_type
-            )
-            print(details.content_type)  # "application/json"
-
-            # Default content type applied
-            details = ActionDetails(
-            client="test",
-            bucket_name="test-bucket"
-            )
-            print(details.content_type)  # "application/yaml"
-
-        Note:
-            This validator runs before field validation and handles the common pattern
-            of AWS services returning capitalized field names that need normalization.
-        """
-        if isinstance(values, dict):
-            content_type = values.pop("content_type", None) or values.pop("ContentType", None)
-            if not content_type:
-                content_type = "application/yaml"
-            values["content_type"] = content_type
-        return values
-
     def set_key(self, dd: DeploymentDetails, filename: str) -> None:
         """Set the object key based on deployment details and filename.
 

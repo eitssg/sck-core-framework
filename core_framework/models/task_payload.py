@@ -22,6 +22,7 @@ from pydantic import (
     Field,
     model_validator,
     field_validator,
+    computed_field,
 )
 
 import core_framework as util
@@ -119,18 +120,18 @@ class TaskPayload(BaseModel):
         ...     return process_task(payload)
     """
 
-    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
+    model_config = ConfigDict(populate_by_name=True)
 
     correlation_id: str | None = Field(
         alias="CorrelationId",
         description="Unique identifier for tracking the request",
         default=None,
     )
-    client: str = Field(
-        alias="Client",
-        description="Client identifier for multi-tenant operations",
-        default=V_EMPTY,
-    )
+
+    @computed_field(alias="Client", return_type=str)
+    def client(self) -> str:
+        return self.deployment_details.client if self.deployment_details else V_EMPTY
+
     task: str = Field(
         ...,
         alias="Task",
@@ -146,11 +147,11 @@ class TaskPayload(BaseModel):
         description="Perform validation without executing operations",
         default=False,
     )
-    identity: str = Field(
-        alias="Identity",
-        description="User identity for audit and permissions",
-        default=V_EMPTY,
-    )
+
+    @computed_field(alias="Identity", return_type=str)
+    def identity(self) -> str:
+        return self.deployment_details.get_identity() if self.deployment_details else V_EMPTY
+
     deployment_details: DeploymentDetails = Field(
         ...,
         alias="DeploymentDetails",
@@ -259,20 +260,21 @@ class TaskPayload(BaseModel):
             dd = values.get("DeploymentDetails", None) or values.get("deployment_details", None)
 
             if isinstance(dd, dict):
-                dd = DeploymentDetails(**dd)
+                if "client" not in dd and "Client" not in dd:
+                    dd["client"] = client
+                if "portfolio" not in dd and "Portfolio" not in dd:
+                    dd["portfolio"] = portfolio
+                dd = DeploymentDetails.model_validate(dd)
             elif not isinstance(dd, DeploymentDetails):
                 dd = DeploymentDetails(Client=client, Portfolio=portfolio)
 
-            # If we supplied a client, then push it to deployment details
-            dd.client = client
-
             # These lines are ESSENTIAL - they ensure client is passed to nested objects
             if not (values.get("Package") or values.get("package")):
-                values["package"] = PackageDetails(Client=client)
+                values["package"] = PackageDetails()
             if not (values.get("Actions") or values.get("actions")):
-                values["actions"] = ActionDetails(Client=client)
+                values["actions"] = ActionDetails()
             if not (values.get("State") or values.get("state")):
-                values["state"] = StateDetails(Client=client)
+                values["state"] = StateDetails()
 
             fc = values.get("FlowControl", values.get("flow_control"))
             if fc and fc not in FLOW_CONTROLS:
@@ -300,10 +302,6 @@ class TaskPayload(BaseModel):
             >>> print(payload.identity)
             'prn:portfolio:app:branch:build'
         """
-        if not self.client:
-            self.client = self.deployment_details.client
-        else:
-            self.deployment_details.client = self.client
 
         # Identity is 'required', so if you have not yet supplied one, we will
         # generate one from the deployment details
@@ -312,19 +310,16 @@ class TaskPayload(BaseModel):
 
         if self.package:
             # force any supplied client in package to be the same as the task client
-            self.package.client = self.client
             if not self.package.key:
-                self.package.set_key(self.deployment_details, "package.zip")
+                self.set_package_key("package.zip")
         if self.actions:
             # force any supplied client in actions to be the same as the task client
-            self.actions.client = self.client
             if not self.actions.key:
-                self.actions.set_key(self.deployment_details, self.task + ".actions")
+                self.set_actions_key(self.task + ".actions")
         if self.state:
             # force any supplied client in state to be the same as the task client
-            self.state.client = self.client
             if not self.state.key:
-                self.state.set_key(self.deployment_details, self.task + ".state")
+                self.set_state_key(self.task + ".state")
 
         return self
 
@@ -348,7 +343,12 @@ class TaskPayload(BaseModel):
             'release'
             >>> # Keys are automatically updated for the new task
         """
+        valid_tasks = get_valid_tasks()
+        if task not in valid_tasks:
+            raise ValueError(f"Task must be one of {', '.join(valid_tasks)}, got '{task}'")
+
         self.task = task
+
         if reset_keys:
             if self.package:
                 self.package.set_key(self.deployment_details, "package.zip")
@@ -356,6 +356,33 @@ class TaskPayload(BaseModel):
                 self.actions.set_key(self.deployment_details, self.task + ".actions")
             if self.state:
                 self.state.set_key(self.deployment_details, self.task + ".state")
+
+    def set_package_key(self, key: str) -> None:
+        """Set the storage key for the package details.
+
+        Args:
+            key: The storage key to set for the package.
+        """
+        if self.package and self.deployment_details:
+            self.package.set_key(self.deployment_details, key)
+
+    def set_actions_key(self, key: str) -> None:
+        """Set the storage key for the action details.
+
+        Args:
+            key: The storage key to set for the actions.
+        """
+        if self.actions and self.deployment_details:
+            self.actions.set_key(self.deployment_details, key)
+
+    def set_state_key(self, key: str) -> None:
+        """Set the storage key for the state details.
+
+        Args:
+            key: The storage key to set for the state.
+        """
+        if self.state and self.deployment_details:
+            self.state.set_key(self.deployment_details, key)
 
     @staticmethod
     def from_arguments(**kwargs: Any) -> "TaskPayload":  # noqa: C901
@@ -444,19 +471,19 @@ class TaskPayload(BaseModel):
 
         pkg = _get("package", "Package", None)
         if isinstance(pkg, dict):
-            pkg = PackageDetails(**pkg)
+            pkg = PackageDetails.model_valudate(pkg)
         elif not isinstance(pkg, PackageDetails):
             pkg = PackageDetails.from_arguments(**kwargs)
 
         act = _get("actions", "Actions", None)
         if isinstance(act, dict):
-            act = ActionDetails(**act)
+            act = ActionDetails.model_validate(act)
         elif not isinstance(act, ActionDetails):
             act = ActionDetails.from_arguments(**kwargs)
 
         st = _get("state", "State", None)
         if isinstance(st, dict):
-            st = StateDetails(**st)
+            st = StateDetails.model_validate(st)
         elif not isinstance(st, StateDetails):
             st = StateDetails.from_arguments(**kwargs)
 

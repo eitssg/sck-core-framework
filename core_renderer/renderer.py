@@ -18,20 +18,21 @@ The renderer is optimized for AWS CloudFormation template generation but can be 
 for any text-based template rendering within the Core Automation framework.
 """
 
-from gettext import find
-from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Type
-from jinja2.meta import find_undeclared_variables
-from typing_extensions import NoReturn
+from typing import Any, List, Dict, Set
+
+import jinja2
+from jinja2 import meta
 import os
 import pathlib
 import json
 
-import jinja2
+from jinja2.utils import internalcode
+
 import core_logging as log
 
 from .filters import load_filters
 
-from jinja2 import TemplateError, ChainableUndefined, TemplateRuntimeError, Undefined, UndefinedError
+from jinja2 import UndefinedError, StrictUndefined, Undefined, TemplateError, ChainableUndefined
 
 
 class Jinja2Renderer:
@@ -155,12 +156,146 @@ class Jinja2Renderer:
             keep_trailing_newline=True,
             trim_blocks=False,
             lstrip_blocks=True,
-            undefined=self.get_collector(),
+            undefined=ChainableUndefined,
         )
 
         load_filters(self.env)
 
-    def render_string(self, string: str, context: dict[str, Any], hint: str | None = None) -> str:
+    # --- Analysis helpers -------------------------------------------------
+
+    def _make_tracking_undefined(self, collector: List[Dict[str, Any]]):
+        """Create a ChainableUndefined subclass that records undefined usage.
+
+        The returned class does not raise on access; it records a path of
+        attribute/item lookups and operations into the provided collector.
+        """
+
+        class TrackingUndefined(ChainableUndefined):  # type: ignore
+            __slots__ = ("_path",)
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self._path: List[Any] = []
+                # Record the initial undefined creation (root variable or missing attr/item)
+                self._record(
+                    kind="name",
+                    segment=getattr(self, "_undefined_name", None),
+                    obj=getattr(self, "_undefined_obj", None),
+                    hint=getattr(self, "_undefined_hint", None),
+                )
+
+            def _record(self, kind: str, segment: Any, obj: Any, hint: Any) -> None:
+                base = getattr(self, "_undefined_name", None) or segment or "<unknown>"
+                parts = [str(base)] + [str(p) for p in self._path]
+                path = ".".join(parts)
+                entry: Dict[str, Any] = {
+                    "path": path,
+                    "kind": kind,
+                    "object_type": type(obj).__name__ if obj is not None else None,
+                    "hint": hint,
+                }
+                collector.append(entry)
+
+            def __getattr__(self, name: str):  # type: ignore[override]
+                if name[:2] == "__" and name[-2:] == "__":
+                    raise AttributeError(name)
+                self._path.append(name)
+                self._record("attr", name, getattr(self, "_undefined_obj", None), None)
+                return self
+
+            def __getitem__(self, key: Any):  # type: ignore[override]
+                self._path.append(key)
+                self._record("item", key, getattr(self, "_undefined_obj", None), None)
+                return self
+
+            def __call__(self, *args: Any, **kwargs: Any):  # type: ignore[override]
+                self._record("call", "()", getattr(self, "_undefined_obj", None), None)
+                return self
+
+            # Be permissive to avoid aborting analysis
+            def __str__(self) -> str:  # type: ignore[override]
+                return ""
+
+            def __iter__(self):  # type: ignore[override]
+                return iter(())
+
+            def __bool__(self) -> bool:  # type: ignore[override]
+                return False
+
+            def __int__(self) -> int:  # type: ignore[override]
+                return 0
+
+            def __float__(self) -> float:  # type: ignore[override]
+                return 0.0
+
+            # Swallow operations that would otherwise raise
+            def _fail_with_undefined_error(self, *args, **kwargs):  # type: ignore[override]
+                # Record that an operation was attempted, then keep flowing
+                self._record("op", "<op>", getattr(self, "_undefined_obj", None), getattr(self, "_undefined_hint", None))
+                return self
+
+        return TrackingUndefined
+
+    def analyze_string(self, string: str, context: dict[str, Any]) -> dict[str, Any]:
+        """Analyze a template string for undefined usage without raising.
+
+        Returns a dict with: rendered, undefined (list of dicts), undeclared (list).
+        """
+        # Static pass: find undeclared variable roots
+        ast = self.env.parse(string)
+        undeclared: Set[str] = set(meta.find_undeclared_variables(ast))
+
+        # Dynamic pass: track nested misses via a tracking undefined
+        collector: List[Dict[str, Any]] = []
+        Tracking = self._make_tracking_undefined(collector)
+        env2 = self.env.overlay(undefined=Tracking)
+        tmpl = env2.from_string(string)
+        tmpl.name = "<string>"
+        rendered = tmpl.render(context)
+
+        # Deduplicate by path while preserving order
+        seen: Set[str] = set()
+        uniq: List[Dict[str, Any]] = []
+        for e in collector:
+            p = e.get("path")
+            if p in seen:
+                continue
+            seen.add(p)
+            uniq.append(e)
+
+        return {"rendered": rendered, "undefined": uniq, "undeclared": sorted(undeclared)}
+
+    def analyze_file(self, filename: str, context: dict[str, Any]) -> dict[str, Any]:
+        """Analyze a template file for undefined usage without raising.
+
+        Returns a dict with: rendered, undefined (list of dicts), undeclared (list).
+        """
+        # Load raw source for static analysis
+        if self.env.loader is None:
+            raise ValueError("Environment has no loader; cannot analyze file.")
+        src, _, _ = self.env.loader.get_source(self.env, filename)
+        ast = self.env.parse(src)
+        undeclared: Set[str] = set(meta.find_undeclared_variables(ast))
+
+        # Dynamic pass
+        collector: List[Dict[str, Any]] = []
+        Tracking = self._make_tracking_undefined(collector)
+        env2 = self.env.overlay(undefined=Tracking)
+        template = env2.get_template(filename)
+        rendered = template.render(context)
+
+        seen: Set[str] = set()
+        uniq: List[Dict[str, Any]] = []
+        for e in collector:
+            p = e.get("path")
+            if p in seen:
+                continue
+            seen.add(p)
+            uniq.append(e)
+
+        return {"rendered": rendered, "undefined": uniq, "undeclared": sorted(undeclared)}
+
+    def render_string(self, string: str, context: dict[str, Any]) -> str:
         """Render a Jinja2 template string using the provided context.
 
         Processes a template string directly without loading from file system
@@ -176,9 +311,20 @@ class Jinja2Renderer:
         Returns:
             Rendered string with all template variables and expressions resolved.
         """
-        self.current_template = hint if hint else "<string>"
-        template = self.env.from_string(string)
-        return template.render(context)
+        try:
+            tmpl = self.env.from_string(string)
+            # Help Jinja include a name in tracebacks for string templates
+            tmpl.name = "<string>"
+            return tmpl.render(context)
+        except UndefinedError:
+            # Preserve custom VerboseUndefined message
+            raise
+        except TemplateError:
+            # Other template-related errors already include location
+            raise
+        except Exception:
+            # Non-template errors: let Jinja format traceback
+            raise self.env.handle_exception()
 
     def render_object(self, data: list[Any] | dict[str, Any] | str, context: dict[str, Any]) -> Any:
         """Render a Python object (list, dict, or string) using the provided context.
@@ -270,9 +416,18 @@ class Jinja2Renderer:
         Raises:
             jinja2.TemplateNotFound: If the specified template cannot be found.
         """
-        self.current_template = filename
-        template = self.env.get_template(filename)
-        return template.render(context)
+        try:
+            template = self.env.get_template(filename)
+            return template.render(context)
+        except UndefinedError:
+            # Preserve custom VerboseUndefined message
+            raise
+        except TemplateError:
+            # Jinja provides file/line info for template errors
+            raise
+        except Exception:
+            # Non-template errors: let Jinja format traceback
+            raise self.env.handle_exception()
 
     def render_files(self, path: str, context: dict[str, Any]) -> dict[str, str]:
         """Render all Jinja2 templates in the specified path using the provided context.

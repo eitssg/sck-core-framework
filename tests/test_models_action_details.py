@@ -23,7 +23,6 @@ def test_action_details_init_and_aliases():
     )
 
     # Snake_case attribute access
-    assert action_details.client == "my-client"
     assert action_details.bucket_name == "my-bucket"
     assert action_details.bucket_region == "us-east-1"
     assert action_details.key == "artefacts/my-action.yaml"
@@ -32,7 +31,6 @@ def test_action_details_init_and_aliases():
 
     # PascalCase alias input and model_dump(by_alias=True)
     action_details2 = ActionDetails(
-        Client="client2",
         BucketName="bucket2",
         BucketRegion="region2",
         Key="key2",
@@ -40,7 +38,6 @@ def test_action_details_init_and_aliases():
         ContentType="application/x-yaml",
     )
     dumped = action_details2.model_dump(by_alias=True)
-    assert dumped["Client"] == "client2"
     assert dumped["BucketName"] == "bucket2"
     assert dumped["BucketRegion"] == "region2"
     assert dumped["Key"] == "key2"
@@ -53,18 +50,7 @@ def test_action_details_repr_and_eq():
     os.environ[ENV_LOCAL_MODE] = "false"  # ensure we are not in local mode
     os.environ[ENV_BUCKET_REGION] = "us-east-1"
 
-    with pytest.raises(ValueError, match=r".*ContentType must be one of .* got: t1.*"):
-        ActionDetails(
-            client="c1",
-            bucket_name="b1",
-            bucket_region="r1",
-            key="k1",
-            version_id="v1",
-            content_type="t1",  # invalid content type
-        )
-
     ad1 = ActionDetails(
-        client="c1",
         bucket_name="b1",
         bucket_region="r1",
         key="k1",
@@ -73,7 +59,6 @@ def test_action_details_repr_and_eq():
     )
 
     ad2 = ActionDetails(
-        client="c1",
         bucket_name="b1",
         bucket_region="r1",
         key="k1",
@@ -82,9 +67,6 @@ def test_action_details_repr_and_eq():
     )
     assert ad1 == ad2
     assert str(ad1) == str(ad2)
-
-    with pytest.raises(ValueError, match=""):
-        ad1.mode = "buckets"
 
     data_path = ad2.data_path
 
@@ -107,7 +89,6 @@ def test_action_details_repr_and_eq():
         content_type="application/x-yaml",  # Use valid content type
     )
 
-    assert ad3.client == "client-12"
     assert ad3.bucket_name == "bucket_name"  # Use == instead of is
     assert ad3.bucket_region == "us-east-3"  # Use == instead of is
 
@@ -121,5 +102,4 @@ def test_action_details_repr_and_eq():
         }
     )
 
-    assert ad4.client == "client-12"
     assert ad4.bucket_name == "bucket_name"

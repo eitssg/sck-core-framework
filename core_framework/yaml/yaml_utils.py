@@ -347,14 +347,13 @@ class CfnYamlConstructor(RoundTripConstructor):
         super().__init__(*args, **kwargs)
         self.root_path = None  # Used to resolve relative !Include paths
 
-    def construct_aws_tag(self, tag_suffix, node):
+    def construct_aws_tag(self, node: Any, **kwargs):
         """Construct AWS CloudFormation intrinsic function objects.
 
         Converts YAML tags like !Ref and !GetAtt into their corresponding
         CloudFormation function syntax ({"Ref": ...}, {"Fn::GetAtt": ...}, etc.).
 
         Args:
-            tag_suffix: The AWS function name (e.g., "Ref", "GetAtt").
             node: The YAML node containing the function arguments.
 
         Returns:
@@ -372,7 +371,7 @@ class CfnYamlConstructor(RoundTripConstructor):
             - All other functions get the "Fn::" prefix automatically
             - Supports scalar, mapping, and sequence node types
         """
-        function_name = tag_suffix
+        function_name = node.tag.lstrip("!")
         if function_name != "Ref":
             function_name = f"Fn::{function_name}"
 
