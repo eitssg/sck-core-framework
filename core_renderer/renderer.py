@@ -62,64 +62,10 @@ class Jinja2Renderer:
     # If loading from filesystem
     template_path: str | None = None
 
-    errors: List[Dict[str, str]] = []
-
-    current_template = ""
-
-    def collect_error(self, message: str) -> None:
-        """Whether to collect undefined variable errors during rendering."""
-        self.errors.append({"template": self.current_template, "message": message})
-
-    def get_collector(self) -> Type[Undefined]:
-        """Retrieve collected errors and reset the collector."""
-
-        def collect_message(message: str):
-            """
-            Collects an undefined variable error message using the parent renderer's collect_error method.
-            """
-            # Attempt to get the variable name and context for error reporting
-            message = f"Undefined variable: {message}"
-            # Try to call the parent renderer's collect_error if available
-            renderer = getattr(self, "_renderer", None)
-            if renderer is not None and hasattr(renderer, "collect_error"):
-                renderer.collect_error(message)
-
-        class CollectingUndefined(Undefined):  # type: ignore
-            __slots__ = ("errors",)
-
-            def __init__(self, **kwargs):
-                super().__init__(**kwargs)
-                self.errors = []
-
-            def _fail_with_undefined_error(self, *args: Any, **kwargs: Any) -> "NoReturn":  # type: ignore
-                try:
-                    super()._fail_with_undefined_error(*args, **kwargs)
-                except self._undefined_exception as e:
-                    collect_message("Template variable error: %s", e)  # type: ignore
-                    raise e
-
-            def __getattr__(self, name):
-                self.errors.append(f"Undefined variable: {name}")
-                return super().__getattr__(name)
-
-            def __str__(self):
-                return "{{ UNDEFINED }}"
-
-            def __iter__(self) -> Iterator[Any]:
-                collect_message("<iter>")
-                return super().__iter__()  # type: ignore
-
-            def __bool__(self) -> bool:
-                collect_message("<bool>")
-                return super().__bool__()  # type: ignore
-
-        return CollectingUndefined
-
     def __init__(
         self,
         template_path: str | None = None,
         dictionary: Dict[str, str] | None = None,
-        collect_errors: Dict[str, List[str]] | None = None,
     ):
         """Initialize the Jinja2 renderer with template source configuration.
 
@@ -140,9 +86,6 @@ class Jinja2Renderer:
         self.collect_errors = collect_errors
         self.template_path = template_path or ''
         self.dictionary = dictionary or {}
-
-        if collect_errors is not None:
-            self.errors = []
 
         loader: jinja2.BaseLoader | None = None
         if template_path is not None:
@@ -257,8 +200,8 @@ class Jinja2Renderer:
         seen: Set[str] = set()
         uniq: List[Dict[str, Any]] = []
         for e in collector:
-            p = e.get("path")
-            if p in seen:
+            p: str = e.get("path", "")
+            if p and p in seen:
                 continue
             seen.add(p)
             uniq.append(e)
@@ -287,8 +230,8 @@ class Jinja2Renderer:
         seen: Set[str] = set()
         uniq: List[Dict[str, Any]] = []
         for e in collector:
-            p = e.get("path")
-            if p in seen:
+            p: str = e.get("path", "")
+            if p and p in seen:
                 continue
             seen.add(p)
             uniq.append(e)
