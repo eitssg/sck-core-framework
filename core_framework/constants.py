@@ -721,6 +721,16 @@ ENV_CONSOLE = "CONSOLE"
 ENV_AWS_ENDPOINT_URL = "AWS_ENDPOINT_URL"
 """AWS endpoint URL environment variable."""
 
+# Langflow AI Agent Configuration
+ENV_LANGFLOW_BASE_URL = "LANGFLOW_BASE_URL"
+"""Langflow base URL environment variable."""
+
+ENV_LANGFLOW_API_KEY = "LANGFLOW_API_KEY"
+"""Langflow API key environment variable."""
+
+ENV_LANGFLOW_FLOW_ID = "LANGFLOW_FLOW_ID"
+"""Langflow flow ID environment variable."""
+
 # Jinja2 Context Filter Constants
 CTX_TAGS = "tags"
 """Context tags field."""

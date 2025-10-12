@@ -75,6 +75,10 @@ from .constants import (
     ENV_CONSOLE_LOG,
     ENV_CONSOLE,
     ENV_AWS_ENDPOINT_URL,
+    # Langflow AI Agent Configuration
+    ENV_LANGFLOW_BASE_URL,
+    ENV_LANGFLOW_API_KEY,
+    ENV_LANGFLOW_FLOW_ID,
     # Data Values
     V_CORE_AUTOMATION,
     V_DEFAULT_REGION,
@@ -1843,3 +1847,51 @@ def snake_case_to_pascal_case(value: Dict[str, Any]) -> Dict[str, Any]:
         else:
             result[key] = v
     return result
+
+
+def get_langflow_base_url() -> str:
+    """Get Langflow base URL from LANGFLOW_BASE_URL environment variable.
+
+    Returns
+    -------
+    str
+        The Langflow server base URL, defaults to "http://localhost:7860"
+
+    Examples
+    --------
+    >>> get_langflow_base_url()
+    'http://localhost:7860'
+    """
+    return os.getenv(ENV_LANGFLOW_BASE_URL, "http://localhost:7860")
+
+
+def get_langflow_api_key() -> str | None:
+    """Get Langflow API key from LANGFLOW_API_KEY environment variable.
+
+    Returns
+    -------
+    str | None
+        The Langflow API key or None if not set
+
+    Examples
+    --------
+    >>> get_langflow_api_key()
+    'sk-6ZIqaibWvrHSjz6AiEFiPaPiMfzK872EkTb1SUbkpuE'
+    """
+    return os.getenv(ENV_LANGFLOW_API_KEY, None)
+
+
+def get_langflow_flow_id() -> str:
+    """Get Langflow flow ID from LANGFLOW_FLOW_ID environment variable.
+
+    Returns
+    -------
+    str
+        The Langflow flow ID, defaults to "56357c5c-b705-4926-b6a2-c167bec8c9eb"
+
+    Examples
+    --------
+    >>> get_langflow_flow_id()
+    '56357c5c-b705-4926-b6a2-c167bec8c9eb'
+    """
+    return os.getenv(ENV_LANGFLOW_FLOW_ID, "56357c5c-b705-4926-b6a2-c167bec8c9eb")
