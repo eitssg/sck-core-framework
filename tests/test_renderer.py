@@ -135,10 +135,13 @@ async def test_render_string(contexts: dict[str, Any], filter_template: str, ren
 
     component_name = "the_component"
 
-    renderer = Jinja2Renderer(collect_errors=errors)
+    renderer = Jinja2Renderer()
 
     try:
-        result = renderer.render_string(filter_template, {"context": {}})
+        result = renderer.analyze_string(
+            filter_template,
+            {"context": {"Ecr": {"RegistryUri": "123456789012.dkr.ecr.us-west-2.amazonaws.com"}}},
+        )
         assert result is not None
 
         # Convert it back to test Roundtrip

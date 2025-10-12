@@ -83,7 +83,6 @@ class Jinja2Renderer:
             Exactly one of template_path or dictionary must be provided. The renderer
             cannot be initialized with both or neither source types.
         """
-        self.collect_errors = collect_errors
         self.template_path = template_path or ''
         self.dictionary = dictionary or {}
 
