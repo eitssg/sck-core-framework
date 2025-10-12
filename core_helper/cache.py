@@ -38,6 +38,8 @@ import time
 import threading
 import boto3
 
+from core_helper.aws_models import AwsCredentials
+
 # Default TTL for cached items, in seconds (15 minutes, the max Lambda timeout)
 DEFAULT_TTL = 900
 
@@ -366,10 +368,13 @@ class InMemoryCache:
                 del self._storage[key]
 
     # ✅ ADD: User context management (minimal additions)
-    def set_user_context(self, user_id: str, credentials: Dict[str, Any]) -> None:
+    def set_user_context(self, user_id: str, credentials: AwsCredentials | Dict[str, Any]) -> None:
         """Set the user context for the current thread."""
         if not hasattr(self._thread_local, "user_context"):
             self._thread_local.user_context = {}
+
+        if isinstance(credentials, AwsCredentials):
+            credentials = credentials.model_dump()
 
         self._thread_local.user_context = {"user_id": user_id, "credentials": credentials}
 

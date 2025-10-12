@@ -25,6 +25,7 @@ from jinja2 import meta
 import os
 import pathlib
 import json
+import inspect
 
 from jinja2.utils import internalcode
 
@@ -127,11 +128,21 @@ class Jinja2Renderer:
                 )
 
             def _record(self, kind: str, segment: Any, obj: Any, hint: Any) -> None:
+                file = "<unknown>"
+                frame = inspect.currentframe()
+                while frame:
+                    if 'context' in frame.f_locals:
+                        context = frame.f_locals['context']
+                        if hasattr(context, 'name'):
+                            file = context.name
+                            break
+                    frame = frame.f_back
                 base = getattr(self, "_undefined_name", None) or segment or "<unknown>"
                 parts = [str(base)] + [str(p) for p in self._path]
                 path = ".".join(parts)
                 entry: Dict[str, Any] = {
                     "path": path,
+                    "file": file,
                     "kind": kind,
                     "object_type": type(obj).__name__ if obj is not None else None,
                     "hint": hint,
@@ -142,16 +153,27 @@ class Jinja2Renderer:
                 if name[:2] == "__" and name[-2:] == "__":
                     raise AttributeError(name)
                 self._path.append(name)
-                self._record("attr", name, getattr(self, "_undefined_obj", None), None)
+                hint = (
+                    f"{type(self._undefined_obj).__name__} object has no attribute {name!r}"
+                    if self._undefined_obj is not None
+                    else None
+                )
+                self._record("attr", name, getattr(self, "_undefined_obj", None), hint)
                 return self
 
             def __getitem__(self, key: Any):  # type: ignore[override]
                 self._path.append(key)
-                self._record("item", key, getattr(self, "_undefined_obj", None), None)
+                hint = (
+                    f"{type(self._undefined_obj).__name__} object has no element {key!r}"
+                    if self._undefined_obj is not None
+                    else None
+                )
+                self._record("item", key, getattr(self, "_undefined_obj", None), hint)
                 return self
 
             def __call__(self, *args: Any, **kwargs: Any):  # type: ignore[override]
-                self._record("call", "()", getattr(self, "_undefined_obj", None), None)
+                hint = f"{type(self._undefined_obj).__name__} object is not callable" if self._undefined_obj is not None else None
+                self._record("call", "()", getattr(self, "_undefined_obj", None), hint)
                 return self
 
             # Be permissive to avoid aborting analysis
@@ -210,22 +232,16 @@ class Jinja2Renderer:
     def analyze_file(self, filename: str, context: dict[str, Any]) -> dict[str, Any]:
         """Analyze a template file for undefined usage without raising.
 
-        Returns a dict with: rendered, undefined (list of dicts), undeclared (list).
+        Returns a dict with: rendered, undefined (list of dicts).
         """
-        # Load raw source for static analysis
-        if self.env.loader is None:
-            raise ValueError("Environment has no loader; cannot analyze file.")
-        src, _, _ = self.env.loader.get_source(self.env, filename)
-        ast = self.env.parse(src)
-        undeclared: Set[str] = set(meta.find_undeclared_variables(ast))
-
-        # Dynamic pass
+        # Dynamic pass: track nested misses via a tracking undefined
         collector: List[Dict[str, Any]] = []
         Tracking = self._make_tracking_undefined(collector)
         env2 = self.env.overlay(undefined=Tracking)
         template = env2.get_template(filename)
         rendered = template.render(context)
 
+        # Deduplicate by path while preserving order
         seen: Set[str] = set()
         uniq: List[Dict[str, Any]] = []
         for e in collector:
@@ -235,7 +251,63 @@ class Jinja2Renderer:
             seen.add(p)
             uniq.append(e)
 
-        return {"rendered": rendered, "undefined": uniq, "undeclared": sorted(undeclared)}
+        return {"rendered": rendered, "undefined": uniq}
+
+    def analyze_files(self, path: str, context: dict[str, Any]) -> dict[str, Any]:
+        """Analyze all Jinja2 templates in the specified path for undefined usage.
+
+        Returns a dict with: files (dict of filename to rendered content), undefined (aggregated list).
+        """
+        log.debug("Analyzing files in path: {}", path)
+
+        # Dictionary to hold rendered files
+        files: dict = {}
+        all_undefined: List[Dict[str, Any]] = []
+
+        if self.template_path is None:
+            log.warning("No template path set.  Cannot analyze files.")
+            return {"files": files, "undefined": all_undefined}
+
+        files_path = pathlib.Path(os.path.join(self.template_path, path))
+        for file_path in files_path.glob("**/*"):
+
+            # Skip non-files (directories, etc)
+            if not file_path.is_file():
+                continue
+
+            # Retrieve file path relative to the files path and the base path
+            short_path = str(file_path.relative_to(files_path))
+            renderer_path = str(file_path.relative_to(self.template_path))
+
+            # Jinja2 expects forward slash. See split_template_path.
+            # Update short_path as well, to ensure we upload correctly to s3.
+            short_path = short_path.replace("\\", "/")
+            renderer_path = renderer_path.replace("\\", "/")
+
+            # Analyze the file
+            log.debug("Analyzing file '{}' with short_path '{}'", renderer_path, short_path)
+
+            result = self.analyze_file(renderer_path, context)
+            rendered_template = result["rendered"]
+            file_undefined = result["undefined"]
+
+            # Save the rendered file into our dictionary
+            files[short_path] = rendered_template
+
+            # Aggregate undefineds
+            all_undefined.extend(file_undefined)
+
+        # Deduplicate across all files
+        seen: Set[str] = set()
+        uniq: List[Dict[str, Any]] = []
+        for e in all_undefined:
+            p = e.get("path")
+            if p in seen:
+                continue
+            seen.add(p)
+            uniq.append(e)
+
+        return {"files": files, "undefined": uniq}
 
     def render_string(self, string: str, context: dict[str, Any]) -> str:
         """Render a Jinja2 template string using the provided context.
@@ -359,6 +431,9 @@ class Jinja2Renderer:
             jinja2.TemplateNotFound: If the specified template cannot be found.
         """
         try:
+            ast = self.env.parse(self.env.loader.get_source(self.env, filename)[0])
+            undeclared: Set[str] = set(meta.find_undeclared_variables(ast))
+
             template = self.env.get_template(filename)
             return template.render(context)
         except UndefinedError:

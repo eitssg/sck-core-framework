@@ -122,7 +122,7 @@ def transform_tag_hash(keyvalues: dict[str, str]) -> list[dict[str, str]]:
     return __transform_keyvalues_to_array(keyvalues, "Key", "Value")
 
 
-def set_user_context(user_id: str, credentials: Dict[str, Any]) -> Dict[str, Any]:
+def set_user_context(user_id: str, credentials: AwsCredentials) -> Dict[str, Any]:
     """Set the user context for AWS operations in the current thread.
 
     Checks if user context already exists and only updates if needed.
@@ -141,7 +141,7 @@ def set_user_context(user_id: str, credentials: Dict[str, Any]) -> Dict[str, Any
     if existing_context and existing_context.get("user_id") == user_id:
         # Check if credentials have changed (token refresh scenario)
         existing_creds = existing_context.get("credentials", {})
-        if existing_creds.get("AccessKeyId") == credentials.get("AccessKeyId"):
+        if existing_creds.get("AccessKeyId") == credentials.access_key_id:
             log.debug(
                 "User context already current - no update needed",
                 details={"user_id": user_id},
@@ -157,7 +157,7 @@ def set_user_context(user_id: str, credentials: Dict[str, Any]) -> Dict[str, Any
         "Set user context for AWS session management",
         details={
             "user_id": user_id,
-            "access_key": credentials.get("AccessKeyId", "")[:10] + "...",
+            "access_key": credentials.access_key_id[:10] + "...",
             "updated": existing_context is not None,
         },
     )
