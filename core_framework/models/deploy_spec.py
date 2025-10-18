@@ -71,38 +71,38 @@ class DeploySpec(BaseModel):
         is_empty: Whether the specification contains no actions.
         actions: Deprecated property for backward compatibility.
 
-    Examples::
+    Examples:
 
-        # Creating a DeploySpec with actions
-        action = ActionResource(
-        name="create-s3",
-        kind="create_stack",
-        params={"stack_name": "my-bucket"}
-        )
-        deploy_spec = DeploySpec(actions=[action])
-        print(len(deploy_spec))
-        # Returns: 1
+        >>> # Creating a DeploySpec with actions
+            action = ActionResource(
+            name="create-s3",
+            kind="create_stack",
+            params={"stack_name": "my-bucket"}
+            )
+            deploy_spec = DeploySpec(actions=[action])
+            print(len(deploy_spec))
+            # Returns: 1
 
-        # Converting to YAML
-        yaml_content = deploy_spec.to_yaml()
-        print("Actions:" in yaml_content)
-        # Returns: True
+        >>> # Converting to YAML
+            yaml_content = deploy_spec.to_yaml()
+            print("Actions:" in yaml_content)
+            # Returns: True
 
-        # Loading from YAML stream
-        with open("deploy.actions", "r") as f:
-        deploy_spec = DeploySpec.from_yaml(f)
+        >>> # Loading from YAML stream
+            with open("deploy.actions", "r") as f:
+            deploy_spec = DeploySpec.from_yaml(f)
 
-        # Adding actions dynamically
-        new_action = ActionResource(
-        name="create-db",
-        kind="create_stack",
-        params={"stack_name": "database"}
-        )
-        deploy_spec.add_action(new_action)
+        >>> # Adding actions dynamically
+            new_action = ActionResource(
+                name="create-db",
+                kind="create_stack",
+                params={"stack_name": "database"}
+            )
+            deploy_spec.add_action(new_action)
 
-        # Filtering actions by kind
-        stack_actions = deploy_spec.get_actions_by_kind("create_stack")
-        print(f"Found {len(stack_actions)} stack creation actions")
+        >>> # Filtering actions by kind
+            stack_actions = deploy_spec.get_actions_by_kind("create_stack")
+            print(f"Found {len(stack_actions)} stack creation actions")
 
     Validation Rules:
         - **Unique Stack Names**: No duplicate stack names within same kind/account/region

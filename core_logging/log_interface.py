@@ -58,6 +58,7 @@ from threading import local
 import os
 
 import logging
+from typing import Any
 from core_framework.constants import (
     ENV_LOG_LEVEL,
     ENV_LOG_AS_JSON,
@@ -194,7 +195,7 @@ def setLevelForLogger(name: str, level: int | str) -> None:
     logger.setLevel(level)
 
 
-def setup(identity: str):
+def setup(identity: Any):
     """Initialize the logging system with a default identity.
 
     Establishes a default identity for the current thread that will be
@@ -211,6 +212,10 @@ def setup(identity: str):
         for the thread. The identity is stored in thread-local storage
         to ensure thread safety in multi-threaded environments.
     """
+    if identity is None:
+        identity = "unknown"
+    elif not isinstance(identity, str):
+        identity = str(identity)
     _thread_local.default_identity = _thread_local.identity = identity
 
 

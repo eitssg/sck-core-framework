@@ -352,13 +352,11 @@ class ActionDetails(FileDetails):
         version_id = _get("version_id", "VersionId", None)
 
         return cls(
-            Client=client,
             BucketName=bucket_name,
             BucketRegion=bucket_region,
             Key=key,
             VersionId=version_id,
             ContentType=content_type,
-            Mode=mode,
         )
 
     def __str__(self) -> str:
