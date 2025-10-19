@@ -204,6 +204,32 @@ class Jinja2Renderer:
         """Analyze a template string for undefined usage without raising.
 
         Returns a dict with: rendered, undefined (list of dicts), undeclared (list).
+
+
+        Args:
+            string: Jinja2 template string to analyze.
+            context: Dictionary of variables to use for rendering the template.
+
+        Returns:
+            Dictionary containing:
+                - rendered: The rendered template string with undefineds as empty.
+                - undefined: List of dicts with details on each undefined usage.
+                - undeclared: List of variable names that are undeclared in the template.
+
+        Examples:
+        >>> # example usage
+            renderer = Jinja2Renderer()
+            context = {"name": "World"}
+            result = renderer.analyze_string("Hello, {{ name }}! {{ missing_var }}", context)
+            print(result["rendered"])
+            Hello, World! !
+        ...
+            print(result["undefined"])
+            [{'path': 'missing_var', 'kind': 'name', 'object_type': None, 'hint': None}]
+        ...
+            print(result["undeclared"])
+            ['missing_var']
+        ...
         """
         # Static pass: find undeclared variable roots
         ast = self.env.parse(string)
@@ -232,7 +258,32 @@ class Jinja2Renderer:
     def analyze_file(self, filename: str, context: dict[str, Any]) -> dict[str, Any]:
         """Analyze a template file for undefined usage without raising.
 
-        Returns a dict with: rendered, undefined (list of dicts).
+        Returns a dict with: rendered, undefined (list of dicts), undeclared (list).
+
+        Args:
+            string: Jinja2 template string to analyze.
+            context: Dictionary of variables to use for rendering the template.
+
+        Returns:
+            Dictionary containing:
+                - rendered: The rendered template string with undefineds as empty.
+                - undefined: List of dicts with details on each undefined usage.
+                - undeclared: List of variable names that are undeclared in the template.
+
+        Examples:
+        >>> # example usage
+            renderer = Jinja2Renderer()
+            context = {"name": "World"}
+            result = renderer.analyze_string("Hello, {{ name }}! {{ missing_var }}", context)
+            print(result["rendered"])
+            Hello, World! !
+        ...
+            print(result["undefined"])
+            [{'path': 'missing_var', 'kind': 'name', 'object_type': None, 'hint': None}]
+        ...
+            print(result["undeclared"])
+            ['missing_var']
+        ...
         """
         # Dynamic pass: track nested misses via a tracking undefined
         collector: List[Dict[str, Any]] = []

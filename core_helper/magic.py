@@ -32,11 +32,16 @@ Integration:
 from pyexpat import model
 from typing import Any, Self
 
+import base64
+import hashlib
+import hmac
+import json
 import os
 import shutil
 import mimetypes
-import hashlib
+import time
 from datetime import datetime
+from urllib.parse import urlencode
 
 from cfnlint import data
 from pydantic import BaseModel, Field, ConfigDict, model_validator
@@ -826,6 +831,54 @@ class MagicBucket(BaseModel):
         return MagicObject(Bucket=self.name, Key=key, DataPath=self.data_path)
 
 
+class MagicPresignedPayload(BaseModel):
+    """Represents the signed payload embedded in Magic S3 presigned URLs."""
+
+    operation: str
+    bucket: str
+    key: str
+    expires_at: int
+    content_type: str | None = None
+
+    def is_expired(self) -> bool:
+        """Return True when the payload expiration is in the past."""
+
+        return int(time.time()) > self.expires_at
+
+
+def _get_storage_signing_secret() -> bytes:
+    """Resolve the secret used for signing Magic S3 presigned URLs."""
+
+    secret = os.getenv("MAGIC_STORAGE_SIGNING_KEY") or os.getenv("JWT_SECRET_KEY")
+    if not secret:
+        secret = "magic-storage-signing-key"
+
+    return secret.encode("utf-8")
+
+
+def _b64url_encode(data: bytes) -> str:
+    """Return URL-safe base64 encoding without padding."""
+
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _b64url_decode(data: str) -> bytes:
+    """Decode URL-safe base64 data handling omitted padding."""
+
+    padding = "=" * (-len(data) % 4)
+    return base64.urlsafe_b64decode(data + padding)
+
+
+def _get_storage_base_url() -> str:
+    """Compute the base URL used when generating local storage URLs."""
+
+    base_url = os.getenv("MAGIC_STORAGE_BASE_URL") or os.getenv("SCK_API_BASE_URL") or os.getenv("API_BASE_URL")
+    if not base_url:
+        base_url = "http://localhost:8000"
+
+    return base_url.rstrip("/")
+
+
 class MagicS3Client(BaseModel):
     """Emulate an S3 client to allow local filesystem storage via the S3 API.
 
@@ -924,7 +977,8 @@ class MagicS3Client(BaseModel):
         """
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
-        return bucket.download_file(**kwargs)
+        bucket.download_file(**kwargs)
+        return None
 
     def put_object(self, **kwargs) -> MagicObject:
         """Emulate the S3 client.put_object() method.
@@ -1066,6 +1120,69 @@ class MagicS3Client(BaseModel):
             client = MagicS3Client(Region=Region, RoleArn=RoleArn, DataPath=DataPath)
 
         return client
+
+    def generate_presigned_url(
+        self,
+        ClientMethod: str,
+        Params: dict | None = None,
+        ExpiresIn: int | None = None,
+        HttpMethod: str | None = None,  # noqa: N803 - matches boto3 signature
+    ) -> str:
+        """Create a presigned URL emulating boto3's generate_presigned_url."""
+
+        del HttpMethod  # unused but kept for signature compatibility
+
+        if ClientMethod not in {"put_object", "get_object"}:
+            raise ValueError(f"Unsupported presign operation: {ClientMethod}")
+
+        params = Params or {}
+        bucket = params.get("Bucket")
+        key = params.get("Key")
+        if not bucket or not key:
+            raise ValueError("Bucket and Key must be provided for presigned URLs")
+
+        content_type = params.get("ContentType")
+        ttl = int(ExpiresIn or 900)
+        expires_at = int(time.time()) + ttl
+
+        payload = MagicPresignedPayload(
+            operation=ClientMethod,
+            bucket=bucket,
+            key=key,
+            expires_at=expires_at,
+            content_type=content_type,
+        )
+        payload_dict = payload.model_dump(exclude_none=True)
+        payload_bytes = json.dumps(payload_dict, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        secret = _get_storage_signing_secret()
+        signature = hmac.new(secret, payload_bytes, hashlib.sha256).digest()
+
+        token = _b64url_encode(payload_bytes)
+        token_signature = _b64url_encode(signature)
+
+        query = urlencode({"token": token, "signature": token_signature})
+        base_url = _get_storage_base_url()
+        path = f"/storage/{bucket}/{ClientMethod}"
+
+        return f"{base_url}{path}?{query}"
+
+    @staticmethod
+    def parse_presigned_request(token: str, signature: str) -> MagicPresignedPayload:
+        """Validate and decode a Magic S3 presigned request token."""
+
+        payload_bytes = _b64url_decode(token)
+        expected_signature = hmac.new(_get_storage_signing_secret(), payload_bytes, hashlib.sha256).digest()
+
+        if not hmac.compare_digest(expected_signature, _b64url_decode(signature)):
+            raise ValueError("Invalid presigned URL signature")
+
+        payload_dict = json.loads(payload_bytes.decode("utf-8"))
+        payload = MagicPresignedPayload(**payload_dict)
+
+        if payload.is_expired():
+            raise ValueError("Presigned URL has expired")
+
+        return payload
 
 
 class SeekableStreamWrapper:
