@@ -520,6 +520,28 @@ class FileDetails(BaseModel):
             # Service: s3:// + bucket_name + key (always forward slashes)
             return f"s3://{self.bucket_name}/{self.key}"
 
+    def get_prefix(self) -> str:
+        """Extract the directory prefix from the key path.
+
+        Parses the key path to extract the directory portion, excluding the filename.
+        Handles both forward slashes and OS-specific path separators. Returns empty
+        string if no directory prefix exists.
+
+        Returns:
+            str: The directory prefix from the key path, or empty string if none exists.
+        """
+        if not self.key or "/" not in self.key and os.path.sep not in self.key:
+            return ""
+
+        # Try both separators since key might contain either depending on how it was set
+        if "/" in self.key:
+            return self.key.rsplit("/", 1)[0]
+        elif os.path.sep in self.key:
+            return self.key.rsplit(os.path.sep, 1)[0]
+        else:
+            # No separators found, return empty string
+            return ""
+
     def is_local_mode(self) -> bool:
         """Check if the file is configured for local filesystem storage.
 

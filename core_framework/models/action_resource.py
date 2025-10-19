@@ -29,7 +29,7 @@ from .action_hook import HookResource
 class ActionMetadata(BaseModel):
     """Action metadata following Kubernetes/Helm conventions."""
 
-    model_config = ConfigDict(populate_by_name=True, validate_assignment=True, extra="allow")
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     name: str | None = Field(description="Action name", alias="Name", default=None)
 

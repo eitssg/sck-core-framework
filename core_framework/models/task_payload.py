@@ -128,6 +128,10 @@ class TaskPayload(BaseModel):
         default=None,
     )
 
+    @computed_field(alias="ClientId", return_type=str)
+    def client_id(self) -> str:
+        return self.deployment_details.client_id if self.deployment_details else V_EMPTY
+
     @computed_field(alias="Client", return_type=str)
     def client(self) -> str:
         return self.deployment_details.client if self.deployment_details else V_EMPTY
@@ -393,6 +397,7 @@ class TaskPayload(BaseModel):
         CamelCase and snake_case parameter names for flexibility.
 
         Args:
+            - client_id/ClientId (str): Client identifier)
             - client/Client (str): Client identifier
             - task/Task (str): Operation type (required)
             - identity/Identity (str): User identity
@@ -498,7 +503,6 @@ class TaskPayload(BaseModel):
         flow_control = _get("flow_control", "FlowControl", None)
 
         return TaskPayload(
-            Client=dd.client,
             Task=task,
             Force=force,
             DryRun=dry_run,

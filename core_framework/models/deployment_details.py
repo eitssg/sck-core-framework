@@ -65,6 +65,7 @@ Note:
     and prevents invalid deployment configurations.
 """
 
+from turtle import st
 from typing import Any, Self
 import os
 
@@ -121,70 +122,20 @@ class DeploymentDetails(BaseModel):
         stack_file (str, optional): CloudFormation stack file name for infrastructure deployment.
         delivered_by (str, optional): Person or system responsible for the deployment.
 
-    Examples::
-
-        # Complete deployment hierarchy
-        dd = DeploymentDetails(
-        client="acme-corp",
-        portfolio="ecommerce",
-        app="web-frontend",
-        branch="feature/new-checkout",
-        build="v2.1.0-beta.3+f9a8b7c",
-        component="load-balancer",
-        environment="staging",
-        data_center="us-east-1"
-        )
-
-        # Portfolio-level deployment
-        dd = DeploymentDetails(
-        client="acme-corp",
-        portfolio="data-analytics"
-        )
-
-        # App-level deployment
-        dd = DeploymentDetails(
-        client="acme-corp",
-        portfolio="mobile-apps",
-        app="ios-client"
-        )
-
-        # With custom tags and metadata
-        dd = DeploymentDetails(
-        client="acme-corp",
-        portfolio="ecommerce",
-        app="payment-service",
-        tags={"Team": "payments", "CostCenter": "engineering"},
-        delivered_by="jenkins-ci"
-        )
-
-    Validation Rules:
-        - **Component requires Build**: Cannot specify component without build
-        - **Build requires Branch**: Cannot specify build without branch
-        - **Branch requires App**: Cannot specify branch without app
-        - **Portfolio always required**: Portfolio must always be provided
-
-    Scope Determination:
-        Scope is automatically determined by the deepest level provided:
-        - "build": When build is specified
-        - "branch": When branch is specified but not build
-        - "app": When app is specified but not branch
-        - "portfolio": When only portfolio is specified
-
-    Resource Identifier Format:
-        PRNs (Portfolio Resource Names) follow this hierarchical format:
-        - Portfolio: "prn:portfolio"
-        - App: "prn:portfolio:app"
-        - Branch: "prn:portfolio:app:branch"
-        - Build: "prn:portfolio:app:branch:build"
-        - Component: "prn:portfolio:app:branch:build:component"
     """
 
     model_config = ConfigDict(populate_by_name=True, validate_assignment=True)
 
+    client_id: str = Field(
+        alias="ClientId",
+        description="Client ID for multi-tenant deployments and billing isolation",
+        default="cid-1",
+    )
+
     client: str = Field(
         alias="Client",
         description="Client identifier for multi-tenant deployments and billing isolation",
-        default_factory=lambda: util.get_client() or "core",
+        default="core",
     )
 
     portfolio: str = Field(
@@ -531,36 +482,6 @@ class DeploymentDetails(BaseModel):
                        - Build provided without Branch
                        - Branch provided without App
 
-        Examples::
-
-            # Valid hierarchy
-            dd = DeploymentDetails(
-            portfolio="ecommerce",
-            app="web",
-            branch="main",
-            build="v1.0",
-            component="lb"
-            )  # Success
-
-            # Invalid: component without build
-            try:
-            dd = DeploymentDetails(
-            portfolio="ecommerce",
-            app="web",
-            component="lb"
-            )
-            except ValueError as e:
-            print(e)  # "Build is required when Component is provided"
-
-        Validation Rules:
-            - **Component → Build**: Component requires build to be specified
-            - **Build → Branch**: Build requires branch to be specified
-            - **Branch → App**: Branch requires app to be specified
-            - **App → Portfolio**: App requires portfolio (enforced by field definition)
-
-        Side Effects:
-            Sets the scope attribute if not already provided based on the deepest
-            level of the hierarchy that is populated.
         """
         if self.component and not self.build:
             raise ValueError("Build is required when Component is provided")
@@ -582,31 +503,6 @@ class DeploymentDetails(BaseModel):
         Returns:
             str: Complete PRN with wildcards for missing fields.
 
-        Examples::
-
-            dd = DeploymentDetails(portfolio="ecommerce", app="web")
-            print(dd.get_identity())
-            # Returns: "prn:ecommerce:web:*:*"
-
-            dd = DeploymentDetails(
-            portfolio="ecommerce",
-            app="web",
-            branch_short_name="main",
-            build="v1.0"
-            )
-            print(dd.get_identity())
-            # Returns: "prn:ecommerce:web:main:v1.0"
-
-            dd = DeploymentDetails(portfolio="mobile-apps")
-            print(dd.get_identity())
-            # Returns: "prn:mobile-apps:*:*:*"
-
-        Usage Patterns:
-            Identity PRNs are commonly used for:
-            - Resource query patterns
-            - Access control policy matching
-            - Deployment target specification
-            - Audit trail generation
         """
         portfolio = self.portfolio or "*"
         app = self.app or "*"
@@ -624,27 +520,14 @@ class DeploymentDetails(BaseModel):
         parameter specification and PRN parsing for maximum flexibility.
 
         Args:
-            **kwargs: Flexible keyword arguments supporting multiple naming conventions:
-
-                     **Core Hierarchy Parameters:**
-                     - client/Client (str): Client identifier
-                     - portfolio/Portfolio (str): Portfolio name (required)
-                     - app/App (str): Application name
-                     - branch/Branch (str): Branch name
-                     - branch_short_name/BranchShortName (str): AWS-compatible branch name
-                     - build/Build (str): Build identifier
-                     - component/Component (str): Component name
-
-                     **Context Parameters:**
-                     - environment/Environment (str): Deployment environment
-                     - data_center/DataCenter (str): Data center location
-                     - scope/Scope (str): Deployment scope override
-
-                     **Special Parameters:**
-                     - prn (str): Complete PRN to parse instead of individual fields
-                     - tags/Tags (dict): Resource tags
-                     - stack_file/StackFile (str): CloudFormation stack file
-                     - delivered_by/DeliveredBy (str): Delivery person/system
+            - client_id/ClientId (str): Client identifier
+            - client/Client (str): Client identifier
+            - portfolio/Portfolio (str): Portfolio name (required)
+            - app/App (str): Application name
+            - branch/Branch (str): Branch name
+            - branch_short_name/BranchShortName (str): AWS-compatible branch name
+            - build/Build (str): Build identifier
+            - component/Component (str): Component name
 
         Returns:
             DeploymentDetails: Fully configured instance with all fields populated.
@@ -653,70 +536,6 @@ class DeploymentDetails(BaseModel):
             ValueError: If required client parameter cannot be determined or if
                        PRN parsing fails.
 
-        Examples::
-
-            # Create from individual parameters
-            dd = DeploymentDetails.from_arguments(
-            client="acme-corp",
-            portfolio="ecommerce",
-            app="web-frontend"
-            )
-
-            # Create from PRN string
-            dd = DeploymentDetails.from_arguments(
-            client="acme-corp",
-            prn="prn:ecommerce:web-frontend:main:v1.0.0:load-balancer"
-            )
-
-            # Create with framework defaults
-            dd = DeploymentDetails.from_arguments(
-            portfolio="mobile-apps"
-            # client, app, branch, build from framework defaults
-            )
-
-            # Create with mixed case parameters (API compatibility)
-            dd = DeploymentDetails.from_arguments(
-            Client="AcmeCorp",
-            Portfolio="Ecommerce",
-            App="WebFrontend",
-            Branch="feature/checkout",
-            Build="v2.1.0"
-            )
-
-            # Create with environment context
-            dd = DeploymentDetails.from_arguments(
-            portfolio="data-platform",
-            app="etl-pipeline",
-            environment="production",
-            data_center="us-east-1",
-            tags={"Team": "data-engineering", "Environment": "prod"}
-            )
-
-        Parameter Resolution Priority:
-            1. **PRN Parsing**: If prn parameter provided, parse hierarchy from it
-            2. **Explicit Parameters**: Use provided portfolio, app, branch, build, component
-            3. **Framework Defaults**: Apply defaults from framework configuration
-            4. **Intelligent Defaults**: Generate missing values (e.g., branch_short_name)
-
-        Factory Patterns:
-            ```python
-            # Pattern 1: Minimal creation with defaults
-            dd = DeploymentDetails.from_arguments(portfolio="web-services")
-
-            # Pattern 2: Complete hierarchy specification
-            dd = DeploymentDetails.from_arguments(
-                client="acme", portfolio="ecom", app="web",
-                branch="main", build="v1.0", component="db"
-            )
-
-            # Pattern 3: PRN-based creation
-            dd = DeploymentDetails.from_arguments(
-                client="acme", prn="prn:ecom:web:main:v1.0:db"
-            )
-
-            # Pattern 4: CLI integration with PascalCase
-            dd = DeploymentDetails.from_arguments(**cli_args)
-            ```
         """
 
         def _get(key1: str, key2: str, default: Any, can_be_empty: bool = False) -> Any:
@@ -725,6 +544,7 @@ class DeploymentDetails(BaseModel):
             return value if value or can_be_empty else default
 
         client: str = _get("client", "Client", util.get_client() or "core")
+        client_id: str = _get("client_id", "ClientId", "cid-1")
 
         prn = kwargs.get("prn", None)
         if prn is not None:
@@ -768,6 +588,7 @@ class DeploymentDetails(BaseModel):
                     component = None
 
         return cls(
+            ClientId=client_id,
             Client=client,
             Portfolio=portfolio or "",
             App=app,
@@ -965,6 +786,38 @@ class DeploymentDetails(BaseModel):
             >>> print(path)  # "artefacts/ecommerce/api-gateway/app-config.yaml"
         """
         return self.get_object_key(OBJ_ARTEFACTS, name, scope, s3)
+
+    def get_artefact_bucket_name(self) -> str:
+        """Get the S3 bucket name for artefacts storage.
+
+        Returns:
+            str: S3 bucket name for artefacts.
+        """
+        return util.get_artefact_bucket_name()
+
+    def get_artefact_bucket_region(self) -> str:
+        """Get the AWS region for the artefacts S3 bucket.
+
+        Returns:
+            str: AWS region where the artefacts bucket is located.
+        """
+        return util.get_artefact_bucket_region()
+
+    def get_packages_bucket_name(self) -> str:
+        """Get the S3 bucket name for packages storage.
+
+        Returns:
+            str: S3 bucket name for packages.
+        """
+        return util.get_bucket_name()
+
+    def get_packages_bucket_region(self) -> str:
+        """Get the AWS region for the packages S3 bucket.
+
+        Returns:
+            str: AWS region where the packages bucket is located.
+        """
+        return util.get_bucket_region()
 
     def get_files_key(
         self,
