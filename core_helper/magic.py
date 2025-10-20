@@ -29,6 +29,7 @@ Integration:
     patterns and configuration management system.
 """
 
+from pyexpat import model
 from typing import Any, Self
 
 import base64
@@ -42,7 +43,8 @@ import time
 from datetime import datetime
 from urllib.parse import urlencode
 
-from pydantic import BaseModel, Field, ConfigDict
+from cfnlint import data
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from core_framework.common import (
     get_storage_volume,
@@ -175,14 +177,31 @@ class MagicObject(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    bucket_name: str = Field(default_factory=get_bucket_name, alias="Bucket")
+    data_path: str = Field(default=None, alias="DataPath")
+    bucket_name: str = Field(default=None, alias="Bucket")
+
     key: str | None = Field(default=None, alias="Key")
-    data_path: str = Field(default_factory=get_storage_volume, alias="DataPath")
+
     version_id: str | None = Field(default=None, alias="VersionId")
     content_type: str | None = Field(default=None, alias="ContentType")
     etag: str | None = Field(default=None, alias="ETag")
     error: str | None = Field(default=None, alias="Error")
     body: Any | None = Field(default=None, alias="Body")
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_data_path(cls, values):
+        data_path = values.pop("data_path", values.pop("DataPath", None))
+        if not data_path:
+            data_path = get_storage_volume()
+        values["DataPath"] = data_path
+
+        bucket_name = values.pop("bucket_name", values.pop("Bucket", None))
+        if not bucket_name:
+            bucket_name = get_bucket_name()
+        values["Bucket"] = bucket_name
+
+        return values
 
     def head_object(self, **kwargs) -> Self:
         """Emulate the S3 head_object() API method to get object metadata.
@@ -599,8 +618,22 @@ class MagicBucket(BaseModel):
         data_path: The root directory for local storage.
     """
 
-    name: str = Field(default_factory=get_bucket_name, alias="Bucket")
-    data_path: str | None = Field(default_factory=get_storage_volume, alias="DataPath")
+    name: str = Field(default=None, alias="Bucket")
+    data_path: str = Field(default=None, alias="DataPath")
+
+    @model_validator(mode="before")
+    def validate_data_path(cls, values):
+        data_path = values.pop("data_path", values.pop("DataPath", None))
+        if not data_path:
+            data_path = get_storage_volume()
+        values["DataPath"] = data_path
+
+        bucket_name = values.pop("name", values.pop("Bucket", None))
+        if not bucket_name:
+            bucket_name = get_bucket_name()
+        values["Bucket"] = bucket_name
+
+        return values
 
     def head_object(self, **kwargs) -> dict:
         """Emulate the S3 head_object() method at bucket level.
@@ -625,9 +658,8 @@ class MagicBucket(BaseModel):
         Delegates to a MagicObject to download object content to a file-like object.
 
         Args:
-            **kwargs: Keyword arguments.
-                Key (str): The key of the object to download.
-                Fileobj (IO): File-like object to write the downloaded content to.
+            Key (str): The key of the object to download.
+            Fileobj (IO): File-like object to write the downloaded content to.
 
         Returns:
             A dictionary of the object's metadata after download.
@@ -642,9 +674,8 @@ class MagicBucket(BaseModel):
         Delegates to a MagicObject to download object content to a local file.
 
         Args:
-            **kwargs: Keyword arguments.
-                Key (str): The key of the object to download.
-                Filename (str): Path to the local file to write the downloaded content to.
+            Key (str): The key of the object to download.
+            Filename (str): Path to the local file to write the downloaded content to.
 
         Returns:
             None
@@ -680,8 +711,7 @@ class MagicBucket(BaseModel):
         Delegates to a MagicObject to retrieve object content and metadata.
 
         Args:
-            **kwargs: Keyword arguments.
-                Key (str): The key of the object to retrieve.
+            Key (str): The key of the object to retrieve.
 
         Returns:
             A dictionary of the object's metadata and streaming body.
@@ -696,8 +726,7 @@ class MagicBucket(BaseModel):
         Delegates to a MagicObject to delete an object from storage.
 
         Args:
-            **kwargs: Keyword arguments.
-                Key (str): The key of the object to delete.
+            Key (str): The key of the object to delete.
 
         Returns:
             A dictionary indicating the result of the delete operation.
@@ -705,6 +734,87 @@ class MagicBucket(BaseModel):
         key = kwargs.pop("Key", None)
         obj = self.Object(key)
         return obj.delete_object(**kwargs).model_dump(exclude_none=True, by_alias=True)
+
+    def list_objects_v2(self, **kwargs) -> dict:
+        """Emulate the S3 list_objects_v2() method to list objects in the bucket.
+
+        Lists objects in the bucket, optionally filtered by prefix.
+
+        Args:
+            Prefix (str): Optional prefix to filter objects.
+            MaxKeys (int): Maximum number of keys to return (default 1000).
+            Delimiter (str): Optional delimiter for grouping keys.
+            EncodingType (str): Encoding type for the response (not implemented).
+            ContinuationToken (str): Token for continuing a previous list (not implemented).
+            FetchOwner (bool): Whether to include owner information (not implemented).
+            StartAfter (str): Start listing after this key (not implemented).
+            RequestPayer (str): Confirms that the requester knows they will be charged (not implemented).
+            ExpectedBucketOwner (str): The account ID of the expected bucket owner (not implemented).
+            OptionalObjectAttributes (list): Additional attributes to include (not implemented).
+
+        Returns:
+            A dictionary containing the list of objects in S3
+            format::
+
+                {
+                    'IsTruncated': more_values,
+                    'Contents': contents,
+                    'Name': self.name,
+                    'Prefix': prefix,
+                    'Delimiter': delimiter,
+                    'MaxKeys': max_keys,
+                    'KeyCount': len(contents),
+                }
+
+        """
+
+        encoding_type = kwargs.get("EncodingType")
+        continuation_token = kwargs.get("ContinuationToken")
+        fetch_owner = kwargs.get("FetchOwner")
+        start_after = kwargs.get("StartAfter")
+        request_payer = kwargs.get("RequestPayer")
+        expected_bucket_owner = kwargs.get("ExpectedBucketOwner")
+        optional_object_attributes = kwargs.get("OptionalObjectAttributes")
+
+        delimiter = kwargs.get("Delimiter")
+        max_keys = min(int(kwargs.get("MaxKeys", 1000)), 1000)
+        prefix = kwargs.get("Prefix", "")
+
+        more_values = False
+
+        # change all forward slashes in prefix to os specific separator
+        prefix = prefix.replace("/", os.sep)
+
+        folder = os.path.join(self.data_path, self.name, prefix)
+
+        contents = []
+        if os.path.exists(folder):
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_path, folder)
+                    contents.append(
+                        {
+                            "Key": relative_path.replace("\\", "/"),
+                            "LastModified": datetime.fromtimestamp(os.path.getmtime(file_path)),
+                            "ETag": self.Object(relative_path).head_object().etag,
+                            "Size": os.path.getsize(file_path),
+                            "StorageClass": "LOCAL",
+                        }
+                    )
+            if max_keys and len(contents) > max_keys:
+                contents = contents[:max_keys]
+                more_values = True
+
+        return {
+            'IsTruncated': more_values,
+            'Contents': contents,
+            'Name': self.name,
+            'Prefix': prefix,
+            'Delimiter': delimiter,
+            'MaxKeys': max_keys,
+            'KeyCount': len(contents),
+        }
 
     def Object(self, key: str | None) -> MagicObject:
         """Create a MagicObject instance for the specified key.
@@ -718,10 +828,7 @@ class MagicBucket(BaseModel):
         Returns:
             A MagicObject instance configured for this bucket and key.
         """
-        if self.data_path:
-            return MagicObject(Bucket=self.name, Key=key, DataPath=self.data_path)
-        else:
-            return MagicObject(Bucket=self.name, Key=key)
+        return MagicObject(Bucket=self.name, Key=key, DataPath=self.data_path)
 
 
 class MagicPresignedPayload(BaseModel):
@@ -789,7 +896,7 @@ class MagicS3Client(BaseModel):
     """
 
     region: str = Field(
-        default_factory=get_region,
+        default=None,
         alias="Region",
         description="The AWS region for the client.",
     )
@@ -798,11 +905,26 @@ class MagicS3Client(BaseModel):
         alias="RoleArn",
         description="The ARN of the role to assume for the client.",
     )
-    data_path: str | None = Field(
-        alias="DataPath",
+    data_path: str = Field(
         default=None,
+        alias="DataPath",
         description="The local storage path if not using S3.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_data_path(cls, values):
+        data_path = values.pop("data_path", values.pop("DataPath", None))
+        if not data_path:
+            data_path = get_storage_volume()
+        values["DataPath"] = data_path
+
+        region = values.pop("region", values.pop("Region", None))
+        if not region:
+            region = get_region()
+        values["Region"] = region
+
+        return values
 
     def head_object(self, **kwargs) -> dict:
         """Emulate the S3 client.head_object() method.
@@ -811,9 +933,8 @@ class MagicS3Client(BaseModel):
         delegating to the appropriate bucket instance.
 
         Args:
-            **kwargs: Keyword arguments.
-                Bucket (str): The name of the bucket.
-                Key (str): The key of the object to get metadata for.
+            Bucket (str): The name of the bucket.
+            Key (str): The key of the object to get metadata for.
 
         Returns:
             A dictionary of the object's metadata.
@@ -829,10 +950,9 @@ class MagicS3Client(BaseModel):
         delegating to the appropriate bucket instance.
 
         Args:
-            **kwargs: Keyword arguments.
-                Bucket (str): The name of the bucket.
-                Key (str): The key of the object to download.
-                Fileobj (IO): File-like object to write the downloaded content to.
+            Bucket (str): The name of the bucket.
+            Key (str): The key of the object to download.
+            Fileobj (IO): File-like object to write the downloaded content to.
 
         Returns:
             A dictionary of the object's metadata after download.
@@ -848,10 +968,9 @@ class MagicS3Client(BaseModel):
         delegating to the appropriate bucket instance.
 
         Args:
-            **kwargs: Keyword arguments.
-                Bucket (str): The name of the bucket.
-                Key (str): The key of the object to download.
-                Filename (str): Path to the local file to write the downloaded content to.
+            Bucket (str): The name of the bucket.
+            Key (str): The key of the object to download.
+            Filename (str): Path to the local file to write the downloaded content to.
 
         Returns:
             None
@@ -868,11 +987,10 @@ class MagicS3Client(BaseModel):
         delegating to the appropriate bucket instance.
 
         Args:
-            **kwargs: Keyword arguments for the put operation.
-                Bucket (str): The name of the bucket.
-                Key (str): The key (path) of the object within the bucket.
-                Body (IO | str | bytes): The content to store.
-                Filename (str): Alternative to Body - path to a local file to upload.
+            Bucket (str): The name of the bucket.
+            Key (str): The key (path) of the object within the bucket.
+            Body (IO | str | bytes): The content to store.
+            Filename (str): Alternative to Body - path to a local file to upload.
 
         Returns:
             The MagicObject instance after the put operation.
@@ -891,9 +1009,8 @@ class MagicS3Client(BaseModel):
         delegating to the appropriate bucket instance.
 
         Args:
-            **kwargs: Keyword arguments.
-                Bucket (str): The name of the bucket.
-                Key (str): The key of the object to delete.
+            Bucket (str): The name of the bucket.
+            Key (str): The key of the object to delete.
 
         Returns:
             A dictionary indicating the result of the delete operation.
@@ -901,6 +1018,31 @@ class MagicS3Client(BaseModel):
         bucket_name = kwargs.pop("Bucket", None)
         bucket = self.Bucket(bucket_name)
         return bucket.delete_object(**kwargs)
+
+    def list_objects_v2(self, **kwargs) -> dict:
+        """Emulate the S3 client.list_objects_v2() method.
+
+        Lists objects in a bucket, optionally filtered by prefix.
+
+        Args:
+            Bucket (str): The name of the bucket.
+            Prefix (str): Optional prefix to filter objects.
+            MaxKeys (int): Maximum number of keys to return (default 1000).
+            Delimiter (str): Optional delimiter for grouping keys.
+            EncodingType (str): Encoding type for the response (not implemented).
+            ContinuationToken (str): Token for continuing a previous list (not implemented).
+            FetchOwner (bool): Whether to include owner information (not implemented).
+            StartAfter (str): Start listing after this key (not implemented).
+            RequestPayer (str): Confirms that the requester knows they will be charged (not implemented).
+            ExpectedBucketOwner (str): The account ID of the expected bucket owner (not implemented).
+            OptionalObjectAttributes (list): Additional attributes to include (not implemented).
+
+        Returns:
+            A dictionary containing the list of objects in the bucket.
+        """
+        bucket_name = kwargs.pop("Bucket", None)
+        bucket = self.Bucket(bucket_name)
+        return bucket.list_objects_v2(**kwargs)
 
     def Bucket(self, bucket_name: str) -> MagicBucket:
         """Create a MagicBucket instance for the specified bucket name.

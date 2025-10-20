@@ -267,13 +267,11 @@ from .yaml.yaml_utils import (
     to_yaml,
     from_yaml,
     read_yaml,
+    clean_yaml,
     write_yaml,
     create_yaml_parser,
     load_yaml_file,
 )
-
-# retrieve the version of the package dynamically
-__version__ = "0.1.2-pre.12+2fec456"
 
 # import everything from prn_utils
 from .prn_utils import (
@@ -413,6 +411,7 @@ __all__ = [
     "to_yaml",
     "from_yaml",
     "read_yaml",
+    "clean_yaml",
     "write_yaml",
     "create_yaml_parser",
     "load_yaml_file",
@@ -533,130 +532,3 @@ VALIDATION_FUNCTIONS = [
     "validate_item_prn",
     "validate_portfolio_prn",
 ]
-
-
-def get_function_categories() -> dict[str, list[str]]:
-    """Get categorized lists of available functions by purpose.
-
-    Returns:
-        Dictionary mapping category names to lists of function names.
-
-    Examples:
-
-        categories = get_function_categories()
-        print(categories["configuration"])
-         ['get_environment', 'get_region', 'get_automation_account', ]
-
-        # Check what PRN functions are available
-        prn_functions = categories["prn_system"]
-        print("generate_app_prn" in prn_functions)
-         True
-
-        # Explore AWS resource functions
-        aws_funcs = categories["aws_resources"]
-        print(len(aws_funcs))
-         8
-    """
-    return {
-        "data_utilities": DATA_UTILITIES,
-        "path_utilities": PATH_UTILITIES,
-        "model_generators": MODEL_GENERATORS,
-        "configuration": CONFIGURATION_FUNCTIONS,
-        "aws_resources": AWS_RESOURCE_FUNCTIONS,
-        "prn_system": PRN_FUNCTIONS,
-        "serialization": SERIALIZATION_FUNCTIONS,
-        "validation": VALIDATION_FUNCTIONS,
-    }
-
-
-def get_version_info() -> dict[str, str]:
-    """Get detailed version information for the framework.
-
-    Returns:
-        Dictionary containing version details and metadata.
-
-    Examples::
-
-        version_info = get_version_info()
-        print(version_info["version"])
-         '0.0.11-pre.8+11ddda5'
-        print(version_info["is_prerelease"])
-         True
-    """
-    import re
-
-    version = __version__
-
-    # Parse version components
-    version_match = re.match(r"(\d+)\.(\d+)\.(\d+)(-.*)?(\+.*)?", version)
-
-    if version_match:
-        major, minor, patch, prerelease, build = version_match.groups()
-        return {
-            "version": str(version),
-            "major": str(major),
-            "minor": str(minor),
-            "patch": str(patch),
-            "prerelease": str(prerelease.lstrip("-") if prerelease else ""),
-            "build": str(build.lstrip("+") if build else ""),
-            "is_prerelease": str(bool(prerelease)),
-            "is_development": str(bool(build)),
-        }
-    else:
-        return {
-            "version": str(version),
-            "major": "",
-            "minor": "",
-            "patch": "",
-            "prerelease": "",
-            "build": "",
-            "is_prerelease": str(False),
-            "is_development": str(False),
-        }
-
-
-def get_framework_info() -> dict[str, Any]:
-    """Get comprehensive information about the Core Automation Framework.
-
-    Returns:
-        Dictionary containing framework metadata, capabilities, and configuration.
-
-    Examples:
-
-        info = get_framework_info()
-        print(info["name"])
-         'Core Automation Framework'
-        print(len(info["capabilities"]))
-         8
-        print(info["function_count"])
-         85
-    """
-    categories = get_function_categories()
-    version_info = get_version_info()
-
-    return {
-        "name": "Core Automation Framework",
-        "version": version_info,
-        "description": "Infrastructure automation and deployment orchestration framework",
-        "capabilities": [
-            "CloudFormation template processing",
-            "Multi-environment deployment management",
-            "Portfolio Resource Name (PRN) system",
-            "AWS service integration",
-            "Data model validation and serialization",
-            "Configuration management",
-            "Artifact and package management",
-            "YAML/JSON processing with custom tags",
-        ],
-        "function_categories": list(categories.keys()),
-        "function_count": sum(len(funcs) for funcs in categories.values()),
-        "module_count": 6,  # merge, models, common, yaml, prn_utils, __init__
-        "supported_formats": ["JSON", "YAML", "CloudFormation"],
-        "aws_integration": True,
-        "pydantic_models": True,
-    }
-
-
-# Version information and metadata
-__version_info__ = get_version_info()
-__framework_info__ = get_framework_info()

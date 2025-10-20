@@ -68,6 +68,11 @@ import io
 from ruamel.yaml import YAML, CommentedMap
 from ruamel.yaml.constructor import ConstructorError, RoundTripConstructor
 from ruamel.yaml.nodes import ScalarNode, MappingNode, SequenceNode
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.scalarstring import ScalarString
+from ruamel.yaml.scalarbool import ScalarBoolean
+from ruamel.yaml.scalarint import ScalarInt
+from ruamel.yaml.scalarfloat import ScalarFloat
 
 from pathlib import Path
 from datetime import datetime, date, time
@@ -929,3 +934,28 @@ def to_yaml(data: Any, yaml_parser: YAML | None = None) -> str:
     stream.name = "data_to_yaml-" + datetime.now().isoformat()
     write_yaml(data, stream, yaml_parser)
     return stream.getvalue()
+
+
+def clean_yaml(data):
+    """Convert ruamel YAML objects (CommentedMap, ScalarString, etc.) to plain Python types.
+
+    Args:
+        data: Data loaded from ruamel YAML that may contain special wrapper types.
+
+    Returns:
+        Plain Python dict/list/str/etc. with ruamel types stripped.
+    """
+
+    if isinstance(data, CommentedMap):
+        return {k: clean_yaml(v) for k, v in data.items()}
+    elif isinstance(data, CommentedSeq):
+        return [clean_yaml(item) for item in data]
+    elif isinstance(data, (ScalarString, ScalarBoolean, ScalarInt, ScalarFloat)):
+        # Convert ruamel scalar wrappers back to base Python types
+        return clean_yaml(data.value) if hasattr(data, 'value') else clean_yaml(type(data).__bases__[0](data))
+    elif isinstance(data, dict):
+        return {k: clean_yaml(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [clean_yaml(item) for item in data]
+    else:
+        return data
