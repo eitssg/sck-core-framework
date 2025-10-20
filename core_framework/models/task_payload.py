@@ -258,7 +258,7 @@ class TaskPayload(BaseModel):
             else:
                 values["correlation_id"] = correlation_id
 
-            client = values.get("Client") or values.get("client") or util.get_client() or "core"
+            client = values.get("Client") or values.get("client") or "core"
             portfolio = values.get("Portfolio") or values.get("portfolio") or ""
 
             dd = values.get("DeploymentDetails", None) or values.get("deployment_details", None)

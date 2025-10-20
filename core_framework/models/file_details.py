@@ -306,7 +306,7 @@ class FileDetails(BaseModel):
             # Normalizes parameter names and applies remaining defaults
 
         Default Population Logic:
-            **Client**: Retrieved from framework configuration (util.get_client())
+            **Client**: Retrieved from framework configuration
             **Bucket Region**: Retrieved from framework configuration (util.get_bucket_region())
             **Bucket Name**: Generated using client and region (util.get_bucket_name())
             **Mode**: Determined by framework deployment mode (local vs service)
@@ -323,9 +323,7 @@ class FileDetails(BaseModel):
         """
         if isinstance(values, dict):
             # Set client if not provided
-            client = values.pop("Client", None) or values.pop("client", None)
-            if not client:
-                client = util.get_client()
+            client = values.pop("Client", None) or values.pop("client", "core")
             values["client"] = client
 
             # Set bucket region if not provided

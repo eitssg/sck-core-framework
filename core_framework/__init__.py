@@ -161,7 +161,6 @@ Version: 0.0.11-pre.8+11ddda5
 
 """
 
-from typing import Any
 from .merge import deep_copy, deep_merge_in_place, deep_merge, set_nested
 from .models import (
     get_artefacts_path,
@@ -183,6 +182,7 @@ from .common import (
     get_prn,
     get_prn_alt,
     get_region,
+    get_client_id,
     get_client,
     get_client_name,
     get_client_region,
@@ -299,6 +299,9 @@ from .prn_utils import (
     extract_build_prn,
     extract_component_prn,
 )
+from importlib.metadata import version
+
+__version__ = version("sck-core-framework")
 
 __all__ = [
     # Data Manipulation Utilities
@@ -326,6 +329,7 @@ __all__ = [
     "get_region",
     "get_master_region",
     "get_domain",
+    "get_client_id",
     "get_client",
     "get_client_name",
     "get_client_region",

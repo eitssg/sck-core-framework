@@ -169,6 +169,10 @@ from .log_classes import (
 )
 from logging import NOTSET, INFO, WARNING, ERROR, CRITICAL, DEBUG
 
+from importlib.metadata import version
+
+__version__ = version("sck-core-framework")
+
 __all__ = [
     # Core logging classes
     "CoreLogger",
@@ -434,6 +438,5 @@ __level_hierarchy__ = get_level_hierarchy()
 __package_info__ = get_package_info()
 
 # Package version and compatibility information
-__version__ = "1.0.0"
 __python_requires__ = ">=3.8"
 __framework_integration__ = "core_framework"

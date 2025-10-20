@@ -313,7 +313,7 @@ class ActionDetails(FileDetails):
             return value if value else default
 
         # Extract all parameters with intelligent defaults
-        client = _get("client", "Client", util.get_client()) or "core"
+        client = _get("client", "Client", "core")
 
         # Handle key generation from task/action_file
         key = _get("key", "Key", None)

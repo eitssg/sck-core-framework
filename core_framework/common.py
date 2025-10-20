@@ -35,6 +35,7 @@ from .constants import (
     ENV_LOCAL_MODE,
     ENV_AWS_PROFILE,
     ENV_AWS_REGION,
+    ENV_CLIENT_ID,
     ENV_CLIENT,
     ENV_CLIENT_NAME,
     ENV_CLIENT_REGION,
@@ -938,6 +939,22 @@ def is_enforce_validation() -> bool:
     True
     """
     return os.environ.get(ENV_ENFORCE_VALIDATION, V_TRUE).lower() == V_TRUE
+
+
+def get_client_id() -> str | None:
+    """Get client ID from CLIENT_ID environment variable.
+
+    Returns
+    -------
+    str | None
+        The client ID or None if not set
+
+    Examples
+    --------
+    >>> get_client_id()
+    'client-12345'
+    """
+    return os.getenv(ENV_CLIENT_ID, "core-" + str(os.getpid()))
 
 
 def get_client() -> str | None:
