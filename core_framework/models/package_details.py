@@ -305,7 +305,7 @@ class PackageDetails(FileDetails):
             - compile_mode/CompileMode
 
         Default Behavior:
-            - **Client**: Defaults to util.get_client()
+            - **Client**: Defaults to "core"
             - **Mode**: 'local' if util.is_local_mode() else 'service'
             - **Bucket name**: util.get_bucket_name()
             - **Bucket region**: util.get_bucket_region()
@@ -326,7 +326,7 @@ class PackageDetails(FileDetails):
             return value if value else default
 
         # Get core parameters with fallbacks
-        client = _get("client", "Client", util.get_client() or "core")
+        client = _get("client", "Client", "core")
         package_file = _get("package_file", "PackageFile", V_PACKAGE_ZIP)
         key = _get("key", "Key", V_EMPTY)
 

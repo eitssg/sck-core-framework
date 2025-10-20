@@ -91,10 +91,13 @@ Thread Safety:
 
 from .renderer import Jinja2Renderer, TemplateError
 
+from importlib.metadata import version
+
+__version__ = version("sck-core-framework")
+
 __all__ = ["Jinja2Renderer", "TemplateError"]
 
 # Package metadata for documentation and introspection
-__version__ = "1.0.0"
 __package_name__ = "Core Renderer"
 __description__ = "Jinja2 template rendering system for infrastructure as code"
 

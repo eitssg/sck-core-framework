@@ -408,9 +408,7 @@ class DeploymentDetails(BaseModel):
         """
         if isinstance(values, dict):
             # Set client if not provided
-            client = values.pop("client", values.pop("Client", None))
-            if not client:
-                client = util.get_client() or "core"
+            client = values.pop("client", values.pop("Client", "core"))
             values["client"] = client
 
             delivered_by = values.get("DeliveredBy", None) or values.get("delivered_by", None)
@@ -543,7 +541,7 @@ class DeploymentDetails(BaseModel):
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
 
-        client: str = _get("client", "Client", util.get_client() or "core")
+        client: str = _get("client", "Client", "core")
         client_id: str = _get("client_id", "ClientId", "cid-1")
 
         prn = kwargs.get("prn", None)

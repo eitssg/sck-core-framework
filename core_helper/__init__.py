@@ -168,6 +168,9 @@ from .magic import (
 
 from .store import store
 
+from importlib.metadata import version
+
+__version__ = version("sck-core-framework")
 
 __all__ = [
     # AWS Session and Credential Management
@@ -318,7 +321,7 @@ def get_helper_categories() -> dict[str, list[str]]:
     }
 
 
-def get_helper_info() -> dict[str, any]:
+def get_helper_info() -> dict:
     """Get comprehensive information about the Core Helper modules.
 
     Returns:
@@ -421,6 +424,5 @@ __helper_categories__ = get_helper_categories()
 __helper_info__ = get_helper_info()
 
 # Version and compatibility information
-__version__ = "1.0.0"
 __python_requires__ = ">=3.8"
 __aws_sdk_requires__ = "boto3>=1.20.0"

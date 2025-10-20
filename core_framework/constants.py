@@ -280,6 +280,9 @@ ACT_MIME_TYPE = "ContentType"
 """Action MIME type field."""
 
 # Deployment Details object
+DD_CLIENT_ID = "ClientId"
+"""Deployment details client ID field."""
+
 DD_CLIENT = "Client"
 """Deployment details client field."""
 
@@ -543,6 +546,9 @@ ENV_AWS_PROFILE = "AWS_PROFILE"
 
 ENV_AWS_REGION = "AWS_REGION"
 """AWS Region environment variable."""
+
+ENV_CLIENT_ID = "CLIENT_ID"
+"""Client ID environment variable."""
 
 ENV_CLIENT = "CLIENT"
 """Client environment variable."""
@@ -852,6 +858,9 @@ P_AWS_REGION = "aws_region"
 
 P_SCOPE = "scope"
 """Scope property."""
+
+P_CLIENT_ID = "client_id"
+"""Client ID property."""
 
 P_CLIENT = "client"
 """Client property."""

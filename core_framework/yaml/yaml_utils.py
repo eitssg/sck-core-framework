@@ -69,7 +69,7 @@ from ruamel.yaml import YAML, CommentedMap
 from ruamel.yaml.constructor import ConstructorError, RoundTripConstructor
 from ruamel.yaml.nodes import ScalarNode, MappingNode, SequenceNode
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
-from ruamel.yaml.scalarstring import ScalarString
+from ruamel.yaml.scalarstring import ScalarString, FoldedScalarString, LiteralScalarString, DoubleQuotedScalarString
 from ruamel.yaml.scalarbool import ScalarBoolean
 from ruamel.yaml.scalarint import ScalarInt
 from ruamel.yaml.scalarfloat import ScalarFloat
@@ -936,7 +936,7 @@ def to_yaml(data: Any, yaml_parser: YAML | None = None) -> str:
     return stream.getvalue()
 
 
-def clean_yaml(data):
+def clean_yaml(data: Any) -> Any:
     """Convert ruamel YAML objects (CommentedMap, ScalarString, etc.) to plain Python types.
 
     Args:
@@ -948,14 +948,26 @@ def clean_yaml(data):
 
     if isinstance(data, CommentedMap):
         return {k: clean_yaml(v) for k, v in data.items()}
-    elif isinstance(data, CommentedSeq):
+
+    if isinstance(data, CommentedSeq):
         return [clean_yaml(item) for item in data]
-    elif isinstance(data, (ScalarString, ScalarBoolean, ScalarInt, ScalarFloat)):
-        # Convert ruamel scalar wrappers back to base Python types
-        return clean_yaml(data.value) if hasattr(data, 'value') else clean_yaml(type(data).__bases__[0](data))
-    elif isinstance(data, dict):
+
+    if isinstance(data, (ScalarString, FoldedScalarString, LiteralScalarString, DoubleQuotedScalarString)):
+        return str(data)
+
+    if isinstance(data, ScalarBoolean):
+        return bool(data)
+
+    if isinstance(data, ScalarInt):
+        return int(data)
+
+    if isinstance(data, ScalarFloat):
+        return float(data)
+
+    if isinstance(data, dict):
         return {k: clean_yaml(v) for k, v in data.items()}
-    elif isinstance(data, list):
+
+    if isinstance(data, list):
         return [clean_yaml(item) for item in data]
-    else:
-        return data
+
+    return data

@@ -219,7 +219,7 @@ class StateDetails(FileDetails):
             - deployment_details/DeploymentDetails
 
         Default Behavior:
-            - **Client**: Defaults to util.get_client()
+            - **Client**: Defaults to "core"
             - **Mode**: 'local' if util.is_local_mode() else 'service'
             - **Bucket name**: util.get_artefact_bucket_name()
             - **Bucket region**: util.get_artefact_bucket_region()
@@ -231,7 +231,7 @@ class StateDetails(FileDetails):
             value = kwargs.get(key1, None) or kwargs.get(key2, None)
             return value if value or can_be_empty else default
 
-        client = _get("client", "Client", util.get_client())
+        client = _get("client", "Client", "core")
 
         # Get key from various possible parameter names
         key = _get("key", "Key", V_EMPTY)
