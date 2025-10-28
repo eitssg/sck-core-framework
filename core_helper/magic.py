@@ -29,7 +29,6 @@ Integration:
     patterns and configuration management system.
 """
 
-from pyexpat import model
 from typing import Any, Self
 
 import base64
@@ -43,7 +42,8 @@ import time
 from datetime import datetime
 from urllib.parse import urlencode
 
-from cfnlint import data
+from botocore.config import Config
+
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from core_framework.common import (
@@ -910,7 +910,7 @@ class MagicS3Client(BaseModel):
         alias="DataPath",
         description="The local storage path if not using S3.",
     )
-
+    
     @model_validator(mode="before")
     @classmethod
     def validate_data_path(cls, values):
@@ -1093,7 +1093,7 @@ class MagicS3Client(BaseModel):
         return bucket
 
     @staticmethod
-    def get_client(Region: str, RoleArn: str | None = None, DataPath: str | None = None) -> Any:
+    def get_client(Region: str, RoleArn: str | None = None, DataPath: str | None = None, Config: Config | None = None) -> Any:
         """Get an S3 client, either real boto3 or MagicS3Client based on configuration.
 
         Provides transparent switching between real S3 and local storage based
@@ -1115,7 +1115,7 @@ class MagicS3Client(BaseModel):
             - Full API compatibility maintained for all operations
         """
         if is_use_s3():
-            client = aws.s3_client(region=Region, role_arn=RoleArn)
+            client = aws.s3_client(region=Region, role_arn=RoleArn, config=Config)
         else:
             client = MagicS3Client(Region=Region, RoleArn=RoleArn, DataPath=DataPath)
 

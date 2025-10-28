@@ -326,7 +326,7 @@ def get_role_credentials(role_arn: str) -> AwsCredentials | None:
     return AwsCredentials.model_validate(cred)
 
 
-def __get_client_config() -> Config:
+def __get_client_config(config: Config | None = None) -> Config:
     """Create a Botocore Config object with standard proxy and retry settings.
 
     Configures the client with proxy settings from environment variables
@@ -335,6 +335,7 @@ def __get_client_config() -> Config:
     Returns:
         A configured botocore.config.Config object with proxy and retry settings.
     """
+
     http_proxy = os.getenv("HTTP_PROXY") or os.getenv("http_proxy")
     https_proxy = os.getenv("HTTPS_PROXY") or os.getenv("https_proxy")
     proxy_definition = None
@@ -344,13 +345,18 @@ def __get_client_config() -> Config:
         https_proxy = http_proxy
     if http_proxy:
         proxy_definition = {"http": http_proxy, "https": https_proxy}
-    return Config(
+    
+    cfg = Config(
         proxies=proxy_definition,
         connect_timeout=15,
         read_timeout=15,
         retries=RETRY_CONFIG,  # type: ignore
     )
 
+    if config is not None:
+        return cfg.merge(config)
+    
+    return cfg
 
 def assume_role(*, role_arn: str | None = None, **kwargs) -> AwsCredentials | None:
     """Assume an IAM role and return temporary credentials. Fallback to return session credentials."""
@@ -548,8 +554,10 @@ def get_client(service_name: str, *, role_arn: str | None = None, **kwargs) -> A
         # No role to assume, use base session
         session = get_session(**kwargs)
 
+    config = kwargs.pop("config", None)
+
     # Get the session for the current user and his credentials else create a new one
-    return session.client(service_name, config=__get_client_config())  # type: ignore
+    return session.client(service_name, config=__get_client_config(config))  # type: ignore
 
 
 # Convenience functions for creating specific clients
